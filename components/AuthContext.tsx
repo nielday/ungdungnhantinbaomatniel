@@ -79,7 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    return { userId: data.userId };
+    localStorage.setItem('token', data.token);
+    setUser(data.user);
+    return { success: true };
   };
 
   const verifyLogin = async (userId: string, otpCode: string) => {
@@ -116,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    return { userId: data.userId };
+    localStorage.setItem('token', data.token);
+    setUser(data.user);
+    return { success: true };
   };
 
   const verifyRegister = async (userId: string, otpCode: string) => {
