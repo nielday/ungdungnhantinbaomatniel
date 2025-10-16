@@ -16,7 +16,8 @@ import {
   X,
   Download,
   Play,
-  Pause
+  Pause,
+  ArrowLeft
 } from 'lucide-react';
 
 interface Message {
@@ -70,6 +71,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [showFilePicker, setShowFilePicker] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -78,6 +80,17 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   useEffect(() => {
     fetchMessages();
   }, [conversation._id]);
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -292,50 +305,52 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              {otherParticipant?.avatar ? (
-                <img 
-                  src={otherParticipant.avatar} 
-                  alt={otherParticipant.fullName}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium">
-                    {otherParticipant?.fullName?.charAt(0)}
-                  </span>
-                </div>
-              )}
+      {/* Header - Hidden on mobile as it's handled in ChatApp */}
+      {!isMobile && (
+        <div className="p-4 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                {otherParticipant?.avatar ? (
+                  <img 
+                    src={otherParticipant.avatar} 
+                    alt={otherParticipant.fullName}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-white font-medium">
+                      {otherParticipant?.fullName?.charAt(0)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-800">
+                  {otherParticipant?.fullName}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {conversation.type === 'group' 
+                    ? `${conversation.participants.length} thành viên`
+                    : 'Đang hoạt động'
+                  }
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium text-gray-800">
-                {otherParticipant?.fullName}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {conversation.type === 'group' 
-                  ? `${conversation.participants.length} thành viên`
-                  : 'Đang hoạt động'
-                }
-              </p>
+            <div className="flex items-center space-x-2">
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <Phone className="w-5 h-5 text-gray-600" />
+              </button>
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <Video className="w-5 h-5 text-gray-600" />
+              </button>
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <MoreVertical className="w-5 h-5 text-gray-600" />
+              </button>
             </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Phone className="w-5 h-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Video className="w-5 h-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <MoreVertical className="w-5 h-5 text-gray-600" />
-            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
@@ -490,14 +505,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       )}
 
       {/* Input */}
-      <div className="p-4 bg-white border-t border-gray-200">
+      <div className={`${isMobile ? 'p-3' : 'p-4'} bg-white border-t border-gray-200`}>
         <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
           <button
             type="button"
             onClick={() => setShowFilePicker(!showFilePicker)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`${isMobile ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-lg transition-colors`}
           >
-            <Paperclip className="w-5 h-5 text-gray-600" />
+            <Paperclip className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
           </button>
           
           <div className="flex-1 relative">
@@ -506,33 +521,33 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               value={newMessage}
               onChange={handleTyping}
               placeholder="Nhập tin nhắn..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'} border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
             />
             {showFilePicker && (
-              <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2">
-                <div className="flex space-x-2">
+              <div className={`absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg ${isMobile ? 'p-2' : 'p-2'}`}>
+                <div className={`flex ${isMobile ? 'flex-col space-y-1' : 'space-x-2'}`}>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-100 rounded"
+                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
                   >
                     <Image className="w-4 h-4" />
-                    <span className="text-sm">Hình ảnh</span>
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Hình ảnh</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-100 rounded"
+                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
                   >
                     <File className="w-4 h-4" />
-                    <span className="text-sm">File</span>
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>File</span>
                   </button>
                   <button
                     type="button"
-                    className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-100 rounded"
+                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
                   >
                     <Mic className="w-4 h-4" />
-                    <span className="text-sm">Ghi âm</span>
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Ghi âm</span>
                   </button>
                 </div>
               </div>
@@ -542,17 +557,17 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`${isMobile ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-lg transition-colors`}
           >
-            <Smile className="w-5 h-5 text-gray-600" />
+            <Smile className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
           </button>
           
           <button
             type="submit"
             disabled={!newMessage.trim()}
-            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`${isMobile ? 'p-1.5' : 'p-2'} bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
           >
-            <Send className="w-5 h-5" />
+            <Send className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
           </button>
         </form>
         

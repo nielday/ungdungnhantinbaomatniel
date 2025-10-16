@@ -13,7 +13,11 @@ import {
   LogOut,
   Phone,
   Mail,
-  User
+  User,
+  Menu,
+  ArrowLeft,
+  X,
+  Video
 } from 'lucide-react';
 import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
@@ -38,12 +42,74 @@ export default function ChatApp() {
   const [showProfile, setShowProfile] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchConversations();
     }
   }, [user]);
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setShowSidebar(false);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Touch gestures for mobile
+  useEffect(() => {
+    if (!isMobile) return;
+
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isDragging = true;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return;
+      
+      currentX = e.touches[0].clientX;
+      currentY = e.touches[0].clientY;
+      
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
+      
+      // Swipe right to open sidebar
+      if (deltaX > 50 && Math.abs(deltaY) < 100) {
+        setShowSidebar(true);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isDragging = false;
+    };
+
+    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isMobile]);
 
   const fetchConversations = async () => {
     try {
@@ -90,6 +156,10 @@ export default function ChatApp() {
 
   const handleSelectConversation = (conversation: Conversation) => {
     setActiveConversation(conversation);
+    // Hide sidebar on mobile when conversation is selected
+    if (isMobile) {
+      setShowSidebar(false);
+    }
   };
 
   if (loading) {
@@ -104,9 +174,23 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex relative">
+      {/* Mobile Overlay */}
+      {isMobile && showSidebar && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className={`
+        ${isMobile ? 'fixed' : 'relative'} 
+        ${isMobile ? (showSidebar ? 'translate-x-0' : '-translate-x-full') : ''}
+        w-80 bg-white border-r border-gray-200 flex flex-col z-50
+        transition-transform duration-300 ease-in-out
+        ${isMobile ? 'h-full' : ''}
+      `}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -120,6 +204,15 @@ export default function ChatApp() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {isMobile && (
+                <button
+                  onClick={() => setShowSidebar(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Đóng menu"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              )}
               <button
                 onClick={() => setShowUserSearch(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -183,6 +276,46 @@ export default function ChatApp() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
+        {/* Mobile Header */}
+        {isMobile && (
+          <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Menu"
+              >
+                <Menu className="w-5 h-5 text-gray-600" />
+              </button>
+              {activeConversation && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-800">
+                      {activeConversation.type === 'private' 
+                        ? activeConversation.participants.find(p => p._id !== user?.id)?.fullName
+                        : activeConversation.groupName
+                      }
+                    </h3>
+                  </div>
+                </div>
+              )}
+            </div>
+            {activeConversation && (
+              <div className="flex items-center space-x-2">
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                  <Phone className="w-4 h-4 text-gray-600" />
+                </button>
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                  <Video className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeConversation ? (
           <ChatWindow
             conversation={activeConversation}
@@ -191,13 +324,16 @@ export default function ChatApp() {
           />
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center">
+            <div className="text-center px-4">
               <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">
                 Chọn cuộc trò chuyện
               </h3>
               <p className="text-gray-500">
-                Chọn một cuộc trò chuyện từ danh sách bên trái để bắt đầu nhắn tin
+                {isMobile 
+                  ? "Nhấn menu để xem danh sách cuộc trò chuyện"
+                  : "Chọn một cuộc trò chuyện từ danh sách bên trái để bắt đầu nhắn tin"
+                }
               </p>
             </div>
           </div>
