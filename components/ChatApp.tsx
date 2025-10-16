@@ -52,7 +52,7 @@ export default function ChatApp() {
       console.log('ChatApp - Token for conversations:', token ? 'Present' : 'Missing');
       console.log('ChatApp - Token value:', token);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/conversations`, {
+      const response = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

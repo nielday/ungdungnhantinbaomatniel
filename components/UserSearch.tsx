@@ -38,7 +38,7 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
       console.log('UserSearch - Token value:', token);
       
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/users/search?query=${encodeURIComponent(searchQuery)}`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?query=${encodeURIComponent(searchQuery)}`,
         {
           method: 'GET',
           headers: {
