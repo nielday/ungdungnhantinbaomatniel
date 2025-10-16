@@ -39,6 +39,26 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+// Debug route to check environment
+app.get('/api/debug', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Debug info',
+    jwtSecret: process.env.JWT_SECRET ? 'Present' : 'Missing',
+    nodeEnv: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test route without authentication
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Test route works',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
