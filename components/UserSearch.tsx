@@ -40,9 +40,12 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/users/search?query=${encodeURIComponent(searchQuery)}`,
         {
+          method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          cache: 'no-cache'
         }
       );
       

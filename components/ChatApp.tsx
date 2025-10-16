@@ -53,9 +53,12 @@ export default function ChatApp() {
       console.log('ChatApp - Token value:', token);
       
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/conversations`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-cache'
       });
       
       console.log('Conversations response status:', response.status);
