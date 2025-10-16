@@ -122,7 +122,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/messages/${conversation._id}`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -151,7 +151,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/messages/${conversation._id}/${messageType}`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/${messageType}`,
         {
           method: 'POST',
           headers: {
@@ -234,7 +234,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/messages/${conversation._id}/file`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
           method: 'POST',
           headers: {
