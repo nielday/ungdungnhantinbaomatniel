@@ -48,15 +48,23 @@ export default function ChatApp() {
   const fetchConversations = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('Fetching conversations...');
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/conversations`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
+      console.log('Conversations response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Conversations data:', data);
         setConversations(data);
+      } else {
+        const errorData = await response.json();
+        console.error('Conversations error:', errorData);
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);

@@ -33,6 +33,8 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      console.log('Searching users with query:', searchQuery);
+      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/users/search?query=${encodeURIComponent(searchQuery)}`,
         {
@@ -42,9 +44,15 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
         }
       );
       
+      console.log('Search response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Search results:', data);
         setUsers(data);
+      } else {
+        const errorData = await response.json();
+        console.error('Search error:', errorData);
       }
     } catch (error) {
       console.error('Error searching users:', error);

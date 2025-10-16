@@ -137,6 +137,8 @@ router.get('/search', async (req, res) => {
     const { query } = req.query;
     const userId = req.user._id;
 
+    console.log('Search query:', query, 'User ID:', userId);
+
     if (!query || query.trim().length < 2) {
       return res.status(400).json({
         message: 'Từ khóa tìm kiếm phải có ít nhất 2 ký tự'
@@ -151,9 +153,10 @@ router.get('/search', async (req, res) => {
         { phoneNumber: { $regex: query, $options: 'i' } }
       ]
     })
-    .select('fullName phoneNumber avatar')
+    .select('_id fullName phoneNumber avatar')
     .limit(20);
 
+    console.log('Found users:', users.length);
     res.json(users);
   } catch (error) {
     console.error('Search users error:', error);
