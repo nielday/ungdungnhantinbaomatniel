@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { useSocket } from './SocketContext';
 import { motion } from 'framer-motion';
 import { 
   MessageCircle, 
