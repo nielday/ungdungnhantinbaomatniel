@@ -27,8 +27,10 @@ export default function AuthPage() {
 
     try {
       const result = await login(formData.phoneNumber);
-      setUserId(result.userId);
-      setStep('verify');
+      if (result.success) {
+        // Login successful, user is already set in AuthContext
+        // No need to go to verify step
+      }
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại');
     } finally {
@@ -48,8 +50,10 @@ export default function AuthPage() {
         formData.fullName,
         parseInt(formData.age)
       );
-      setUserId(result.userId);
-      setStep('verify');
+      if (result.success) {
+        // Register successful, user is already set in AuthContext
+        // No need to go to verify step
+      }
     } catch (err: any) {
       setError(err.message || 'Đăng ký thất bại');
     } finally {
