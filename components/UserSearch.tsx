@@ -70,7 +70,7 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/conversations/private`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/private`,
         {
           method: 'POST',
           headers: {
