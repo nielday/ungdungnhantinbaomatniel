@@ -13,9 +13,9 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (phoneNumber: string) => Promise<{ userId: string }>;
+  login: (phoneNumber: string) => Promise<{ success: boolean }>;
   verifyLogin: (userId: string, otpCode: string) => Promise<void>;
-  register: (phoneNumber: string, email: string, fullName: string, age: number) => Promise<{ userId: string }>;
+  register: (phoneNumber: string, email: string, fullName: string, age: number) => Promise<{ success: boolean }>;
   verifyRegister: (userId: string, otpCode: string) => Promise<void>;
   resendOtp: (userId: string) => Promise<void>;
   logout: () => void;
