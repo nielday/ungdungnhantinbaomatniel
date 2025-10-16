@@ -1,0 +1,162 @@
+const express = require('express');
+const { Conversation, User } = require('../models');
+
+const router = express.Router();
+
+// Get all conversations for a user
+router.get('/', async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const conversations = await Conversation.find({
+      participants: userId,
+      isActive: true
+    })
+    .populate('participants', 'fullName avatar phoneNumber')
+    .populate('lastMessage')
+    .populate('createdBy', 'fullName')
+    .sort({ lastMessageAt: -1 });
+
+    res.json(conversations);
+  } catch (error) {
+    console.error('Get conversations error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Create private conversation
+router.post('/private', async (req, res) => {
+  try {
+    const { participantId } = req.body;
+    const userId = req.user._id;
+
+    if (participantId === userId.toString()) {
+      return res.status(400).json({
+        message: 'Không thể tạo cuộc trò chuyện với chính mình'
+      });
+    }
+
+    // Check if participant exists
+    const participant = await User.findById(participantId);
+    if (!participant) {
+      return res.status(404).json({
+        message: 'Người dùng không tồn tại'
+      });
+    }
+
+    // Check if conversation already exists
+    const existingConversation = await Conversation.findOne({
+      type: 'private',
+      participants: { $all: [userId, participantId] },
+      isActive: true
+    });
+
+    if (existingConversation) {
+      return res.json(existingConversation);
+    }
+
+    // Create new conversation
+    const conversation = new Conversation({
+      type: 'private',
+      participants: [userId, participantId],
+      createdBy: userId
+    });
+
+    await conversation.save();
+    await conversation.populate('participants', 'fullName avatar phoneNumber');
+
+    res.status(201).json(conversation);
+  } catch (error) {
+    console.error('Create private conversation error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Create group conversation
+router.post('/group', async (req, res) => {
+  try {
+    const { groupName, groupDescription, participantIds } = req.body;
+    const userId = req.user._id;
+
+    if (!groupName || !participantIds || participantIds.length === 0) {
+      return res.status(400).json({
+        message: 'Tên nhóm và danh sách thành viên là bắt buộc'
+      });
+    }
+
+    if (participantIds.length > 99) {
+      return res.status(400).json({
+        message: 'Nhóm không được quá 100 thành viên'
+      });
+    }
+
+    // Add creator to participants
+    const allParticipants = [userId, ...participantIds];
+    const uniqueParticipants = [...new Set(allParticipants.map(id => id.toString()))];
+
+    // Check if all participants exist
+    const participants = await User.find({
+      _id: { $in: uniqueParticipants }
+    });
+
+    if (participants.length !== uniqueParticipants.length) {
+      return res.status(400).json({
+        message: 'Một số người dùng không tồn tại'
+      });
+    }
+
+    // Create group conversation
+    const conversation = new Conversation({
+      type: 'group',
+      participants: uniqueParticipants,
+      groupName,
+      groupDescription: groupDescription || '',
+      createdBy: userId
+    });
+
+    await conversation.save();
+    await conversation.populate('participants', 'fullName avatar phoneNumber');
+
+    res.status(201).json(conversation);
+  } catch (error) {
+    console.error('Create group conversation error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Get conversation by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId,
+      isActive: true
+    })
+    .populate('participants', 'fullName avatar phoneNumber')
+    .populate('createdBy', 'fullName');
+
+    if (!conversation) {
+      return res.status(404).json({
+        message: 'Cuộc trò chuyện không tồn tại'
+      });
+    }
+
+    res.json(conversation);
+  } catch (error) {
+    console.error('Get conversation error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+module.exports = router;

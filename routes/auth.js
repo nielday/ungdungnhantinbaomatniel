@@ -1,0 +1,341 @@
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+const { User } = require('../models');
+
+const router = express.Router();
+
+// Email configuration for Outlook SMTP
+console.log('Email config debug:', {
+  host: process.env.EMAIL_HOST,
+  port: process.env.EMAIL_PORT,
+  user: process.env.EMAIL_USER,
+  pass: process.env.EMAIL_PASS ? '***' : 'undefined'
+});
+
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST,
+  port: process.env.EMAIL_PORT,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  },
+  tls: {
+    ciphers: 'SSLv3'
+  }
+});
+
+// Generate OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Send OTP email using Outlook SMTP
+const sendOTPEmail = async (email, otp) => {
+  try {
+    console.log('Attempting to send email to:', email);
+    console.log('OTP code:', otp);
+    
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Mã OTP xác thực tài khoản',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Xác thực tài khoản</h2>
+          <p>Mã OTP của bạn là:</p>
+          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; color: #007bff; letter-spacing: 5px;">
+            ${otp}
+          </div>
+          <p>Mã này có hiệu lực trong 5 phút.</p>
+          <p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
+        </div>
+      `
+    });
+    
+    console.log('Email sent successfully to:', email);
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      command: error.command
+    });
+    return false;
+  }
+};
+
+// Register user
+router.post('/register', async (req, res) => {
+  try {
+    const { phoneNumber, email, fullName, age } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [{ phoneNumber }, { email }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        message: 'Số điện thoại hoặc email đã được sử dụng'
+      });
+    }
+
+    // Create new user (no OTP needed)
+    const user = new User({
+      phoneNumber,
+      email,
+      fullName,
+      age,
+      isVerified: true  // Auto verify
+    });
+
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      message: 'Đăng ký thành công',
+      token,
+      user: {
+        id: user._id,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        fullName: user.fullName,
+        age: user.age,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Verify OTP
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { userId, otpCode } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: 'Người dùng không tồn tại'
+      });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({
+        message: 'Tài khoản đã được xác thực'
+      });
+    }
+
+    if (!user.otpCode || !user.otpExpires) {
+      return res.status(400).json({
+        message: 'Mã OTP không hợp lệ'
+      });
+    }
+
+    if (new Date() > user.otpExpires) {
+      return res.status(400).json({
+        message: 'Mã OTP đã hết hạn'
+      });
+    }
+
+    if (user.otpCode !== otpCode) {
+      return res.status(400).json({
+        message: 'Mã OTP không đúng'
+      });
+    }
+
+    // Verify user
+    user.isVerified = true;
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Xác thực thành công',
+      token,
+      user: {
+        id: user._id,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        fullName: user.fullName,
+        age: user.age,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Resend OTP
+router.post('/resend-otp', async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: 'Người dùng không tồn tại'
+      });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({
+        message: 'Tài khoản đã được xác thực'
+      });
+    }
+
+    // Generate new OTP
+    const otpCode = generateOTP();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+
+    user.otpCode = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send OTP email
+    const emailSent = await sendOTPEmail(user.email, otpCode);
+    if (!emailSent) {
+      return res.status(500).json({
+        message: 'Không thể gửi email OTP'
+      });
+    }
+
+    res.json({
+      message: 'Đã gửi lại mã OTP'
+    });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Login
+router.post('/login', async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    const user = await User.findOne({ phoneNumber });
+    if (!user) {
+      return res.status(404).json({
+        message: 'Số điện thoại không tồn tại'
+      });
+    }
+
+    // Generate JWT token (no OTP needed)
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Đăng nhập thành công',
+      token,
+      user: {
+        id: user._id,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        fullName: user.fullName,
+        age: user.age,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Verify login OTP
+router.post('/verify-login', async (req, res) => {
+  try {
+    const { userId, otpCode } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: 'Người dùng không tồn tại'
+      });
+    }
+
+    if (!user.otpCode || !user.otpExpires) {
+      return res.status(400).json({
+        message: 'Mã OTP không hợp lệ'
+      });
+    }
+
+    if (new Date() > user.otpExpires) {
+      return res.status(400).json({
+        message: 'Mã OTP đã hết hạn'
+      });
+    }
+
+    if (user.otpCode !== otpCode) {
+      return res.status(400).json({
+        message: 'Mã OTP không đúng'
+      });
+    }
+
+    // Clear OTP
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Đăng nhập thành công',
+      token,
+      user: {
+        id: user._id,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        fullName: user.fullName,
+        age: user.age,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Verify login error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+module.exports = router;
