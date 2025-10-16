@@ -73,7 +73,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send-message', (data) => {
-    socket.to(`conversation-${data.conversationId}`).emit('new-message', data);
+    socket.to(`conversation-${data.conversationId}`).emit('new-message', data.message);
   });
 
   socket.on('typing', (data) => {

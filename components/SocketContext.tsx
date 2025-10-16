@@ -23,7 +23,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       const newSocket = io(SOCKET_URL, {
         auth: {
           token: localStorage.getItem('token')
-        }
+        },
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+        forceNew: true
       });
 
       newSocket.on('connect', () => {
@@ -39,6 +42,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       newSocket.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
         setIsConnected(false);
+      });
+
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('Socket reconnected after', attemptNumber, 'attempts');
+        setIsConnected(true);
       });
 
       setSocket(newSocket);

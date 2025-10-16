@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useSocket } from './SocketContext';
 import { 
   Send, 
   Paperclip, 
@@ -71,6 +72,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { socket } = useSocket();
 
   useEffect(() => {
     fetchMessages();
@@ -79,6 +82,41 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Socket.io event listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    // Join conversation room
+    socket.emit('join-conversation', conversation._id);
+
+    // Listen for new messages
+    const handleNewMessage = (message: Message) => {
+      setMessages(prev => [...prev, message]);
+      onUpdateConversations();
+    };
+
+    // Listen for typing indicators
+    const handleTyping = (data: { userId: string; isTyping: boolean }) => {
+      if (data.userId !== currentUser?.id) {
+        setIsTyping(data.isTyping);
+      }
+    };
+
+    socket.on('new-message', handleNewMessage);
+    socket.on('user-typing', handleTyping);
+
+    return () => {
+      socket.emit('leave-conversation', conversation._id);
+      socket.off('new-message', handleNewMessage);
+      socket.off('user-typing', handleTyping);
+      
+      // Clear typing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [socket, conversation._id, currentUser?.id, onUpdateConversations]);
 
   const fetchMessages = async () => {
     try {
@@ -133,6 +171,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         setNewMessage('');
         setReplyingTo(null);
         onUpdateConversations();
+        
+        // Emit message via Socket.io for real-time delivery
+        if (socket) {
+          socket.emit('send-message', {
+            conversationId: conversation._id,
+            message: newMsg
+          });
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -142,6 +188,41 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(newMessage);
+  };
+
+  // Handle typing indicator with debounce
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    if (socket) {
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      if (e.target.value.trim()) {
+        socket.emit('typing', {
+          conversationId: conversation._id,
+          userId: currentUser?.id,
+          isTyping: true
+        });
+        
+        // Set timeout to stop typing indicator
+        typingTimeoutRef.current = setTimeout(() => {
+          socket.emit('typing', {
+            conversationId: conversation._id,
+            userId: currentUser?.id,
+            isTyping: false
+          });
+        }, 1000);
+      } else {
+        socket.emit('typing', {
+          conversationId: conversation._id,
+          userId: currentUser?.id,
+          isTyping: false
+        });
+      }
+    }
   };
 
   const handleFileUpload = async (files: FileList) => {
@@ -365,6 +446,25 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             </motion.div>
           ))
         )}
+        
+        {/* Typing indicator */}
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="max-w-xs lg:max-w-md">
+              <div className="bg-white text-gray-800 border border-gray-200 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                  <span className="text-sm text-gray-500">Đang nhập...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
@@ -404,7 +504,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             <input
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={handleTyping}
               placeholder="Nhập tin nhắn..."
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
