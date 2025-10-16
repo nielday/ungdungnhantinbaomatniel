@@ -59,6 +59,16 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Test route with authentication
+app.get('/api/test-auth', authenticateToken, (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Authenticated route works',
+    userId: req.user._id,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
