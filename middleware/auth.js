@@ -5,6 +5,7 @@ const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log('Auth middleware - URL:', req.url);
   console.log('Auth middleware - Token:', token ? 'Present' : 'Missing');
   console.log('Auth middleware - JWT_SECRET:', process.env.JWT_SECRET ? 'Present' : 'Missing');
 
@@ -19,6 +20,7 @@ const authenticateToken = async (req, res, next) => {
     
     const user = await User.findById(decoded.userId).select('-otpCode -otpExpires');
     console.log('Auth middleware - User found:', user ? 'Yes' : 'No');
+    console.log('Auth middleware - User ID:', user?._id);
     
     if (!user) {
       console.log('Auth middleware - User not found');
@@ -30,11 +32,12 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'User not verified' });
     }
 
-    console.log('Auth middleware - Authentication successful');
+    console.log('Auth middleware - Authentication successful for user:', user._id);
     req.user = user;
     next();
   } catch (error) {
     console.log('Auth middleware - Token verification failed:', error.message);
+    console.log('Auth middleware - Error details:', error);
     return res.status(403).json({ message: 'Invalid token' });
   }
 };

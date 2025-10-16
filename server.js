@@ -46,12 +46,42 @@ app.use('/api/conversations', authenticateToken, conversationRoutes);
 app.use('/api/messages', authenticateToken, messageRoutes);
 
 // Socket.io connection handling
-io.use((socket, next) => {
-  const token = socket.handshake.auth.token;
-  if (!token) {
-    return next(new Error('Authentication error'));
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    console.log('Socket auth - Token:', token ? 'Present' : 'Missing');
+    
+    if (!token) {
+      console.log('Socket auth - No token provided');
+      return next(new Error('Authentication error'));
+    }
+
+    // Verify JWT token
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Socket auth - Decoded token:', decoded);
+    
+    // Get user from database
+    const { User } = require('./models');
+    const user = await User.findById(decoded.userId).select('-otpCode -otpExpires');
+    
+    if (!user) {
+      console.log('Socket auth - User not found');
+      return next(new Error('User not found'));
+    }
+
+    if (!user.isVerified) {
+      console.log('Socket auth - User not verified');
+      return next(new Error('User not verified'));
+    }
+
+    console.log('Socket auth - Authentication successful');
+    socket.userId = user._id;
+    next();
+  } catch (error) {
+    console.log('Socket auth - Token verification failed:', error.message);
+    next(new Error('Invalid token'));
   }
-  next();
 });
 
 io.on('connection', (socket) => {
