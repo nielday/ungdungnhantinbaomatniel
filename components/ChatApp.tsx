@@ -49,6 +49,8 @@ export default function ChatApp() {
     try {
       const token = localStorage.getItem('token');
       console.log('Fetching conversations...');
+      console.log('ChatApp - Token for conversations:', token ? 'Present' : 'Missing');
+      console.log('ChatApp - Token value:', token);
       
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/conversations`, {
         headers: {

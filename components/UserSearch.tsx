@@ -34,6 +34,8 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
     try {
       const token = localStorage.getItem('token');
       console.log('Searching users with query:', searchQuery);
+      console.log('UserSearch - Token for search:', token ? 'Present' : 'Missing');
+      console.log('UserSearch - Token value:', token);
       
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/users/search?query=${encodeURIComponent(searchQuery)}`,
