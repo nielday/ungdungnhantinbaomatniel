@@ -210,6 +210,14 @@ router.post('/:conversationId/text', async (req, res) => {
       conversation.lastMessage = message._id;
       conversation.lastMessageAt = new Date();
       await conversation.save();
+    } else {
+      // Update group last message
+      const group = await Group.findById(conversationId);
+      if (group) {
+        group.lastMessage = message._id;
+        group.lastMessageAt = new Date();
+        await group.save();
+      }
     }
 
     // Emit to Socket.io for real-time delivery
@@ -303,6 +311,14 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
       conversation.lastMessage = message._id;
       conversation.lastMessageAt = new Date();
       await conversation.save();
+    } else {
+      // Update group last message
+      const group = await Group.findById(conversationId);
+      if (group) {
+        group.lastMessage = message._id;
+        group.lastMessageAt = new Date();
+        await group.save();
+      }
     }
 
     // Emit to Socket.io for real-time delivery
