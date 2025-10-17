@@ -26,7 +26,7 @@ interface User {
 
 interface GroupMember extends User {
   role?: 'admin' | 'member';
-  joinedAt: string;
+  joinedAt: Date | string;
 }
 
 interface Conversation {
@@ -218,8 +218,9 @@ export default function GroupManagementModal({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'

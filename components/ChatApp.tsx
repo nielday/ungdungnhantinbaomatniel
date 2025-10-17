@@ -197,7 +197,7 @@ export default function ChatApp() {
         const transformedGroups = groupsData.map((group: any) => ({
           _id: group._id,
           type: 'group' as const,
-          participants: group.members || [],
+          participants: group.members || [], // Now members already have full user info
           name: group.name,
           avatar: group.avatar,
           lastMessage: null,

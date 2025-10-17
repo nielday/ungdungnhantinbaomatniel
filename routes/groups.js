@@ -18,8 +18,21 @@ router.get('/', async (req, res) => {
     .populate('lastMessage')
     .sort({ lastMessageAt: -1 });
 
-    console.log('Found groups:', groups.length);
-    res.json(groups);
+    // Transform groups to include full member information
+    const transformedGroups = groups.map(group => {
+      const groupObj = group.toObject();
+      groupObj.members = groupObj.members.map(member => ({
+        ...member,
+        fullName: member.user?.fullName || 'Unknown',
+        phoneNumber: member.user?.phoneNumber || '',
+        avatar: member.user?.avatar || null,
+        _id: member.user?._id || member.user
+      }));
+      return groupObj;
+    });
+
+    console.log('Found groups:', transformedGroups.length);
+    res.json(transformedGroups);
   } catch (error) {
     console.error('Get groups error:', error);
     res.status(500).json({
@@ -106,7 +119,17 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    res.json(group);
+    // Transform group to include full member information
+    const groupObj = group.toObject();
+    groupObj.members = groupObj.members.map(member => ({
+      ...member,
+      fullName: member.user?.fullName || 'Unknown',
+      phoneNumber: member.user?.phoneNumber || '',
+      avatar: member.user?.avatar || null,
+      _id: member.user?._id || member.user
+    }));
+
+    res.json(groupObj);
   } catch (error) {
     console.error('Get group error:', error);
     res.status(500).json({
@@ -141,7 +164,17 @@ router.put('/:id', async (req, res) => {
     await group.populate('members.user', 'fullName avatar phoneNumber');
     await group.populate('createdBy', 'fullName avatar phoneNumber');
 
-    res.json(group);
+    // Transform group to include full member information
+    const groupObj = group.toObject();
+    groupObj.members = groupObj.members.map(member => ({
+      ...member,
+      fullName: member.user?.fullName || 'Unknown',
+      phoneNumber: member.user?.phoneNumber || '',
+      avatar: member.user?.avatar || null,
+      _id: member.user?._id || member.user
+    }));
+
+    res.json(groupObj);
   } catch (error) {
     console.error('Update group error:', error);
     res.status(500).json({
@@ -196,7 +229,17 @@ router.post('/:id/members', async (req, res) => {
     await group.populate('members.user', 'fullName avatar phoneNumber');
     await group.populate('createdBy', 'fullName avatar phoneNumber');
 
-    res.json(group);
+    // Transform group to include full member information
+    const groupObj = group.toObject();
+    groupObj.members = groupObj.members.map(member => ({
+      ...member,
+      fullName: member.user?.fullName || 'Unknown',
+      phoneNumber: member.user?.phoneNumber || '',
+      avatar: member.user?.avatar || null,
+      _id: member.user?._id || member.user
+    }));
+
+    res.json(groupObj);
   } catch (error) {
     console.error('Add member error:', error);
     res.status(500).json({
@@ -236,7 +279,17 @@ router.delete('/:id/members/:memberId', async (req, res) => {
     await group.populate('members.user', 'fullName avatar phoneNumber');
     await group.populate('createdBy', 'fullName avatar phoneNumber');
 
-    res.json(group);
+    // Transform group to include full member information
+    const groupObj = group.toObject();
+    groupObj.members = groupObj.members.map(member => ({
+      ...member,
+      fullName: member.user?.fullName || 'Unknown',
+      phoneNumber: member.user?.phoneNumber || '',
+      avatar: member.user?.avatar || null,
+      _id: member.user?._id || member.user
+    }));
+
+    res.json(groupObj);
   } catch (error) {
     console.error('Remove member error:', error);
     res.status(500).json({
