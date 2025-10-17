@@ -66,10 +66,11 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
       
       if (response.ok) {
         const data = await response.json();
-        console.log('CreateGroupModal - Found users:', data.length);
-        // Filter out already selected users
-        const filteredUsers = data.filter((user: User) => 
-          !selectedUsers?.some(selected => selected._id === user._id)
+        console.log('CreateGroupModal - Found users:', data?.length || 0);
+        // Ensure data is an array and filter out already selected users
+        const usersArray = Array.isArray(data) ? data : [];
+        const filteredUsers = usersArray.filter((user: User) => 
+          user && user._id && !selectedUsers?.some(selected => selected._id === user._id)
         );
         setAvailableUsers(filteredUsers);
       } else {
@@ -97,8 +98,8 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
   }, [searchQuery, selectedUsers]);
 
   const handleUserSelect = (user: User) => {
-    if (!selectedUsers?.some(u => u._id === user._id)) {
-      setSelectedUsers([...selectedUsers, user]);
+    if (user && user._id && !selectedUsers?.some(u => u._id === user._id)) {
+      setSelectedUsers([...(selectedUsers || []), user]);
     }
   };
 
@@ -273,9 +274,9 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
                   </div>
-                ) : availableUsers.length > 0 ? (
+                ) : availableUsers && availableUsers.length > 0 ? (
                   <div className="space-y-2">
-                    {availableUsers.map((user) => (
+                    {availableUsers.filter(user => user).map((user) => (
                       <div
                         key={user._id}
                         onClick={() => handleUserSelect(user)}
@@ -327,7 +328,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
                 </span>
               </div>
               <div className="space-y-2">
-                {selectedUsers.map((user) => (
+                {selectedUsers.filter(user => user).map((user) => (
                   <div
                     key={user._id}
                     className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg"
