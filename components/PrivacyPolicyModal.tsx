@@ -16,7 +16,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       title: 'Tổng quan',
       icon: Shield,
       content: [
-        'Chính sách bảo mật này mô tả cách nền tảng AI Learning Platform thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn.',
+        'Chính sách bảo mật này mô tả cách ứng dụng nhắn tin Niel thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn.',
         'Chúng tôi cam kết bảo vệ quyền riêng tư và thông tin cá nhân của người dùng theo các tiêu chuẩn bảo mật cao nhất.',
         'Việc sử dụng nền tảng này đồng nghĩa với việc bạn đồng ý với chính sách bảo mật này.'
       ]
@@ -211,7 +211,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
                 {/* Introduction */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <p className="text-blue-800 dark:text-blue-200 text-sm">
-                    <strong>Lưu ý quan trọng:</strong> Chính sách này áp dụng cho nền tảng AI Learning Platform. 
+                    <strong>Lưu ý quan trọng:</strong> Chính sách này áp dụng cho ứng dụng nhắn tin Niel. 
                     Việc sử dụng dịch vụ của chúng tôi đồng nghĩa với việc bạn đã đọc, hiểu và đồng ý với chính sách này.
                   </p>
                 </div>
@@ -255,7 +255,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
                         Phiên bản: 1.0 | Ngày hiệu lực: 15/12/2024
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                        © 2024 AI Learning Platform. Tất cả quyền được bảo lưu.
+                        © 2024 Ứng Dụng Nhắn Tin Niel. Tất cả quyền được bảo lưu.
                       </p>
                     </div>
                     <button
