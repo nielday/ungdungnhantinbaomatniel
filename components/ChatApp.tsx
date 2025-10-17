@@ -305,6 +305,7 @@ export default function ChatApp() {
           <ChatList
             conversations={conversations}
             activeConversation={activeConversation}
+            currentUserId={user?.id || ''}
             onSelectConversation={handleSelectConversation}
             onNewConversation={handleNewConversation}
           />

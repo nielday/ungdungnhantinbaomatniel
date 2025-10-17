@@ -25,6 +25,7 @@ interface Conversation {
 interface ChatListProps {
   conversations: Conversation[];
   activeConversation: Conversation | null;
+  currentUserId: string;
   onSelectConversation: (conversation: Conversation) => void;
   onNewConversation: (conversation: Conversation) => void;
 }
@@ -32,6 +33,7 @@ interface ChatListProps {
 export default function ChatList({ 
   conversations, 
   activeConversation, 
+  currentUserId,
   onSelectConversation,
   onNewConversation 
 }: ChatListProps) {
@@ -79,7 +81,7 @@ export default function ChatList({
     if (conversation.type === 'group') {
       return conversation.groupName;
     } else {
-      const otherParticipant = conversation.participants.find(p => p._id !== activeConversation?.participants?.[0]?._id);
+      const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
       return otherParticipant?.fullName || otherParticipant?.phoneNumber;
     }
   };
@@ -88,7 +90,7 @@ export default function ChatList({
     if (conversation.type === 'group') {
       return conversation.groupAvatar;
     } else {
-      const otherParticipant = conversation.participants.find(p => p._id !== activeConversation?.participants?.[0]?._id);
+      const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
       return otherParticipant?.avatar;
     }
   };
