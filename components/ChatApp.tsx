@@ -237,12 +237,22 @@ export default function ChatApp() {
   };
 
   const handleGroupUpdated = (updatedGroup: Conversation) => {
-    setConversations(prev => 
-      prev.map(conv => 
-        conv._id === updatedGroup._id ? updatedGroup : conv
-      )
-    );
+    console.log('ChatApp - handleGroupUpdated called with:', updatedGroup);
+    
+    setConversations(prev => {
+      const updated = prev.map(conv => {
+        if (conv._id === updatedGroup._id) {
+          console.log('ChatApp - Updating conversation:', conv._id, 'with:', updatedGroup);
+          return updatedGroup;
+        }
+        return conv;
+      });
+      console.log('ChatApp - Updated conversations:', updated);
+      return updated;
+    });
+    
     if (activeConversation?._id === updatedGroup._id) {
+      console.log('ChatApp - Updating active conversation with:', updatedGroup);
       setActiveConversation(updatedGroup);
     }
   };

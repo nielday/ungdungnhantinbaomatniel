@@ -69,6 +69,23 @@ export default function GroupManagementModal({
 
   const isAdmin = conversation.createdBy._id === currentUser?.id;
 
+  // Sync avatar state with conversation changes
+  useEffect(() => {
+    console.log('GroupManagementModal - Conversation avatar changed:', conversation.avatar);
+    setGroupAvatar(conversation.avatar || null);
+  }, [conversation.avatar]);
+
+  // Debug conversation data
+  useEffect(() => {
+    console.log('GroupManagementModal - Conversation data:', {
+      id: conversation._id,
+      name: conversation.name,
+      avatar: conversation.avatar,
+      participants: conversation.participants?.length,
+      participantsData: conversation.participants
+    });
+  }, [conversation]);
+
   useEffect(() => {
     if (showAddMembers && searchQuery.trim()) {
       searchUsers();
@@ -243,8 +260,26 @@ export default function GroupManagementModal({
 
       if (response.ok) {
         const updatedGroup = await response.json();
+        console.log('Avatar upload response:', updatedGroup);
+        
+        // Update local state
         setGroupAvatar(updatedGroup.avatar);
-        onGroupUpdated(updatedGroup);
+        
+        // Transform the updated group to match the expected format
+        const transformedGroup = {
+          _id: updatedGroup._id,
+          type: 'group' as const,
+          participants: updatedGroup.members || [],
+          name: updatedGroup.name,
+          avatar: updatedGroup.avatar,
+          description: updatedGroup.description,
+          lastMessage: null,
+          lastMessageAt: updatedGroup.updatedAt,
+          createdBy: updatedGroup.createdBy
+        };
+        
+        console.log('Transformed group for update:', transformedGroup);
+        onGroupUpdated(transformedGroup);
       } else {
         const error = await response.json();
         alert(error.message || 'Không thể cập nhật ảnh nhóm');

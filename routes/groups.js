@@ -411,6 +411,10 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
     group.avatar = `/uploads/${req.file.filename}`;
     await group.save();
 
+    // Populate full member information before transforming
+    await group.populate('members.user', 'fullName avatar phoneNumber');
+    await group.populate('createdBy', 'fullName avatar phoneNumber');
+
     // Transform group to include full member information
     const groupObj = group.toObject();
     groupObj.members = groupObj.members.map(member => ({
