@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSocket } from './SocketContext';
+import SimpleEmojiPicker from './SimpleEmojiPicker';
 import { 
   Send, 
   Paperclip, 
@@ -644,6 +645,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           className="hidden"
         />
       </div>
+
+      {/* Emoji Picker */}
+      <SimpleEmojiPicker
+        isOpen={showEmojiPicker}
+        onClose={() => setShowEmojiPicker(false)}
+        onEmojiClick={(emoji) => {
+          setNewMessage(prev => prev + emoji);
+          setShowEmojiPicker(false);
+        }}
+      />
     </div>
   );
 }
