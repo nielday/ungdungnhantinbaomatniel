@@ -72,8 +72,13 @@ export default function ProfileModal({ user, onClose, onUpdateProfile }: Profile
 
   const handleSave = async () => {
     try {
+      console.log('ProfileModal - Saving profile:', formData);
       setLoading(true);
+      setError('');
+      
       const token = localStorage.getItem('token');
+      console.log('ProfileModal - Token:', token ? 'Present' : 'Missing');
+      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/profile`,
         {
@@ -86,13 +91,20 @@ export default function ProfileModal({ user, onClose, onUpdateProfile }: Profile
         }
       );
 
+      console.log('ProfileModal - Response status:', response.status);
+      
       if (response.ok) {
+        const updatedUser = await response.json();
+        console.log('ProfileModal - Updated user:', updatedUser);
         onUpdateProfile();
         onClose();
       } else {
+        const errorData = await response.json();
+        console.error('ProfileModal - Error response:', errorData);
         setError('Không thể cập nhật thông tin');
       }
     } catch (error) {
+      console.error('ProfileModal - Save error:', error);
       setError('Lỗi khi cập nhật thông tin');
     } finally {
       setLoading(false);
