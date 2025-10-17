@@ -240,6 +240,19 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Group management events
+  socket.on('group-member-added', (data) => {
+    socket.to(`conversation-${data.conversationId}`).emit('member-added', data);
+  });
+
+  socket.on('group-member-removed', (data) => {
+    socket.to(`conversation-${data.conversationId}`).emit('member-removed', data);
+  });
+
+  socket.on('group-updated', (data) => {
+    socket.to(`conversation-${data.conversationId}`).emit('group-info-updated', data);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });

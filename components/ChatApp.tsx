@@ -23,6 +23,8 @@ import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
 import UserSearch from './UserSearch';
 import ProfileModal from './ProfileModal';
+import CreateGroupModal from './CreateGroupModal';
+import GroupManagementModal from './GroupManagementModal';
 
 interface Conversation {
   _id: string;
@@ -66,6 +68,8 @@ export default function ChatApp() {
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showGroupManagement, setShowGroupManagement] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -191,6 +195,23 @@ export default function ChatApp() {
     setShowUserSearch(false);
   };
 
+  const handleGroupCreated = (group: Conversation) => {
+    setConversations(prev => [group, ...prev]);
+    setActiveConversation(group);
+    setShowCreateGroup(false);
+  };
+
+  const handleGroupUpdated = (updatedGroup: Conversation) => {
+    setConversations(prev => 
+      prev.map(conv => 
+        conv._id === updatedGroup._id ? updatedGroup : conv
+      )
+    );
+    if (activeConversation?._id === updatedGroup._id) {
+      setActiveConversation(updatedGroup);
+    }
+  };
+
   const handleSelectConversation = (conversation: Conversation) => {
     setActiveConversation(conversation);
     // Hide sidebar on mobile when conversation is selected
@@ -250,6 +271,13 @@ export default function ChatApp() {
                   <X className="w-5 h-5 text-gray-600" />
                 </button>
               )}
+              <button
+                onClick={() => setShowCreateGroup(true)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Tạo nhóm"
+              >
+                <Users className="w-5 h-5 text-gray-600" />
+              </button>
               <button
                 onClick={() => setShowUserSearch(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -359,6 +387,7 @@ export default function ChatApp() {
             conversation={activeConversation}
             currentUser={user}
             onUpdateConversations={fetchConversations}
+            onShowGroupManagement={() => setShowGroupManagement(true)}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -393,6 +422,24 @@ export default function ChatApp() {
           onClose={() => setShowProfile(false)}
           onUpdateProfile={fetchConversations}
           onUserUpdate={handleUserUpdate}
+        />
+      )}
+
+      {/* Create Group Modal */}
+      {showCreateGroup && (
+        <CreateGroupModal
+          onClose={() => setShowCreateGroup(false)}
+          onGroupCreated={handleGroupCreated}
+        />
+      )}
+
+      {/* Group Management Modal */}
+      {showGroupManagement && activeConversation && activeConversation.type === 'group' && (
+        <GroupManagementModal
+          conversation={activeConversation as any}
+          currentUser={user}
+          onClose={() => setShowGroupManagement(false)}
+          onGroupUpdated={handleGroupUpdated}
         />
       )}
     </div>
