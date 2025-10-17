@@ -180,12 +180,10 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       if (response.ok) {
         const newMsg = await response.json();
-        setMessages(prev => [...prev, newMsg]);
+        // Don't add message here - Socket.io will handle it
         setNewMessage('');
         setReplyingTo(null);
         onUpdateConversations();
-        
-        // Backend already emits via Socket.io, no need to emit here
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -253,10 +251,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       if (response.ok) {
         const newMsg = await response.json();
-        setMessages(prev => [...prev, newMsg]);
+        // Don't add message here - Socket.io will handle it
         onUpdateConversations();
-        
-        // Backend already emits via Socket.io, no need to emit here
       }
     } catch (error) {
       console.error('Error uploading file:', error);
