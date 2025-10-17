@@ -401,9 +401,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                       {message.attachments.map((attachment, index) => (
                         <div key={index} className="relative">
                           <img 
-                            src={attachment.fileUrl} 
+                            src={attachment.fileUrl.startsWith('http') 
+                              ? attachment.fileUrl 
+                              : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                            } 
                             alt={attachment.fileName}
                             className="max-w-full h-auto rounded"
+                            onError={(e) => {
+                              console.error('Image load error:', attachment.fileUrl);
+                              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjOTk5Ii8+Cjwvc3ZnPgo=';
+                            }}
                           />
                         </div>
                       ))}
@@ -420,9 +427,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                             <p className="text-xs font-medium truncate">{attachment.fileName}</p>
                             <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
                           </div>
-                          <button className="p-1 hover:bg-gray-200 rounded">
+                          <a 
+                            href={attachment.fileUrl.startsWith('http') 
+                              ? attachment.fileUrl 
+                              : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                            }
+                            download={attachment.fileName}
+                            className="p-1 hover:bg-gray-200 rounded"
+                          >
                             <Download className="w-4 h-4" />
-                          </button>
+                          </a>
                         </div>
                       ))}
                     </div>

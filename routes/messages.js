@@ -127,6 +127,12 @@ router.post('/:conversationId/text', async (req, res) => {
 // Send file message
 router.post('/:conversationId/file', upload.array('files', 5), async (req, res) => {
   try {
+    console.log('File upload request:', {
+      conversationId: req.params.conversationId,
+      files: req.files ? req.files.length : 0,
+      body: req.body
+    });
+    
     const { conversationId } = req.params;
     const { content = '', replyTo } = req.body;
     const userId = req.user._id;
@@ -188,10 +194,28 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     res.status(201).json(message);
   } catch (error) {
     console.error('Send file message error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({
-      message: 'Lỗi server'
+      message: 'Lỗi server',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
+});
+
+// Error handling middleware for multer
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    console.error('Multer error:', error);
+    return res.status(400).json({
+      message: 'Lỗi upload file',
+      error: error.message
+    });
+  }
+  next(error);
 });
 
 module.exports = router;
