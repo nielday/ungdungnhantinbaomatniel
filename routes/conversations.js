@@ -15,7 +15,6 @@ router.get('/', async (req, res) => {
     })
     .populate('participants', 'fullName avatar phoneNumber')
     .populate('lastMessage')
-    .populate('createdBy', 'fullName')
     .sort({ lastMessageAt: -1 });
 
     console.log('Found conversations:', conversations.length);
@@ -50,7 +49,6 @@ router.post('/private', async (req, res) => {
 
     // Check if conversation already exists
     const existingConversation = await Conversation.findOne({
-      type: 'private',
       participants: { $all: [userId, participantId] },
       isActive: true
     });
@@ -61,9 +59,7 @@ router.post('/private', async (req, res) => {
 
     // Create new conversation
     const conversation = new Conversation({
-      type: 'private',
-      participants: [userId, participantId],
-      createdBy: userId
+      participants: [userId, participantId]
     });
 
     await conversation.save();
@@ -92,8 +88,7 @@ router.get('/:id', async (req, res) => {
       participants: userId,
       isActive: true
     })
-    .populate('participants', 'fullName avatar phoneNumber')
-    .populate('createdBy', 'fullName');
+    .populate('participants', 'fullName avatar phoneNumber');
 
     if (!conversation) {
       return res.status(404).json({
@@ -110,139 +105,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Update group conversation
-router.put('/:id', async (req, res) => {
-  try {
-    const conversationId = req.params.id;
-    const userId = req.user._id;
-    const { groupName, groupDescription } = req.body;
-
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      type: 'group',
-      createdBy: userId,
-      isActive: true
-    });
-
-    if (!conversation) {
-      return res.status(404).json({
-        message: 'Nhóm không tồn tại hoặc bạn không có quyền chỉnh sửa'
-      });
-    }
-
-    if (groupName) conversation.groupName = groupName;
-    if (groupDescription !== undefined) conversation.groupDescription = groupDescription;
-
-    await conversation.save();
-    await conversation.populate('participants', 'fullName avatar phoneNumber');
-    await conversation.populate('createdBy', 'fullName');
-
-    res.json(conversation);
-  } catch (error) {
-    console.error('Update group error:', error);
-    res.status(500).json({
-      message: 'Lỗi server'
-    });
-  }
-});
-
-// Add member to group
-router.post('/:id/members', async (req, res) => {
-  try {
-    const conversationId = req.params.id;
-    const userId = req.user._id;
-    const { userId: newMemberId } = req.body;
-
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      type: 'group',
-      createdBy: userId,
-      isActive: true
-    });
-
-    if (!conversation) {
-      return res.status(404).json({
-        message: 'Nhóm không tồn tại hoặc bạn không có quyền thêm thành viên'
-      });
-    }
-
-    // Check if user exists
-    const newMember = await User.findById(newMemberId);
-    if (!newMember) {
-      return res.status(404).json({
-        message: 'Người dùng không tồn tại'
-      });
-    }
-
-    // Check if user is already in group
-    if (conversation.participants.includes(newMemberId)) {
-      return res.status(400).json({
-        message: 'Người dùng đã có trong nhóm'
-      });
-    }
-
-    // Check group size limit
-    if (conversation.participants.length >= 100) {
-      return res.status(400).json({
-        message: 'Nhóm đã đạt giới hạn 100 thành viên'
-      });
-    }
-
-    conversation.participants.push(newMemberId);
-    await conversation.save();
-    await conversation.populate('participants', 'fullName avatar phoneNumber');
-    await conversation.populate('createdBy', 'fullName');
-
-    res.json(conversation);
-  } catch (error) {
-    console.error('Add member error:', error);
-    res.status(500).json({
-      message: 'Lỗi server'
-    });
-  }
-});
-
-// Remove member from group
-router.delete('/:id/members/:memberId', async (req, res) => {
-  try {
-    const conversationId = req.params.id;
-    const memberId = req.params.memberId;
-    const userId = req.user._id;
-
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      type: 'group',
-      createdBy: userId,
-      isActive: true
-    });
-
-    if (!conversation) {
-      return res.status(404).json({
-        message: 'Nhóm không tồn tại hoặc bạn không có quyền xóa thành viên'
-      });
-    }
-
-    // Cannot remove group creator
-    if (conversation.createdBy.toString() === memberId) {
-      return res.status(400).json({
-        message: 'Không thể xóa người tạo nhóm'
-      });
-    }
-
-    conversation.participants = conversation.participants.filter(
-      p => p.toString() !== memberId
-    );
-    await conversation.save();
-    await conversation.populate('participants', 'fullName avatar phoneNumber');
-    await conversation.populate('createdBy', 'fullName');
-
-    res.json(conversation);
-  } catch (error) {
-    console.error('Remove member error:', error);
-    res.status(500).json({
-      message: 'Lỗi server'
-    });
-  }
-});
+// Group management routes have been moved to /api/groups
+// Use /api/groups for all group-related operations
 
 module.exports = router;
