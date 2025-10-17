@@ -77,6 +77,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [isMobile, setIsMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { socket } = useSocket();
 
@@ -259,6 +260,35 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       }
     } catch (error) {
       console.error('Error uploading file:', error);
+    }
+  };
+
+  const handleAudioUpload = async (files: FileList) => {
+    const formData = new FormData();
+    Array.from(files).forEach(file => {
+      formData.append('files', file);
+    });
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        }
+      );
+
+      if (response.ok) {
+        const newMsg = await response.json();
+        // Don't add message here - Socket.io will handle it
+        onUpdateConversations();
+      }
+    } catch (error) {
+      console.error('Error uploading audio:', error);
     }
   };
 
@@ -472,13 +502,34 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                       <p className="text-sm">{message.content}</p>
                       {message.attachments.map((attachment, index) => (
                         <div key={index} className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
-                          <button className="p-2 bg-blue-500 text-white rounded-full">
-                            <Play className="w-4 h-4" />
-                          </button>
-                          <div className="flex-1">
-                            <p className="text-xs font-medium">{attachment.fileName}</p>
-                            <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
-                          </div>
+                          <audio 
+                            controls 
+                            className="flex-1"
+                            preload="metadata"
+                          >
+                            <source 
+                              src={attachment.fileUrl.startsWith('http') 
+                                ? attachment.fileUrl 
+                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                              } 
+                              type="audio/mpeg"
+                            />
+                            <source 
+                              src={attachment.fileUrl.startsWith('http') 
+                                ? attachment.fileUrl 
+                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                              } 
+                              type="audio/wav"
+                            />
+                            <source 
+                              src={attachment.fileUrl.startsWith('http') 
+                                ? attachment.fileUrl 
+                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                              } 
+                              type="audio/ogg"
+                            />
+                            Trình duyệt của bạn không hỗ trợ phát audio.
+                          </audio>
                         </div>
                       ))}
                     </div>
@@ -604,10 +655,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   </button>
                   <button
                     type="button"
+                    onClick={() => audioInputRef.current?.click()}
                     className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
                   >
                     <Mic className="w-4 h-4" />
-                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Ghi âm</span>
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Audio</span>
                   </button>
                 </div>
               </div>
@@ -635,11 +687,23 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,audio/*,.pdf,.doc,.docx,.txt"
+          accept="image/*,.pdf,.doc,.docx,.txt"
           onChange={(e) => {
             if (e.target.files) {
               handleFileUpload(e.target.files);
               setShowFilePicker(false);
+            }
+          }}
+          className="hidden"
+        />
+        
+        <input
+          ref={audioInputRef}
+          type="file"
+          accept="audio/*"
+          onChange={(e) => {
+            if (e.target.files) {
+              handleAudioUpload(e.target.files);
             }
           }}
           className="hidden"
