@@ -1,5 +1,5 @@
 const express = require('express');
-const { User, Conversation, Message } = require('../models');
+const { User, Conversation, Message, Group } = require('../models');
 const fs = require('fs');
 const path = require('path');
 
@@ -11,16 +11,18 @@ router.delete('/delete-all', async (req, res) => {
     console.log('Starting database cleanup...');
 
     // Delete all data
-    const [deletedUsers, deletedConversations, deletedMessages] = await Promise.all([
+    const [deletedUsers, deletedConversations, deletedMessages, deletedGroups] = await Promise.all([
       User.deleteMany({}),
       Conversation.deleteMany({}),
-      Message.deleteMany({})
+      Message.deleteMany({}),
+      Group.deleteMany({})
     ]);
 
     console.log('Database cleanup completed:', {
       users: deletedUsers.deletedCount,
       conversations: deletedConversations.deletedCount,
-      messages: deletedMessages.deletedCount
+      messages: deletedMessages.deletedCount,
+      groups: deletedGroups.deletedCount
     });
 
     // Clean up uploads directory
@@ -54,7 +56,8 @@ router.delete('/delete-all', async (req, res) => {
       deleted: {
         users: deletedUsers.deletedCount,
         conversations: deletedConversations.deletedCount,
-        messages: deletedMessages.deletedCount
+        messages: deletedMessages.deletedCount,
+        groups: deletedGroups.deletedCount
       }
     });
 
