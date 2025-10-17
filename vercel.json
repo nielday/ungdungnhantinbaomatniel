@@ -15,5 +15,10 @@
       "src": "/uploads/(.*)",
       "dest": "https://ungdungnhantinbaomatniel-production.up.railway.app/uploads/$1"
     }
-  ]
+  ],
+  "functions": {
+    "app/[locale]/page.tsx": {
+      "maxDuration": 30
+    }
+  }
 }
