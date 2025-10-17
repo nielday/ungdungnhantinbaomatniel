@@ -226,6 +226,10 @@ export default function GroupManagementModal({
 
       if (response.ok) {
         const updatedGroup = await response.json();
+        console.log('Group description update response:', updatedGroup);
+        
+        // Pass the raw API response to ChatApp for transformation
+        console.log('Passing raw group data to ChatApp for description update:', updatedGroup);
         onGroupUpdated(updatedGroup);
         setIsEditing(false);
       } else {
@@ -265,21 +269,9 @@ export default function GroupManagementModal({
         // Update local state
         setGroupAvatar(updatedGroup.avatar);
         
-        // Transform the updated group to match the expected format
-        const transformedGroup = {
-          _id: updatedGroup._id,
-          type: 'group' as const,
-          participants: updatedGroup.members || [],
-          name: updatedGroup.name,
-          avatar: updatedGroup.avatar,
-          description: updatedGroup.description,
-          lastMessage: null,
-          lastMessageAt: updatedGroup.updatedAt,
-          createdBy: updatedGroup.createdBy
-        };
-        
-        console.log('Transformed group for update:', transformedGroup);
-        onGroupUpdated(transformedGroup);
+        // Pass the raw API response to ChatApp for transformation
+        console.log('Passing raw group data to ChatApp:', updatedGroup);
+        onGroupUpdated(updatedGroup);
       } else {
         const error = await response.json();
         alert(error.message || 'Không thể cập nhật ảnh nhóm');

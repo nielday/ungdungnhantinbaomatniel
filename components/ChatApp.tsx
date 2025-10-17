@@ -236,14 +236,30 @@ export default function ChatApp() {
     setShowCreateGroup(false);
   };
 
-  const handleGroupUpdated = (updatedGroup: Conversation) => {
+  const handleGroupUpdated = (updatedGroup: any) => {
     console.log('ChatApp - handleGroupUpdated called with:', updatedGroup);
+    
+    // Transform the updated group to match Conversation format
+    const transformedGroup: Conversation = {
+      _id: updatedGroup._id,
+      type: 'group' as const,
+      participants: updatedGroup.members || [], // members already have full user info from API
+      name: updatedGroup.name,
+      avatar: updatedGroup.avatar,
+      lastMessage: null,
+      lastMessageAt: updatedGroup.updatedAt,
+      createdBy: updatedGroup.createdBy
+    };
+    
+    console.log('ChatApp - Members data in transformed group:', transformedGroup.participants);
+    
+    console.log('ChatApp - Transformed group:', transformedGroup);
     
     setConversations(prev => {
       const updated = prev.map(conv => {
-        if (conv._id === updatedGroup._id) {
-          console.log('ChatApp - Updating conversation:', conv._id, 'with:', updatedGroup);
-          return updatedGroup;
+        if (conv._id === transformedGroup._id) {
+          console.log('ChatApp - Updating conversation:', conv._id, 'with:', transformedGroup);
+          return transformedGroup;
         }
         return conv;
       });
@@ -251,9 +267,9 @@ export default function ChatApp() {
       return updated;
     });
     
-    if (activeConversation?._id === updatedGroup._id) {
-      console.log('ChatApp - Updating active conversation with:', updatedGroup);
-      setActiveConversation(updatedGroup);
+    if (activeConversation?._id === transformedGroup._id) {
+      console.log('ChatApp - Updating active conversation with:', transformedGroup);
+      setActiveConversation(transformedGroup);
     }
   };
 
