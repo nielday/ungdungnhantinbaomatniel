@@ -412,4 +412,52 @@ router.get('/cleanup', async (req, res) => {
   }
 });
 
+// Delete message (only sender can delete their own message)
+router.delete('/:messageId', async (req, res) => {
+  try {
+    const messageId = req.params.messageId;
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({
+        message: 'Tin nhắn không tồn tại'
+      });
+    }
+
+    // Check if user is the sender of the message
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: 'Bạn chỉ có thể xóa tin nhắn của chính mình'
+      });
+    }
+
+    // Soft delete - mark as deleted instead of actually deleting
+    message.isDeleted = true;
+    message.content = 'Tin nhắn đã bị xóa';
+    message.attachments = []; // Clear attachments when deleted
+    
+    await message.save();
+
+    // Emit socket event to notify all users in the conversation
+    const io = require('../server').io;
+    if (io) {
+      io.to(`conversation-${message.conversationId}`).emit('message-deleted', {
+        messageId: message._id,
+        conversationId: message.conversationId
+      });
+    }
+
+    res.json({
+      message: 'Tin nhắn đã được xóa thành công',
+      deletedMessage: message
+    });
+  } catch (error) {
+    console.error('Delete message error:', error);
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
 module.exports = router;

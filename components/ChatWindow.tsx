@@ -80,7 +80,8 @@ import {
   Play,
   Pause,
   ArrowLeft,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 
 interface Message {
@@ -136,6 +137,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [showMessageMenu, setShowMessageMenu] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +147,18 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   useEffect(() => {
     fetchMessages();
   }, [conversation._id]);
+
+  // Close message menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMessageMenu && !(event.target as Element).closest('.message-menu')) {
+        setShowMessageMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMessageMenu]);
 
   // Check if mobile
   useEffect(() => {
@@ -183,11 +197,23 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
     socket.on('new-message', handleNewMessage);
     socket.on('user-typing', handleTyping);
+    
+    const handleMessageDeleted = (data: any) => {
+      console.log('Message deleted event:', data);
+      setMessages(prev => prev.map(msg => 
+        msg._id === data.messageId 
+          ? { ...msg, isDeleted: true, content: 'Tin nhắn đã bị xóa', attachments: [] }
+          : msg
+      ));
+    };
+    
+    socket.on('message-deleted', handleMessageDeleted);
 
     return () => {
       socket.emit('leave-conversation', conversation._id);
       socket.off('new-message', handleNewMessage);
       socket.off('user-typing', handleTyping);
+      socket.off('message-deleted', handleMessageDeleted);
       
       // Clear typing timeout
       if (typingTimeoutRef.current) {
@@ -353,6 +379,42 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${messageId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Message deleted:', result);
+        
+        // Update local state
+        setMessages(prev => prev.map(msg => 
+          msg._id === messageId 
+            ? { ...msg, isDeleted: true, content: 'Tin nhắn đã bị xóa', attachments: [] }
+            : msg
+        ));
+        
+        setShowMessageMenu(null);
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Không thể xóa tin nhắn');
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      alert('Có lỗi xảy ra khi xóa tin nhắn');
+    }
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('vi-VN', { 
@@ -508,7 +570,9 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   )}
                   
                   {message.messageType === 'text' && (
-                    <p className="text-sm">{message.content}</p>
+                    <p className={`text-sm ${message.isDeleted ? 'italic text-gray-500' : ''}`}>
+                      {message.content}
+                    </p>
                   )}
                   
                   {message.messageType === 'image' && message.attachments && (
@@ -577,10 +641,36 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 </div>
                 
                 {message.senderId._id === currentUser?.id && (
-                  <div className="flex justify-end mt-1">
+                  <div className="flex justify-end items-center space-x-2 mt-1">
                     <span className="text-xs text-gray-400">
                       {formatTime(message.createdAt)}
                     </span>
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowMessageMenu(showMessageMenu === message._id ? null : message._id)}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-400" />
+                      </button>
+                      
+                      {showMessageMenu === message._id && (
+                        <div className="message-menu absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
+                          {!message.isDeleted && (
+                            <button
+                              onClick={() => {
+                                if (confirm('Bạn có chắc muốn xóa tin nhắn này?')) {
+                                  handleDeleteMessage(message._id);
+                                }
+                              }}
+                              className="w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Xóa tin nhắn</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
