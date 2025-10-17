@@ -36,7 +36,7 @@ interface Conversation {
 }
 
 export default function ChatApp() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -354,6 +354,7 @@ export default function ChatApp() {
           user={user}
           onClose={() => setShowProfile(false)}
           onUpdateProfile={fetchConversations}
+          onUserUpdate={updateUser}
         />
       )}
     </div>

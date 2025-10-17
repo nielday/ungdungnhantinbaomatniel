@@ -18,6 +18,7 @@ interface AuthContextType {
   register: (phoneNumber: string, email: string, fullName: string, age: number) => Promise<{ success: boolean }>;
   verifyRegister: (userId: string, otpCode: string) => Promise<void>;
   resendOtp: (userId: string) => Promise<void>;
+  updateUser: (updatedUser: User) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -165,6 +166,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
@@ -178,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register, 
       verifyRegister, 
       resendOtp, 
+      updateUser,
       logout, 
       loading 
     }}>

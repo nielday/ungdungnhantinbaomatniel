@@ -17,9 +17,10 @@ interface ProfileModalProps {
   user: User | null;
   onClose: () => void;
   onUpdateProfile: () => void;
+  onUserUpdate?: (updatedUser: User) => void;
 }
 
-export default function ProfileModal({ user, onClose, onUpdateProfile }: ProfileModalProps) {
+export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpdate }: ProfileModalProps) {
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     age: user?.age || 0
@@ -96,6 +97,19 @@ export default function ProfileModal({ user, onClose, onUpdateProfile }: Profile
       if (response.ok) {
         const updatedUser = await response.json();
         console.log('ProfileModal - Updated user:', updatedUser);
+        
+        // Update user state in AuthContext
+        if (onUserUpdate) {
+          onUserUpdate({
+            id: updatedUser._id,
+            phoneNumber: updatedUser.phoneNumber,
+            email: updatedUser.email,
+            fullName: updatedUser.fullName,
+            age: updatedUser.age,
+            avatar: updatedUser.avatar
+          });
+        }
+        
         onUpdateProfile();
         onClose();
       } else {
