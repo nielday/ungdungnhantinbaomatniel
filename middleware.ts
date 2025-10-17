@@ -1,14 +1,22 @@
-import createMiddleware from 'next-intl/middleware';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export default createMiddleware({
-  // A list of all locales that are supported
-  locales: ['en', 'vi'],
+export function middleware(request: NextRequest) {
+  // Allow admin routes to be handled by Next.js
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    return NextResponse.next();
+  }
+  
+  if (request.nextUrl.pathname.startsWith('/api/admin')) {
+    return NextResponse.next();
+  }
 
-  // Used when no locale matches
-  defaultLocale: 'vi'
-});
+  return NextResponse.next();
+}
 
 export const config = {
-  // Match only internationalized pathnames
-  matcher: ['/', '/(vi|en)/:path*']
+  matcher: [
+    '/admin/:path*',
+    '/api/admin/:path*'
+  ]
 };
