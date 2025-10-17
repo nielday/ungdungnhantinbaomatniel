@@ -46,7 +46,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile }: Profile
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/users/avatar`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/avatar`,
         {
           method: 'POST',
           headers: {
@@ -75,7 +75,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile }: Profile
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/users/profile`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/profile`,
         {
           method: 'PUT',
           headers: {
