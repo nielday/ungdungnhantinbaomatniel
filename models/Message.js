@@ -13,7 +13,10 @@ const MessageSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: true,
+    required: function() {
+      // Content is required only for text messages
+      return this.messageType === 'text';
+    },
     trim: true
   },
   messageType: {

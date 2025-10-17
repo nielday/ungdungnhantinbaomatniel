@@ -1,0 +1,133 @@
+# LỆNH GIT CHO DỰ ÁN ỨNG DỤNG NHẮN TIN NIEL
+# ================================================
+
+## 1. KIỂM TRA TRẠNG THÁI
+git status
+
+## 2. THÊM TẤT CẢ FILE VÀO STAGING
+git add .
+
+## 3. THÊM FILE CỤ THỂ
+git add models/Message.js
+git add routes/messages.js
+git add lệnhgit.txt
+
+## 4. COMMIT VỚI MESSAGE
+git commit -m "Fix: Sửa lỗi validation content cho file messages"
+
+## 5. PUSH LÊN REPOSITORY
+git push origin master
+
+## 6. XEM LỊCH SỬ COMMIT
+git log --oneline
+
+## 7. XEM THAY ĐỔI CHI TIẾT
+git diff
+
+## 8. XEM THAY ĐỔI ĐÃ STAGED
+git diff --cached
+
+## 9. RESET NẾU CẦN
+git reset HEAD <file>  # Unstage file
+git reset --hard HEAD  # Reset về commit trước
+
+## 10. TẠO BRANCH MỚI
+git checkout -b feature/fix-message-validation
+
+## 11. MERGE BRANCH
+git checkout master
+git merge feature/fix-message-validation
+
+## 12. XÓA BRANCH
+git branch -d feature/fix-message-validation
+
+## 13. PULL TỪ REMOTE
+git pull origin master
+
+## 14. CLONE REPOSITORY
+git clone https://github.com/nielday/ungdungnhantinbaomatniel.git
+
+## 15. THÊM REMOTE
+git remote add origin https://github.com/nielday/ungdungnhantinbaomatniel.git
+
+## 16. XEM REMOTE
+git remote -v
+
+## 17. STASH CHANGES
+git stash                    # Lưu thay đổi tạm thời
+git stash pop               # Khôi phục thay đổi
+
+## 18. XEM BRANCH
+git branch                  # Local branches
+git branch -r               # Remote branches
+git branch -a               # All branches
+
+## 19. SWITCH BRANCH
+git checkout <branch-name>
+git switch <branch-name>    # Git 2.23+
+
+## 20. REBASE
+git rebase master           # Rebase current branch lên master
+
+## 21. SQUASH COMMITS
+git rebase -i HEAD~3       # Interactive rebase 3 commits gần nhất
+
+## 22. AMEND COMMIT
+git commit --amend -m "New message"
+
+## 23. XEM FILE THAY ĐỔI
+git show HEAD              # Xem commit gần nhất
+git show <commit-hash>     # Xem commit cụ thể
+
+## 24. TAG VERSION
+git tag v1.0.0
+git push origin v1.0.0
+
+## 25. UNDO COMMIT (CHƯA PUSH)
+git reset --soft HEAD~1    # Giữ thay đổi, bỏ commit
+git reset --mixed HEAD~1   # Bỏ commit và unstage
+git reset --hard HEAD~1    # Bỏ commit và thay đổi
+
+## 26. UNDO COMMIT (ĐÃ PUSH)
+git revert <commit-hash>   # Tạo commit mới để undo
+
+## 27. XEM THAY ĐỔI GIỮA COMMITS
+git diff HEAD~1 HEAD       # So sánh 2 commits
+git diff <commit1> <commit2>
+
+## 28. TÌM KIẾM TRONG HISTORY
+git log --grep="fix"       # Tìm commit có message chứa "fix"
+git log --author="name"    # Tìm commit của author
+
+## 29. CLEAN UP
+git clean -fd              # Xóa untracked files và directories
+git gc                     # Garbage collection
+
+## 30. BACKUP VÀ RESTORE
+git bundle create backup.bundle HEAD~10..HEAD  # Tạo backup
+git clone backup.bundle backup-repo           # Restore từ backup
+
+# ================================================
+# CÁC LỆNH THƯỜNG DÙNG NHẤT:
+# ================================================
+
+# Workflow cơ bản:
+git add .
+git commit -m "Your message"
+git push origin master
+
+# Kiểm tra trạng thái:
+git status
+git log --oneline
+
+# Undo nhanh:
+git reset --hard HEAD
+git clean -fd
+
+# ================================================
+# NOTES:
+# - Luôn kiểm tra git status trước khi commit
+# - Sử dụng message commit rõ ràng
+# - Tạo branch cho features mới
+# - Backup trước khi thực hiện lệnh nguy hiểm
+# ================================================

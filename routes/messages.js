@@ -170,7 +170,7 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     const message = new Message({
       conversationId,
       senderId: userId,
-      content,
+      content: content || `Đã gửi ${req.files.length} file(s)`, // Default content for file messages
       messageType,
       attachments,
       replyTo: replyTo || null
