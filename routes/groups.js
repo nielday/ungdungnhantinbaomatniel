@@ -1,7 +1,43 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { Group, User } = require('../models');
 
 const router = express.Router();
+
+// Configure multer for avatar uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = process.env.UPLOAD_PATH || './uploads';
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'group-avatar-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Chỉ cho phép file ảnh (JPEG, PNG, GIF)'));
+    }
+  }
+});
 
 // Get all groups for a user
 router.get('/', async (req, res) => {
@@ -335,6 +371,79 @@ router.post('/:id/leave', async (req, res) => {
       message: 'Lỗi server'
     });
   }
+});
+
+// Upload group avatar
+router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user._id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'Không có file ảnh nào được tải lên'
+      });
+    }
+
+    const group = await Group.findOne({
+      _id: groupId,
+      createdBy: userId,
+      isActive: true
+    });
+
+    if (!group) {
+      // Delete uploaded file if group not found
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({
+        message: 'Nhóm không tồn tại hoặc bạn không có quyền chỉnh sửa'
+      });
+    }
+
+    // Delete old avatar if exists
+    if (group.avatar) {
+      const oldAvatarPath = path.join(process.env.UPLOAD_PATH || './uploads', path.basename(group.avatar));
+      if (fs.existsSync(oldAvatarPath)) {
+        fs.unlinkSync(oldAvatarPath);
+      }
+    }
+
+    // Update group avatar
+    group.avatar = `/uploads/${req.file.filename}`;
+    await group.save();
+
+    // Transform group to include full member information
+    const groupObj = group.toObject();
+    groupObj.members = groupObj.members.map(member => ({
+      ...member,
+      fullName: member.user?.fullName || 'Unknown',
+      phoneNumber: member.user?.phoneNumber || '',
+      avatar: member.user?.avatar || null,
+      _id: member.user?._id || member.user
+    }));
+
+    res.json(groupObj);
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    // Delete uploaded file on error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({
+      message: 'Lỗi server'
+    });
+  }
+});
+
+// Error handling middleware for multer
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    console.error('Multer error:', error);
+    return res.status(400).json({
+      message: 'Lỗi upload file',
+      error: error.message
+    });
+  }
+  next(error);
 });
 
 module.exports = router;

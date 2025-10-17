@@ -14,7 +14,10 @@ import {
   Edit,
   Trash2,
   Shield,
-  ShieldCheck
+  ShieldCheck,
+  Camera,
+  Image as ImageIcon,
+  Upload
 } from 'lucide-react';
 
 interface User {
@@ -61,6 +64,8 @@ export default function GroupManagementModal({
   const [groupName, setGroupName] = useState(conversation.name);
   const [groupDescription, setGroupDescription] = useState(conversation.description || '');
   const [isEditing, setIsEditing] = useState(false);
+  const [groupAvatar, setGroupAvatar] = useState(conversation.avatar || null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const isAdmin = conversation.createdBy._id === currentUser?.id;
 
@@ -218,6 +223,59 @@ export default function GroupManagementModal({
     }
   };
 
+  const handleAvatarUpload = async (file: File) => {
+    try {
+      setIsUploadingAvatar(true);
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/avatar`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        }
+      );
+
+      if (response.ok) {
+        const updatedGroup = await response.json();
+        setGroupAvatar(updatedGroup.avatar);
+        onGroupUpdated(updatedGroup);
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Không thể cập nhật ảnh nhóm');
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Có lỗi xảy ra khi cập nhật ảnh nhóm');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Vui lòng chọn file ảnh');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File ảnh không được quá 5MB');
+        return;
+      }
+
+      handleAvatarUpload(file);
+    }
+  };
+
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return dateObj.toLocaleDateString('vi-VN', {
@@ -238,10 +296,10 @@ export default function GroupManagementModal({
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              {conversation.avatar ? (
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+              {groupAvatar || conversation.avatar ? (
                 <img 
-                  src={conversation.avatar} 
+                  src={groupAvatar || conversation.avatar} 
                   alt={conversation.name}
                   className="w-10 h-10 rounded-full object-cover"
                 />
@@ -440,6 +498,57 @@ export default function GroupManagementModal({
             <div className="p-4 space-y-6">
               {isAdmin ? (
                 <>
+                  {/* Group Avatar */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ảnh nhóm
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+                        {groupAvatar ? (
+                          <img 
+                            src={groupAvatar} 
+                            alt="Group avatar" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Users className="w-8 h-8 text-white" />
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <label className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors">
+                          <Camera className="w-4 h-4" />
+                          <span className="text-sm">Chụp ảnh</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleAvatarFileSelect}
+                            className="hidden"
+                            disabled={isUploadingAvatar}
+                          />
+                        </label>
+                        <label className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors">
+                          <ImageIcon className="w-4 h-4" />
+                          <span className="text-sm">Thư viện</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarFileSelect}
+                            className="hidden"
+                            disabled={isUploadingAvatar}
+                          />
+                        </label>
+                      </div>
+                      {isUploadingAvatar && (
+                        <div className="flex items-center space-x-2 text-blue-600">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span className="text-sm">Đang tải lên...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Group Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

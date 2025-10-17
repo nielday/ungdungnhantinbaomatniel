@@ -199,7 +199,7 @@ export default function ChatApp() {
           type: 'group' as const,
           participants: group.members || [], // Now members already have full user info
           name: group.name,
-          avatar: group.avatar,
+          avatar: group.avatar, // Group avatar for display
           lastMessage: null,
           lastMessageAt: group.updatedAt,
           createdBy: group.createdBy
