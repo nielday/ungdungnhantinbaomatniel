@@ -78,59 +78,8 @@ router.post('/private', async (req, res) => {
   }
 });
 
-// Create group conversation
-router.post('/group', async (req, res) => {
-  try {
-    const { groupName, groupDescription, participantIds } = req.body;
-    const userId = req.user._id;
-
-    if (!groupName || !participantIds || participantIds.length === 0) {
-      return res.status(400).json({
-        message: 'Tên nhóm và danh sách thành viên là bắt buộc'
-      });
-    }
-
-    if (participantIds.length > 99) {
-      return res.status(400).json({
-        message: 'Nhóm không được quá 100 thành viên'
-      });
-    }
-
-    // Add creator to participants
-    const allParticipants = [userId, ...participantIds];
-    const uniqueParticipants = [...new Set(allParticipants.map(id => id.toString()))];
-
-    // Check if all participants exist
-    const participants = await User.find({
-      _id: { $in: uniqueParticipants }
-    });
-
-    if (participants.length !== uniqueParticipants.length) {
-      return res.status(400).json({
-        message: 'Một số người dùng không tồn tại'
-      });
-    }
-
-    // Create group conversation
-    const conversation = new Conversation({
-      type: 'group',
-      participants: uniqueParticipants,
-      groupName,
-      groupDescription: groupDescription || '',
-      createdBy: userId
-    });
-
-    await conversation.save();
-    await conversation.populate('participants', 'fullName avatar phoneNumber');
-
-    res.status(201).json(conversation);
-  } catch (error) {
-    console.error('Create group conversation error:', error);
-    res.status(500).json({
-      message: 'Lỗi server'
-    });
-  }
-});
+// Group conversations are now handled by /api/groups
+// This endpoint is deprecated - use /api/groups instead
 
 // Get conversation by ID
 router.get('/:id', async (req, res) => {

@@ -16,10 +16,12 @@ const connectDB = async () => {
 const User = require('./User');
 const Conversation = require('./Conversation');
 const Message = require('./Message');
+const Group = require('./Group');
 
 module.exports = {
   connectDB,
   User,
   Conversation,
-  Message
+  Message,
+  Group
 };
