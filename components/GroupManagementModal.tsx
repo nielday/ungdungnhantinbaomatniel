@@ -351,7 +351,7 @@ export default function GroupManagementModal({
                                     />
                                   ) : (
                                     <span className="text-white text-xs font-medium">
-                                      {user.fullName.charAt(0).toUpperCase()}
+                                      {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
                                     </span>
                                   )}
                                 </div>
@@ -401,7 +401,7 @@ export default function GroupManagementModal({
                           />
                         ) : (
                           <span className="text-white text-sm font-medium">
-                            {member.fullName.charAt(0).toUpperCase()}
+                            {member.fullName?.charAt(0)?.toUpperCase() || 'U'}
                           </span>
                         )}
                       </div>

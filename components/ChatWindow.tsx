@@ -314,7 +314,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 ) : (
                   <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                     <span className="text-white font-medium">
-                      {otherParticipant?.fullName?.charAt(0)}
+                      {otherParticipant?.fullName?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   </div>
                 )}
@@ -385,7 +385,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     />
                   ) : (
                     <span className="text-white text-xs font-medium">
-                      {message.senderId.fullName?.charAt(0)?.toUpperCase()}
+                      {message.senderId.fullName?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   )}
                 </div>
@@ -512,7 +512,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     />
                   ) : (
                     <span className="text-white text-xs font-medium">
-                      {currentUser?.fullName?.charAt(0)?.toUpperCase()}
+                      {currentUser?.fullName?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   )}
                 </div>

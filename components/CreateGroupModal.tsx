@@ -291,7 +291,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
                             />
                           ) : (
                             <span className="text-white text-xs font-medium">
-                              {user.fullName.charAt(0).toUpperCase()}
+                              {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
                             </span>
                           )}
                         </div>
@@ -342,7 +342,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
                         />
                       ) : (
                         <span className="text-white text-xs font-medium">
-                          {user.fullName.charAt(0).toUpperCase()}
+                          {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
                         </span>
                       )}
                     </div>
