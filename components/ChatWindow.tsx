@@ -185,13 +185,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         setReplyingTo(null);
         onUpdateConversations();
         
-        // Emit message via Socket.io for real-time delivery
-        if (socket) {
-          socket.emit('send-message', {
-            conversationId: conversation._id,
-            message: newMsg
-          });
-        }
+        // Backend already emits via Socket.io, no need to emit here
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -262,13 +256,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         setMessages(prev => [...prev, newMsg]);
         onUpdateConversations();
         
-        // Emit message via Socket.io for real-time delivery
-        if (socket) {
-          socket.emit('send-message', {
-            conversationId: conversation._id,
-            message: newMsg
-          });
-        }
+        // Backend already emits via Socket.io, no need to emit here
       }
     } catch (error) {
       console.error('Error uploading file:', error);
