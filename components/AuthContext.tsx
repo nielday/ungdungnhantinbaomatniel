@@ -167,7 +167,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
+    try {
+      console.log('AuthContext - Updating user:', updatedUser);
+      setUser(updatedUser);
+    } catch (error) {
+      console.error('AuthContext - Update user error:', error);
+    }
   };
 
   const logout = () => {

@@ -37,6 +37,16 @@ interface Conversation {
 
 export default function ChatApp() {
   const { user, logout, updateUser } = useAuth();
+  
+  // Handle user update with error handling
+  const handleUserUpdate = (updatedUser: any) => {
+    try {
+      console.log('ChatApp - Handling user update:', updatedUser);
+      updateUser(updatedUser);
+    } catch (error) {
+      console.error('ChatApp - User update error:', error);
+    }
+  };
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -354,7 +364,7 @@ export default function ChatApp() {
           user={user}
           onClose={() => setShowProfile(false)}
           onUpdateProfile={fetchConversations}
-          onUserUpdate={updateUser}
+          onUserUpdate={handleUserUpdate}
         />
       )}
     </div>

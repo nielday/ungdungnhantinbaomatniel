@@ -98,7 +98,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
         const updatedUser = await response.json();
         console.log('ProfileModal - Updated user:', updatedUser);
         
-        // Update user state in AuthContext
+        // Update user state in AuthContext first
         if (onUserUpdate) {
           onUserUpdate({
             id: updatedUser._id,
@@ -110,8 +110,11 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
           });
         }
         
-        onUpdateProfile();
-        onClose();
+        // Then update conversations and close modal
+        setTimeout(() => {
+          onUpdateProfile();
+          onClose();
+        }, 100);
       } else {
         const errorData = await response.json();
         console.error('ProfileModal - Error response:', errorData);
