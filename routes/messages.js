@@ -115,6 +115,12 @@ router.post('/:conversationId/text', async (req, res) => {
     conversation.lastMessageAt = new Date();
     await conversation.save();
 
+    // Emit to Socket.io for real-time delivery
+    const { io } = require('../server');
+    if (io) {
+      io.to(`conversation-${conversationId}`).emit('new-message', message);
+    }
+
     res.status(201).json(message);
   } catch (error) {
     console.error('Send text message error:', error);
@@ -190,6 +196,12 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     conversation.lastMessage = message._id;
     conversation.lastMessageAt = new Date();
     await conversation.save();
+
+    // Emit to Socket.io for real-time delivery
+    const { io } = require('../server');
+    if (io) {
+      io.to(`conversation-${conversationId}`).emit('new-message', message);
+    }
 
     res.status(201).json(message);
   } catch (error) {

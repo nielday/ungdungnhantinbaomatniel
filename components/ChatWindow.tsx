@@ -261,6 +261,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         const newMsg = await response.json();
         setMessages(prev => [...prev, newMsg]);
         onUpdateConversations();
+        
+        // Emit message via Socket.io for real-time delivery
+        if (socket) {
+          socket.emit('send-message', {
+            conversationId: conversation._id,
+            message: newMsg
+          });
+        }
       }
     } catch (error) {
       console.error('Error uploading file:', error);
