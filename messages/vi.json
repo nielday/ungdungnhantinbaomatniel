@@ -477,12 +477,12 @@
     "aiEngineList": "Groq, LangChain, Vector DB",
     "frontend": "Frontend",
     "frontendList": "Next.js, TailwindCSS, Framer Motion",
-    "copyright": "© 2024 AI Learning Platform. Được thiết kế để học tập hiệu quả hơn.",
+    "copyright": "© 2024 Ứng Dụng Nhắn Tin Niel. Ứng dụng nhắn tin bảo mật.",
     "designBy": "Design bởi"
   },
   "landing": {
-    "title": "AI Learning Platform",
-    "subtitle": "Nền tảng học tập thông minh với AI hỗ trợ",
+    "title": "Ứng Dụng Nhắn Tin Niel",
+    "subtitle": "Ứng dụng nhắn tin bảo mật với chat real-time",
     "features": {
       "smartSummary": {
         "title": "Tóm tắt thông minh",

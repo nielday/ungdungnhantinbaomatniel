@@ -8,8 +8,8 @@ import { getMessages } from 'next-intl/server'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Smart Lecture AI - Smart Learning with AI',
-  description: 'AI-powered learning platform for intelligent lecture processing, summarization, and study assistance',
+  title: 'Ứng Dụng Nhắn Tin Bảo Mật Niel',
+  description: 'Ứng dụng nhắn tin bảo mật với mã hóa end-to-end, hỗ trợ đa ngôn ngữ và giao diện thân thiện',
 }
 
 export default async function LocaleLayout({

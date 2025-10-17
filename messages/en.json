@@ -479,12 +479,12 @@
     "aiEngineList": "Groq, LangChain, Vector DB",
     "frontend": "Frontend",
     "frontendList": "Next.js, TailwindCSS, Framer Motion",
-    "copyright": "© 2024 AI Learning Platform. Designed for more effective learning.",
+    "copyright": "© 2024 Messaging App Niel. Secure messaging application.",
     "designBy": "Designed by"
   },
   "landing": {
-    "title": "AI Learning Platform",
-    "subtitle": "Smart learning platform with AI support",
+    "title": "Messaging App Niel",
+    "subtitle": "Secure messaging application with real-time chat",
     "features": {
       "smartSummary": {
         "title": "Smart Summary",
