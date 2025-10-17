@@ -15,8 +15,8 @@ interface Conversation {
   _id: string;
   type: 'private' | 'group';
   participants: any[];
-  groupName?: string;
-  groupAvatar?: string;
+  name?: string; // Changed from groupName
+  avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
   lastMessageAt?: string;
   createdBy: any;
@@ -45,7 +45,7 @@ export default function ChatList({
     const searchLower = searchQuery.toLowerCase();
     
     if (conversation.type === 'group') {
-      return conversation.groupName?.toLowerCase().includes(searchLower);
+      return conversation.name?.toLowerCase().includes(searchLower);
     } else {
       const otherParticipant = conversation.participants.find(p => p._id !== activeConversation?.participants?.[0]?._id);
       return otherParticipant?.fullName?.toLowerCase().includes(searchLower) ||
@@ -79,7 +79,7 @@ export default function ChatList({
 
   const getConversationName = (conversation: Conversation) => {
     if (conversation.type === 'group') {
-      return conversation.groupName;
+      return conversation.name;
     } else {
       const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
       return otherParticipant?.fullName || otherParticipant?.phoneNumber;
@@ -88,7 +88,7 @@ export default function ChatList({
 
   const getConversationAvatar = (conversation: Conversation) => {
     if (conversation.type === 'group') {
-      return conversation.groupAvatar;
+      return conversation.avatar;
     } else {
       const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
       return otherParticipant?.avatar;

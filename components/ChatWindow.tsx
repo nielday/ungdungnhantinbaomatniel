@@ -51,8 +51,8 @@ interface Conversation {
   _id: string;
   type: 'private' | 'group';
   participants: any[];
-  groupName?: string;
-  groupAvatar?: string;
+  name?: string; // Changed from groupName
+  avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
   lastMessageAt?: string;
   createdBy: any;
@@ -279,7 +279,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   const getOtherParticipant = () => {
     if (conversation.type === 'group') {
-      return { fullName: conversation.groupName, avatar: conversation.groupAvatar };
+      return { fullName: conversation.name, avatar: conversation.avatar };
     }
     return conversation.participants.find(p => p._id !== currentUser?.id);
   };

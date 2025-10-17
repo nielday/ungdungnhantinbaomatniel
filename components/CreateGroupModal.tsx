@@ -115,7 +115,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        'https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/group',
+        'https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups',
         {
           method: 'POST',
           headers: {
@@ -123,9 +123,9 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            groupName: groupName.trim(),
-            groupDescription: groupDescription.trim(),
-            participantIds: selectedUsers.map(u => u._id)
+            name: groupName.trim(),
+            description: groupDescription.trim(),
+            memberIds: selectedUsers.map(u => u._id)
           })
         }
       );

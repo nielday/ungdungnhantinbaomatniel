@@ -33,9 +33,9 @@ interface Conversation {
   _id: string;
   type: 'group';
   participants: GroupMember[];
-  groupName: string;
-  groupDescription?: string;
-  groupAvatar?: string;
+  name: string; // Changed from groupName
+  description?: string; // Changed from groupDescription
+  avatar?: string; // Changed from groupAvatar
   createdBy: User;
 }
 
@@ -58,8 +58,8 @@ export default function GroupManagementModal({
   const [searchLoading, setSearchLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
-  const [groupName, setGroupName] = useState(conversation.groupName);
-  const [groupDescription, setGroupDescription] = useState(conversation.groupDescription || '');
+  const [groupName, setGroupName] = useState(conversation.name);
+  const [groupDescription, setGroupDescription] = useState(conversation.description || '');
   const [isEditing, setIsEditing] = useState(false);
 
   const isAdmin = conversation.createdBy._id === currentUser?.id;
@@ -121,14 +121,14 @@ export default function GroupManagementModal({
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}/members`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/members`,
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ userId })
+          body: JSON.stringify({ memberId: userId })
         }
       );
 
@@ -159,7 +159,7 @@ export default function GroupManagementModal({
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}/members/${userId}`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/members/${userId}`,
         {
           method: 'DELETE',
           headers: {
@@ -188,7 +188,7 @@ export default function GroupManagementModal({
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}`,
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}`,
         {
           method: 'PUT',
           headers: {
@@ -196,8 +196,8 @@ export default function GroupManagementModal({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            groupName: groupName.trim(),
-            groupDescription: groupDescription.trim()
+            name: groupName.trim(),
+            description: groupDescription.trim()
           })
         }
       );
@@ -238,10 +238,10 @@ export default function GroupManagementModal({
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              {conversation.groupAvatar ? (
+              {conversation.avatar ? (
                 <img 
-                  src={conversation.groupAvatar} 
-                  alt={conversation.groupName}
+                  src={conversation.avatar} 
+                  alt={conversation.name}
                   className="w-10 h-10 rounded-full object-cover"
                 />
               ) : (
@@ -250,7 +250,7 @@ export default function GroupManagementModal({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
-                {conversation.groupName}
+                {conversation.name}
               </h2>
               <p className="text-sm text-gray-500">
                 {conversation.participants.length} thành viên
@@ -464,8 +464,8 @@ export default function GroupManagementModal({
                           <button
                             onClick={() => {
                               setIsEditing(false);
-                              setGroupName(conversation.groupName);
-                              setGroupDescription(conversation.groupDescription || '');
+                              setGroupName(conversation.name);
+                              setGroupDescription(conversation.description || '');
                             }}
                             className="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
                           >
@@ -475,7 +475,7 @@ export default function GroupManagementModal({
                       </div>
                     ) : (
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-800">{conversation.groupName}</span>
+                        <span className="text-gray-800">{conversation.name}</span>
                         <button
                           onClick={() => setIsEditing(true)}
                           className="p-1 hover:bg-gray-200 rounded transition-colors"
@@ -502,7 +502,7 @@ export default function GroupManagementModal({
                     ) : (
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <span className="text-gray-800">
-                          {conversation.groupDescription || 'Chưa có mô tả'}
+                          {conversation.description || 'Chưa có mô tả'}
                         </span>
                         <button
                           onClick={() => setIsEditing(true)}

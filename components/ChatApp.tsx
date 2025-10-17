@@ -30,8 +30,8 @@ interface Conversation {
   _id: string;
   type: 'private' | 'group';
   participants: any[];
-  groupName?: string;
-  groupAvatar?: string;
+  name?: string; // Changed from groupName
+  avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
   lastMessageAt?: string;
   createdBy: any;
@@ -362,7 +362,7 @@ export default function ChatApp() {
                     <h3 className="text-sm font-medium text-gray-800">
                       {activeConversation.type === 'private' 
                         ? activeConversation.participants.find(p => p._id !== user?.id)?.fullName
-                        : activeConversation.groupName
+                        : activeConversation.name
                       }
                     </h3>
                   </div>
