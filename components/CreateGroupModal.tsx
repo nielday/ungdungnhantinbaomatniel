@@ -42,25 +42,37 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
     try {
       setSearchLoading(true);
       const token = localStorage.getItem('token');
+      console.log('CreateGroupModal - Searching users with query:', searchQuery);
+      console.log('CreateGroupModal - Token:', token ? 'Present' : 'Missing');
+      
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?q=${encodeURIComponent(searchQuery)}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         }
       );
 
+      console.log('CreateGroupModal - Search response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('CreateGroupModal - Found users:', data.length);
         // Filter out already selected users
         const filteredUsers = data.filter((user: User) => 
           !selectedUsers.some(selected => selected._id === user._id)
         );
         setAvailableUsers(filteredUsers);
+      } else {
+        const errorData = await response.json();
+        console.error('CreateGroupModal - Search error:', errorData);
+        setAvailableUsers([]);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('CreateGroupModal - Error fetching users:', error);
+      setAvailableUsers([]);
     } finally {
       setSearchLoading(false);
     }

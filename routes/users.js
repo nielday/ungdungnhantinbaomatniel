@@ -134,12 +134,13 @@ router.post('/avatar', upload.single('avatar'), async (req, res) => {
 // Search users
 router.get('/search', async (req, res) => {
   try {
-    const { query } = req.query;
+    const { q, query } = req.query;
+    const searchTerm = q || query;
     const userId = req.user._id;
 
-    console.log('Search query:', query, 'User ID:', userId);
+    console.log('Search query:', searchTerm, 'User ID:', userId);
 
-    if (!query || query.trim().length < 2) {
+    if (!searchTerm || searchTerm.trim().length < 2) {
       return res.status(400).json({
         message: 'Từ khóa tìm kiếm phải có ít nhất 2 ký tự'
       });
@@ -149,8 +150,8 @@ router.get('/search', async (req, res) => {
       _id: { $ne: userId },
       isVerified: true,
       $or: [
-        { fullName: { $regex: query, $options: 'i' } },
-        { phoneNumber: { $regex: query, $options: 'i' } }
+        { fullName: { $regex: searchTerm, $options: 'i' } },
+        { phoneNumber: { $regex: searchTerm, $options: 'i' } }
       ]
     })
     .select('_id fullName phoneNumber avatar')

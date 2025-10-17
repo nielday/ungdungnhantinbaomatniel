@@ -74,25 +74,37 @@ export default function GroupManagementModal({
     try {
       setSearchLoading(true);
       const token = localStorage.getItem('token');
+      console.log('GroupManagementModal - Searching users with query:', searchQuery);
+      console.log('GroupManagementModal - Token:', token ? 'Present' : 'Missing');
+      
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?q=${encodeURIComponent(searchQuery)}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         }
       );
 
+      console.log('GroupManagementModal - Search response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('GroupManagementModal - Found users:', data.length);
         // Filter out users already in group
         const filteredUsers = data.filter((user: User) => 
           !conversation.participants.some(member => member._id === user._id)
         );
         setAvailableUsers(filteredUsers);
+      } else {
+        const errorData = await response.json();
+        console.error('GroupManagementModal - Search error:', errorData);
+        setAvailableUsers([]);
       }
     } catch (error) {
-      console.error('Error searching users:', error);
+      console.error('GroupManagementModal - Error searching users:', error);
+      setAvailableUsers([]);
     } finally {
       setSearchLoading(false);
     }
