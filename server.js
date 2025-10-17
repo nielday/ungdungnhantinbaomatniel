@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const conversationRoutes = require('./routes/conversations');
 const messageRoutes = require('./routes/messages');
 const userRoutes = require('./routes/users');
+const adminRoutes = require('./routes/admin');
 const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
@@ -105,6 +106,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/conversations', authenticateToken, conversationRoutes);
 app.use('/api/messages', authenticateToken, messageRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Cleanup route (no auth required)
 app.get('/api/cleanup', async (req, res) => {
