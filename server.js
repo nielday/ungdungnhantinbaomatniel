@@ -111,7 +111,12 @@ app.get('/api/cleanup', async (req, res) => {
   try {
     const fs = require('fs');
     const path = require('path');
-    const uploadsPath = path.join(__dirname, 'uploads');
+    const uploadsPath = process.env.UPLOAD_PATH || path.join(__dirname, 'uploads');
+    
+    // Create uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    }
     
     // Get all files in uploads directory
     const existingFiles = fs.readdirSync(uploadsPath).filter(file => file !== '.gitkeep');
