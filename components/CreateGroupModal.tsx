@@ -34,11 +34,18 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
   const [searchLoading, setSearchLoading] = useState(false);
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  // Remove this useEffect - we don't need to fetch users on mount
+  // useEffect(() => {
+  //   fetchUsers();
+  // }, []);
 
   const fetchUsers = async () => {
+    // Don't search if query is too short
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setAvailableUsers([]);
+      return;
+    }
+
     try {
       setSearchLoading(true);
       const token = localStorage.getItem('token');

@@ -71,6 +71,12 @@ export default function GroupManagementModal({
   }, [searchQuery, showAddMembers]);
 
   const searchUsers = async () => {
+    // Don't search if query is too short
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setAvailableUsers([]);
+      return;
+    }
+
     try {
       setSearchLoading(true);
       const token = localStorage.getItem('token');
