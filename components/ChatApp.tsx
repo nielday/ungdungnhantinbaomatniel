@@ -42,11 +42,27 @@ export default function ChatApp() {
   const handleUserUpdate = (updatedUser: any) => {
     try {
       console.log('ChatApp - Handling user update:', updatedUser);
+      console.log('ChatApp - Current user before update:', user);
       updateUser(updatedUser);
+      console.log('ChatApp - User update completed');
     } catch (error) {
       console.error('ChatApp - User update error:', error);
     }
   };
+  
+  // Add error boundary for rendering
+  if (!user) {
+    console.log('ChatApp - No user found, showing loading');
+    return (
+      <div className="h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
+  
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -123,10 +139,17 @@ export default function ChatApp() {
 
   const fetchConversations = async () => {
     try {
+      console.log('ChatApp - fetchConversations called, user:', user);
       const token = localStorage.getItem('token');
       console.log('Fetching conversations...');
       console.log('ChatApp - Token for conversations:', token ? 'Present' : 'Missing');
       console.log('ChatApp - Token value:', token);
+      
+      if (!token) {
+        console.error('ChatApp - No token found, cannot fetch conversations');
+        setLoading(false);
+        return;
+      }
       
       const response = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations`, {
         method: 'GET',
@@ -146,9 +169,13 @@ export default function ChatApp() {
       } else {
         const errorData = await response.json();
         console.error('Conversations error:', errorData);
+        // Don't crash the app, just show empty conversations
+        setConversations([]);
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
+      // Don't crash the app, just show empty conversations
+      setConversations([]);
     } finally {
       setLoading(false);
     }

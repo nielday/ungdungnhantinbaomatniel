@@ -96,11 +96,19 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
       
       if (response.ok) {
         const updatedUser = await response.json();
-        console.log('ProfileModal - Updated user:', updatedUser);
+        console.log('ProfileModal - Updated user from API:', updatedUser);
+        console.log('ProfileModal - Updated user keys:', Object.keys(updatedUser));
+        
+        // Validate updatedUser structure
+        if (!updatedUser._id) {
+          console.error('ProfileModal - Missing _id in updatedUser');
+          setError('Dữ liệu người dùng không hợp lệ');
+          return;
+        }
         
         // Update user state in AuthContext first
         if (onUserUpdate) {
-          onUserUpdate({
+          console.log('ProfileModal - Calling onUserUpdate with:', {
             id: updatedUser._id,
             phoneNumber: updatedUser.phoneNumber,
             email: updatedUser.email,
@@ -108,12 +116,41 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
             age: updatedUser.age,
             avatar: updatedUser.avatar
           });
+          
+          try {
+            onUserUpdate({
+              id: updatedUser._id,
+              phoneNumber: updatedUser.phoneNumber,
+              email: updatedUser.email,
+              fullName: updatedUser.fullName,
+              age: updatedUser.age,
+              avatar: updatedUser.avatar
+            });
+            console.log('ProfileModal - onUserUpdate called successfully');
+          } catch (error) {
+            console.error('ProfileModal - Error in onUserUpdate:', error);
+            setError('Lỗi khi cập nhật thông tin người dùng');
+            return;
+          }
         }
         
         // Then update conversations and close modal
+        console.log('ProfileModal - Setting timeout for onUpdateProfile and onClose');
         setTimeout(() => {
-          onUpdateProfile();
-          onClose();
+          console.log('ProfileModal - Executing timeout callback');
+          try {
+            onUpdateProfile();
+            console.log('ProfileModal - onUpdateProfile called successfully');
+          } catch (error) {
+            console.error('ProfileModal - Error in onUpdateProfile:', error);
+          }
+          
+          try {
+            onClose();
+            console.log('ProfileModal - onClose called successfully');
+          } catch (error) {
+            console.error('ProfileModal - Error in onClose:', error);
+          }
         }, 100);
       } else {
         const errorData = await response.json();
