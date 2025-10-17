@@ -50,7 +50,7 @@ interface Message {
 interface Conversation {
   _id: string;
   type: 'private' | 'group';
-  participants: any[];
+  participants?: any[]; // Made optional to handle undefined cases
   name?: string; // Changed from groupName
   avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
@@ -281,7 +281,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     if (conversation.type === 'group') {
       return { fullName: conversation.name, avatar: conversation.avatar };
     }
-    return conversation.participants.find(p => p._id !== currentUser?.id);
+    return conversation.participants?.find(p => p._id !== currentUser?.id) || { fullName: 'Unknown User', avatar: null };
   };
 
   const otherParticipant = getOtherParticipant();
@@ -325,7 +325,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 </h3>
                 <p className="text-sm text-gray-500">
                   {conversation.type === 'group' 
-                    ? `${conversation.participants.length} thành viên`
+                    ? `${conversation.participants?.length || 0} thành viên`
                     : 'Đang hoạt động'
                   }
                 </p>

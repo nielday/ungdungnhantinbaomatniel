@@ -14,7 +14,7 @@ import {
 interface Conversation {
   _id: string;
   type: 'private' | 'group';
-  participants: any[];
+  participants?: any[]; // Made optional to handle undefined cases
   name?: string; // Changed from groupName
   avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
@@ -47,7 +47,7 @@ export default function ChatList({
     if (conversation.type === 'group') {
       return conversation.name?.toLowerCase().includes(searchLower);
     } else {
-      const otherParticipant = conversation.participants.find(p => p._id !== activeConversation?.participants?.[0]?._id);
+      const otherParticipant = conversation.participants?.find(p => p._id !== activeConversation?.participants?.[0]?._id);
       return otherParticipant?.fullName?.toLowerCase().includes(searchLower) ||
              otherParticipant?.phoneNumber?.includes(searchQuery);
     }
@@ -81,8 +81,8 @@ export default function ChatList({
     if (conversation.type === 'group') {
       return conversation.name;
     } else {
-      const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
-      return otherParticipant?.fullName || otherParticipant?.phoneNumber;
+      const otherParticipant = conversation.participants?.find(p => p._id !== currentUserId);
+      return otherParticipant?.fullName || otherParticipant?.phoneNumber || 'Unknown User';
     }
   };
 
@@ -90,7 +90,7 @@ export default function ChatList({
     if (conversation.type === 'group') {
       return conversation.avatar;
     } else {
-      const otherParticipant = conversation.participants.find(p => p._id !== currentUserId);
+      const otherParticipant = conversation.participants?.find(p => p._id !== currentUserId);
       return otherParticipant?.avatar;
     }
   };
@@ -184,7 +184,7 @@ export default function ChatList({
                       {conversation.type === 'group' && (
                         <div className="flex items-center text-xs text-gray-400">
                           <Users className="w-3 h-3 mr-1" />
-                          {conversation.participants.length}
+                          {conversation.participants?.length || 0}
                         </div>
                       )}
                     </div>

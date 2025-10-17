@@ -29,7 +29,7 @@ import GroupManagementModal from './GroupManagementModal';
 interface Conversation {
   _id: string;
   type: 'private' | 'group';
-  participants: any[];
+  participants?: any[]; // Made optional to handle undefined cases
   name?: string; // Changed from groupName
   avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
@@ -361,7 +361,7 @@ export default function ChatApp() {
                   <div>
                     <h3 className="text-sm font-medium text-gray-800">
                       {activeConversation.type === 'private' 
-                        ? activeConversation.participants.find(p => p._id !== user?.id)?.fullName
+                        ? activeConversation.participants?.find(p => p._id !== user?.id)?.fullName
                         : activeConversation.name
                       }
                     </h3>
