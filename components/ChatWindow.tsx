@@ -4,6 +4,67 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSocket } from './SocketContext';
 import SimpleEmojiPicker from './SimpleEmojiPicker';
+
+// Audio Player Component
+const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string }) => {
+  const [duration, setDuration] = useState<number>(0);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+      setIsLoaded(true);
+      console.log('Audio duration loaded:', audioRef.current.duration);
+    }
+  };
+
+  const handleError = () => {
+    console.error('Audio load error for:', fileName);
+    setIsLoaded(false);
+  };
+
+  return (
+    <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
+      <audio 
+        ref={audioRef}
+        controls 
+        className="flex-1"
+        preload="metadata"
+        onLoadedMetadata={handleLoadedMetadata}
+        onError={handleError}
+      >
+        <source 
+          src={fileUrl.startsWith('http') 
+            ? fileUrl 
+            : `https://ung-dung-nhan-tin-niel.vercel.app${fileUrl}`
+          } 
+          type="audio/mpeg"
+        />
+        <source 
+          src={fileUrl.startsWith('http') 
+            ? fileUrl 
+            : `https://ung-dung-nhan-tin-niel.vercel.app${fileUrl}`
+          } 
+          type="audio/wav"
+        />
+        <source 
+          src={fileUrl.startsWith('http') 
+            ? fileUrl 
+            : `https://ung-dung-nhan-tin-niel.vercel.app${fileUrl}`
+          } 
+          type="audio/ogg"
+        />
+        Trình duyệt của bạn không hỗ trợ phát audio.
+      </audio>
+      {isLoaded && (
+        <div className="text-xs text-gray-500">
+          {Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}
+        </div>
+      )}
+    </div>
+  );
+};
 import { 
   Send, 
   Paperclip, 
@@ -501,36 +562,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
                       {message.attachments.map((attachment, index) => (
-                        <div key={index} className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
-                          <audio 
-                            controls 
-                            className="flex-1"
-                            preload="metadata"
-                          >
-                            <source 
-                              src={attachment.fileUrl.startsWith('http') 
-                                ? attachment.fileUrl 
-                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
-                              } 
-                              type="audio/mpeg"
-                            />
-                            <source 
-                              src={attachment.fileUrl.startsWith('http') 
-                                ? attachment.fileUrl 
-                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
-                              } 
-                              type="audio/wav"
-                            />
-                            <source 
-                              src={attachment.fileUrl.startsWith('http') 
-                                ? attachment.fileUrl 
-                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
-                              } 
-                              type="audio/ogg"
-                            />
-                            Trình duyệt của bạn không hỗ trợ phát audio.
-                          </audio>
-                        </div>
+                        <AudioPlayer 
+                          key={index}
+                          fileUrl={attachment.fileUrl}
+                          fileName={attachment.fileName}
+                        />
                       ))}
                     </div>
                   )}
