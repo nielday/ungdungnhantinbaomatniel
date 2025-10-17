@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 const { Message, Conversation, Group } = require('../models');
 
 const router = express.Router();
@@ -46,6 +47,13 @@ router.get('/:conversationId', async (req, res) => {
     const { page = 1, limit = 50 } = req.query;
     const userId = req.user._id;
 
+    console.log('Get messages request:', {
+      conversationId,
+      userId,
+      page,
+      limit
+    });
+
     // Check if user is participant of conversation or group
     let conversation = await Conversation.findOne({
       _id: conversationId,
@@ -53,17 +61,48 @@ router.get('/:conversationId', async (req, res) => {
       isActive: true
     });
 
+    console.log('Conversation found:', conversation ? 'Yes' : 'No');
+
     // If not found in conversations, check if it's a group
     if (!conversation) {
       const group = await Group.findOne({
         _id: conversationId,
-        'members.userId': userId,
+        'members.user': new mongoose.Types.ObjectId(userId),
         isActive: true
       });
 
+      console.log('Group found:', group ? 'Yes' : 'No');
+      console.log('Group details:', group ? {
+        id: group._id,
+        name: group.name,
+        members: group.members.length,
+        isActive: group.isActive
+      } : 'None');
+
       if (!group) {
+        // Additional debugging - check if conversation/group exists at all
+        const anyConversation = await Conversation.findById(conversationId);
+        const anyGroup = await Group.findById(conversationId);
+        
+        console.log('Any conversation exists:', anyConversation ? 'Yes' : 'No');
+        console.log('Any group exists:', anyGroup ? 'Yes' : 'No');
+        
+        if (anyConversation) {
+          console.log('Conversation exists but user not participant:', {
+            participants: anyConversation.participants,
+            isActive: anyConversation.isActive
+          });
+        }
+        
+        if (anyGroup) {
+          console.log('Group exists but user not member:', {
+            members: anyGroup.members.map(m => m.user),
+            isActive: anyGroup.isActive
+          });
+        }
+
         return res.status(404).json({
-          message: 'Cuộc trò chuyện không tồn tại'
+          message: 'Cuộc trò chuyện không tồn tại hoặc bạn không có quyền truy cập'
         });
       }
     }
@@ -94,6 +133,13 @@ router.post('/:conversationId/text', async (req, res) => {
     const { content, replyTo } = req.body;
     const userId = req.user._id;
 
+    console.log('Send text message request:', {
+      conversationId,
+      userId,
+      content: content ? content.substring(0, 50) + '...' : 'Empty',
+      replyTo
+    });
+
     // Check if user is participant of conversation or group
     let conversation = await Conversation.findOne({
       _id: conversationId,
@@ -101,17 +147,48 @@ router.post('/:conversationId/text', async (req, res) => {
       isActive: true
     });
 
+    console.log('Conversation found for POST:', conversation ? 'Yes' : 'No');
+
     // If not found in conversations, check if it's a group
     if (!conversation) {
       const group = await Group.findOne({
         _id: conversationId,
-        'members.userId': userId,
+        'members.user': new mongoose.Types.ObjectId(userId),
         isActive: true
       });
 
+      console.log('Group found for POST:', group ? 'Yes' : 'No');
+      console.log('Group details for POST:', group ? {
+        id: group._id,
+        name: group.name,
+        members: group.members.length,
+        isActive: group.isActive
+      } : 'None');
+
       if (!group) {
+        // Additional debugging - check if conversation/group exists at all
+        const anyConversation = await Conversation.findById(conversationId);
+        const anyGroup = await Group.findById(conversationId);
+        
+        console.log('Any conversation exists for POST:', anyConversation ? 'Yes' : 'No');
+        console.log('Any group exists for POST:', anyGroup ? 'Yes' : 'No');
+        
+        if (anyConversation) {
+          console.log('Conversation exists but user not participant for POST:', {
+            participants: anyConversation.participants,
+            isActive: anyConversation.isActive
+          });
+        }
+        
+        if (anyGroup) {
+          console.log('Group exists but user not member for POST:', {
+            members: anyGroup.members.map(m => m.user),
+            isActive: anyGroup.isActive
+          });
+        }
+
         return res.status(404).json({
-          message: 'Cuộc trò chuyện không tồn tại'
+          message: 'Cuộc trò chuyện không tồn tại hoặc bạn không có quyền truy cập'
         });
       }
     }
@@ -174,7 +251,7 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     if (!conversation) {
       const group = await Group.findOne({
         _id: conversationId,
-        'members.userId': userId,
+        'members.user': new mongoose.Types.ObjectId(userId),
         isActive: true
       });
 
