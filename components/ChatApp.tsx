@@ -155,27 +155,62 @@ export default function ChatApp() {
         return;
       }
       
-      const response = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-cache'
-      });
+      // Fetch both private conversations and groups
+      const [conversationsResponse, groupsResponse] = await Promise.all([
+        fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          cache: 'no-cache'
+        }),
+        fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          cache: 'no-cache'
+        })
+      ]);
       
-      console.log('Conversations response status:', response.status);
+      console.log('Conversations response status:', conversationsResponse.status);
+      console.log('Groups response status:', groupsResponse.status);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Conversations data:', data);
-        setConversations(data);
+      let allConversations: Conversation[] = [];
+      
+      // Fetch private conversations
+      if (conversationsResponse.ok) {
+        const conversationsData = await conversationsResponse.json();
+        console.log('Conversations data:', conversationsData);
+        allConversations = [...allConversations, ...conversationsData];
       } else {
-        const errorData = await response.json();
-        console.error('Conversations error:', errorData);
-        // Don't crash the app, just show empty conversations
-        setConversations([]);
+        console.error('Conversations error:', await conversationsResponse.json());
       }
+      
+      // Fetch groups
+      if (groupsResponse.ok) {
+        const groupsData = await groupsResponse.json();
+        console.log('Groups data:', groupsData);
+        // Transform groups to conversation format
+        const transformedGroups = groupsData.map((group: any) => ({
+          _id: group._id,
+          type: 'group' as const,
+          participants: group.members || [],
+          name: group.name,
+          avatar: group.avatar,
+          lastMessage: null,
+          lastMessageAt: group.updatedAt,
+          createdBy: group.createdBy
+        }));
+        allConversations = [...allConversations, ...transformedGroups];
+      } else {
+        console.error('Groups error:', await groupsResponse.json());
+      }
+      
+      console.log('All conversations:', allConversations);
+      setConversations(allConversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
       // Don't crash the app, just show empty conversations

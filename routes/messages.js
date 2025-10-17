@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { Message, Conversation } = require('../models');
+const { Message, Conversation, Group } = require('../models');
 
 const router = express.Router();
 
@@ -46,17 +46,26 @@ router.get('/:conversationId', async (req, res) => {
     const { page = 1, limit = 50 } = req.query;
     const userId = req.user._id;
 
-    // Check if user is participant of conversation
-    const conversation = await Conversation.findOne({
+    // Check if user is participant of conversation or group
+    let conversation = await Conversation.findOne({
       _id: conversationId,
       participants: userId,
       isActive: true
     });
 
+    // If not found in conversations, check if it's a group
     if (!conversation) {
-      return res.status(404).json({
-        message: 'Cuộc trò chuyện không tồn tại'
+      const group = await Group.findOne({
+        _id: conversationId,
+        'members.userId': userId,
+        isActive: true
       });
+
+      if (!group) {
+        return res.status(404).json({
+          message: 'Cuộc trò chuyện không tồn tại'
+        });
+      }
     }
 
     const messages = await Message.find({
@@ -85,17 +94,26 @@ router.post('/:conversationId/text', async (req, res) => {
     const { content, replyTo } = req.body;
     const userId = req.user._id;
 
-    // Check if user is participant of conversation
-    const conversation = await Conversation.findOne({
+    // Check if user is participant of conversation or group
+    let conversation = await Conversation.findOne({
       _id: conversationId,
       participants: userId,
       isActive: true
     });
 
+    // If not found in conversations, check if it's a group
     if (!conversation) {
-      return res.status(404).json({
-        message: 'Cuộc trò chuyện không tồn tại'
+      const group = await Group.findOne({
+        _id: conversationId,
+        'members.userId': userId,
+        isActive: true
       });
+
+      if (!group) {
+        return res.status(404).json({
+          message: 'Cuộc trò chuyện không tồn tại'
+        });
+      }
     }
 
     const message = new Message({
@@ -110,10 +128,12 @@ router.post('/:conversationId/text', async (req, res) => {
     await message.populate('senderId', 'fullName avatar');
     await message.populate('replyTo');
 
-    // Update conversation last message
-    conversation.lastMessage = message._id;
-    conversation.lastMessageAt = new Date();
-    await conversation.save();
+    // Update conversation last message (only for private conversations)
+    if (conversation) {
+      conversation.lastMessage = message._id;
+      conversation.lastMessageAt = new Date();
+      await conversation.save();
+    }
 
     // Emit to Socket.io for real-time delivery
     const { io } = require('../server');
@@ -143,17 +163,26 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     const { content = '', replyTo } = req.body;
     const userId = req.user._id;
 
-    // Check if user is participant of conversation
-    const conversation = await Conversation.findOne({
+    // Check if user is participant of conversation or group
+    let conversation = await Conversation.findOne({
       _id: conversationId,
       participants: userId,
       isActive: true
     });
 
+    // If not found in conversations, check if it's a group
     if (!conversation) {
-      return res.status(404).json({
-        message: 'Cuộc trò chuyện không tồn tại'
+      const group = await Group.findOne({
+        _id: conversationId,
+        'members.userId': userId,
+        isActive: true
       });
+
+      if (!group) {
+        return res.status(404).json({
+          message: 'Cuộc trò chuyện không tồn tại'
+        });
+      }
     }
 
     if (!req.files || req.files.length === 0) {
@@ -192,10 +221,12 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     await message.populate('senderId', 'fullName avatar');
     await message.populate('replyTo');
 
-    // Update conversation last message
-    conversation.lastMessage = message._id;
-    conversation.lastMessageAt = new Date();
-    await conversation.save();
+    // Update conversation last message (only for private conversations)
+    if (conversation) {
+      conversation.lastMessage = message._id;
+      conversation.lastMessageAt = new Date();
+      await conversation.save();
+    }
 
     // Emit to Socket.io for real-time delivery
     const { io } = require('../server');
