@@ -458,7 +458,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                           <img 
                             src={attachment.fileUrl.startsWith('http') 
                               ? attachment.fileUrl 
-                              : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                              : `https://ungdungnhantinbaomatniel-production.up.railway.app${attachment.fileUrl}`
                             } 
                             alt={attachment.fileName}
                             className="max-w-full h-auto rounded"
@@ -485,7 +485,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                           <a 
                             href={attachment.fileUrl.startsWith('http') 
                               ? attachment.fileUrl 
-                              : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                              : `https://ungdungnhantinbaomatniel-production.up.railway.app${attachment.fileUrl}`
                             }
                             download={attachment.fileName}
                             className="p-1 hover:bg-gray-200 rounded"
@@ -510,21 +510,21 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                             <source 
                               src={attachment.fileUrl.startsWith('http') 
                                 ? attachment.fileUrl 
-                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                                : `https://ungdungnhantinbaomatniel-production.up.railway.app${attachment.fileUrl}`
                               } 
                               type="audio/mpeg"
                             />
                             <source 
                               src={attachment.fileUrl.startsWith('http') 
                                 ? attachment.fileUrl 
-                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                                : `https://ungdungnhantinbaomatniel-production.up.railway.app${attachment.fileUrl}`
                               } 
                               type="audio/wav"
                             />
                             <source 
                               src={attachment.fileUrl.startsWith('http') 
                                 ? attachment.fileUrl 
-                                : `https://ung-dung-nhan-tin-niel.vercel.app${attachment.fileUrl}`
+                                : `https://ungdungnhantinbaomatniel-production.up.railway.app${attachment.fileUrl}`
                               } 
                               type="audio/ogg"
                             />
