@@ -69,7 +69,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
         console.log('CreateGroupModal - Found users:', data.length);
         // Filter out already selected users
         const filteredUsers = data.filter((user: User) => 
-          !selectedUsers.some(selected => selected._id === user._id)
+          !selectedUsers?.some(selected => selected._id === user._id)
         );
         setAvailableUsers(filteredUsers);
       } else {
@@ -97,17 +97,17 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
   }, [searchQuery, selectedUsers]);
 
   const handleUserSelect = (user: User) => {
-    if (!selectedUsers.some(u => u._id === user._id)) {
+    if (!selectedUsers?.some(u => u._id === user._id)) {
       setSelectedUsers([...selectedUsers, user]);
     }
   };
 
   const handleUserRemove = (userId: string) => {
-    setSelectedUsers(selectedUsers.filter(u => u._id !== userId));
+    setSelectedUsers(selectedUsers?.filter(u => u._id !== userId) || []);
   };
 
   const handleCreateGroup = async () => {
-    if (!groupName.trim() || selectedUsers.length === 0) {
+    if (!groupName.trim() || !selectedUsers || selectedUsers.length === 0) {
       return;
     }
 
@@ -125,7 +125,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
           body: JSON.stringify({
             name: groupName.trim(),
             description: groupDescription.trim(),
-            memberIds: selectedUsers.map(u => u._id)
+            memberIds: selectedUsers?.map(u => u._id) || []
           })
         }
       );
@@ -316,7 +316,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
           </div>
 
           {/* Selected Users */}
-          {selectedUsers.length > 0 && (
+          {selectedUsers && selectedUsers.length > 0 && (
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-gray-700">
@@ -376,7 +376,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
           </button>
           <button
             onClick={handleCreateGroup}
-            disabled={!groupName.trim() || selectedUsers.length === 0 || loading}
+            disabled={!groupName.trim() || !selectedUsers || selectedUsers.length === 0 || loading}
             className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
           >
             {loading ? (
