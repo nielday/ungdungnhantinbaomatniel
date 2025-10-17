@@ -182,7 +182,7 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
                   <input
                     type="file"
                     accept="image/*"
-                    capture="camera"
+                    capture="environment"
                     onChange={handleAvatarUpload}
                     className="hidden"
                   />
