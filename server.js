@@ -32,7 +32,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, path) => {
+    // Set proper headers for file serving
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -67,6 +73,31 @@ app.get('/api/test-auth', authenticateToken, (req, res) => {
     userId: req.user._id,
     timestamp: new Date().toISOString()
   });
+});
+
+// Debug uploads directory
+app.get('/api/uploads-debug', (req, res) => {
+  const fs = require('fs');
+  const uploadsPath = path.join(__dirname, 'uploads');
+  
+  try {
+    const files = fs.readdirSync(uploadsPath);
+    res.json({
+      status: 'OK',
+      uploadsPath,
+      files,
+      exists: fs.existsSync(uploadsPath),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.json({
+      status: 'ERROR',
+      error: error.message,
+      uploadsPath,
+      exists: fs.existsSync(uploadsPath),
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Routes
