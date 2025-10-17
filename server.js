@@ -106,6 +106,65 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/conversations', authenticateToken, conversationRoutes);
 app.use('/api/messages', authenticateToken, messageRoutes);
 
+// Cleanup route (no auth required)
+app.get('/api/cleanup', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const uploadsPath = path.join(__dirname, 'uploads');
+    
+    // Get all files in uploads directory
+    const existingFiles = fs.readdirSync(uploadsPath).filter(file => file !== '.gitkeep');
+    console.log('Existing files:', existingFiles);
+    
+    // Find messages with attachments
+    const { Message } = require('./models');
+    const messages = await Message.find({ 
+      attachments: { $exists: true, $ne: [] },
+      isDeleted: false 
+    });
+    
+    let cleanedCount = 0;
+    const filesToClean = [];
+    
+    for (const message of messages) {
+      if (message.attachments && message.attachments.length > 0) {
+        const validAttachments = [];
+        
+        for (const attachment of message.attachments) {
+          const fileName = attachment.fileUrl.split('/').pop();
+          if (existingFiles.includes(fileName)) {
+            validAttachments.push(attachment);
+          } else {
+            console.log('File not found, removing:', fileName);
+            filesToClean.push(fileName);
+          }
+        }
+        
+        if (validAttachments.length !== message.attachments.length) {
+          message.attachments = validAttachments;
+          await message.save();
+          cleanedCount++;
+        }
+      }
+    }
+    
+    res.json({
+      status: 'OK',
+      message: `Cleaned up ${cleanedCount} messages`,
+      filesToClean,
+      existingFiles,
+      cleanedCount
+    });
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    res.status(500).json({
+      message: 'Cleanup failed',
+      error: error.message
+    });
+  }
+});
+
 // Socket.io connection handling
 io.use(async (socket, next) => {
   try {
