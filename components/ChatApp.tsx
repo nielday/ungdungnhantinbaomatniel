@@ -39,6 +39,7 @@ interface Conversation {
 
 export default function ChatApp() {
   const { user, logout, updateUser } = useAuth();
+  const { socket } = useSocket();
   
   // Handle user update with error handling
   const handleUserUpdate = (updatedUser: any) => {
@@ -80,6 +81,24 @@ export default function ChatApp() {
       fetchConversations();
     }
   }, [user]);
+
+  // Socket event listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleGroupInfoUpdated = (data: any) => {
+      console.log('Received group-info-updated event:', data);
+      if (data.group) {
+        handleGroupUpdated(data.group);
+      }
+    };
+
+    socket.on('group-info-updated', handleGroupInfoUpdated);
+
+    return () => {
+      socket.off('group-info-updated', handleGroupInfoUpdated);
+    };
+  }, [socket]);
 
   // Check if mobile
   useEffect(() => {

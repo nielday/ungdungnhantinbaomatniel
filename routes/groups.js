@@ -6,6 +6,11 @@ const { Group, User } = require('../models');
 
 const router = express.Router();
 
+// Get socket.io instance
+const getSocketIO = () => {
+  return require('../server').io;
+};
+
 // Configure multer for avatar uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -211,6 +216,20 @@ router.put('/:id', async (req, res) => {
     }));
 
     res.json(groupObj);
+    
+    // Emit socket event to notify all group members
+    try {
+      const io = getSocketIO();
+      if (io) {
+        io.to(`conversation-${groupId}`).emit('group-info-updated', {
+          conversationId: groupId,
+          group: groupObj
+        });
+        console.log('Emitted group-updated event for group:', groupId);
+      }
+    } catch (socketError) {
+      console.error('Socket emit error:', socketError);
+    }
   } catch (error) {
     console.error('Update group error:', error);
     res.status(500).json({
@@ -426,6 +445,20 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
     }));
 
     res.json(groupObj);
+    
+    // Emit socket event to notify all group members
+    try {
+      const io = getSocketIO();
+      if (io) {
+        io.to(`conversation-${groupId}`).emit('group-info-updated', {
+          conversationId: groupId,
+          group: groupObj
+        });
+        console.log('Emitted group-updated event for avatar upload:', groupId);
+      }
+    } catch (socketError) {
+      console.error('Socket emit error:', socketError);
+    }
   } catch (error) {
     console.error('Upload avatar error:', error);
     // Delete uploaded file on error
