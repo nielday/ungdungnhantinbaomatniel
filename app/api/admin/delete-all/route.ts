@@ -10,9 +10,12 @@ const connectDB = async () => {
   }
   
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chat-app');
+    const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://phonghd2005:phonghd2005@cluster0.mongodb.net/chat-app?retryWrites=true&w=majority';
+    await mongoose.connect(mongoUri);
+    console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('MongoDB connection error:', error);
+    throw error;
   }
 };
 
@@ -63,7 +66,10 @@ const MessageSchema = new mongoose.Schema({
 
 export async function DELETE(request: NextRequest) {
   try {
+    console.log('Starting admin delete-all request...');
+    
     await connectDB();
+    console.log('MongoDB connected, proceeding with deletion...');
 
     const User = mongoose.models.User || mongoose.model('User', UserSchema);
     const Conversation = mongoose.models.Conversation || mongoose.model('Conversation', ConversationSchema);
@@ -122,7 +128,10 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Admin delete-all error:', error);
     return NextResponse.json(
-      { error: 'Failed to delete data' },
+      { 
+        error: 'Failed to delete data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
