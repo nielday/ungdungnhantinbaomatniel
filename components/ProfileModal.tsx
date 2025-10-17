@@ -95,21 +95,26 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
       console.log('ProfileModal - Response status:', response.status);
       
       if (response.ok) {
-        const updatedUser = await response.json();
-        console.log('ProfileModal - Updated user from API:', updatedUser);
+        const responseData = await response.json();
+        console.log('ProfileModal - Response data from API:', responseData);
+        
+        // Extract user from response
+        const updatedUser = responseData.user || responseData;
+        console.log('ProfileModal - Extracted user:', updatedUser);
         console.log('ProfileModal - Updated user keys:', Object.keys(updatedUser));
         
         // Validate updatedUser structure
-        if (!updatedUser._id) {
-          console.error('ProfileModal - Missing _id in updatedUser');
+        if (!updatedUser.id && !updatedUser._id) {
+          console.error('ProfileModal - Missing id/_id in updatedUser');
           setError('Dữ liệu người dùng không hợp lệ');
           return;
         }
         
         // Update user state in AuthContext first
         if (onUserUpdate) {
+          const userId = updatedUser._id || updatedUser.id;
           console.log('ProfileModal - Calling onUserUpdate with:', {
-            id: updatedUser._id,
+            id: userId,
             phoneNumber: updatedUser.phoneNumber,
             email: updatedUser.email,
             fullName: updatedUser.fullName,
@@ -119,7 +124,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
           
           try {
             onUserUpdate({
-              id: updatedUser._id,
+              id: userId,
               phoneNumber: updatedUser.phoneNumber,
               email: updatedUser.email,
               fullName: updatedUser.fullName,
