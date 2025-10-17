@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, User, Phone, Mail, Camera, Save } from 'lucide-react';
 
@@ -28,6 +28,12 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
   const [avatar, setAvatar] = useState(user?.avatar || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Update avatar when user changes
+  useEffect(() => {
+    console.log('ProfileModal - User changed, updating avatar:', user?.avatar);
+    setAvatar(user?.avatar || '');
+  }, [user?.avatar]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({

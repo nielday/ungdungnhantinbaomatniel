@@ -357,8 +357,29 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               key={message._id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex ${message.senderId._id === currentUser?.id ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.senderId._id === currentUser?.id ? 'justify-end' : 'justify-start'} items-end space-x-2`}
             >
+              {/* Avatar for other users */}
+              {message.senderId._id !== currentUser?.id && (
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  {message.senderId.avatar ? (
+                    <img 
+                      src={message.senderId.avatar} 
+                      alt={message.senderId.fullName}
+                      className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        console.error('Avatar load error:', message.senderId.avatar);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-white text-xs font-medium">
+                      {message.senderId.fullName?.charAt(0)?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              )}
+              
               <div className={`max-w-xs lg:max-w-md ${message.senderId._id === currentUser?.id ? 'order-2' : 'order-1'}`}>
                 {message.senderId._id !== currentUser?.id && (
                   <div className="flex items-center space-x-2 mb-1">
@@ -464,6 +485,27 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   </div>
                 )}
               </div>
+              
+              {/* Avatar for current user */}
+              {message.senderId._id === currentUser?.id && (
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  {currentUser?.avatar ? (
+                    <img 
+                      src={currentUser.avatar} 
+                      alt={currentUser.fullName}
+                      className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        console.error('Current user avatar load error:', currentUser.avatar);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-white text-xs font-medium">
+                      {currentUser?.fullName?.charAt(0)?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              )}
             </motion.div>
           ))
         )}
