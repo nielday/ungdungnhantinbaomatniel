@@ -2,45 +2,32 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const { User } = require('../models');
 
 const router = express.Router();
 
-// Email configuration for Outlook SMTP
-console.log('Email config debug:', {
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  user: process.env.EMAIL_USER,
-  pass: process.env.EMAIL_PASS ? '***' : 'undefined'
+// Email configuration for Resend
+console.log('Resend config debug:', {
+  apiKey: process.env.RESEND_API_KEY ? 'Present' : 'Missing',
+  fromEmail: process.env.RESEND_FROM_EMAIL || 'Missing'
 });
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    ciphers: 'SSLv3'
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Generate OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send OTP email using Outlook SMTP
+// Send OTP email using Resend
 const sendOTPEmail = async (email, otp) => {
   try {
     console.log('Attempting to send email to:', email);
     console.log('OTP code:', otp);
     
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL,
       to: email,
       subject: 'Mã OTP xác thực tài khoản',
       html: `
@@ -56,15 +43,15 @@ const sendOTPEmail = async (email, otp) => {
       `
     });
     
+    if (error) {
+      console.error('Resend error:', error);
+      return false;
+    }
+    
     console.log('Email sent successfully to:', email);
     return true;
   } catch (error) {
     console.error('Error sending email:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      command: error.command
-    });
     return false;
   }
 };
