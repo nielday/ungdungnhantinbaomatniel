@@ -54,9 +54,6 @@ const sendOTPEmail = async (email, otp) => {
               
               <!-- Header -->
               <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; text-align: center;">
-                <div style="background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; line-height: 1;">
-                  <span style="font-size: 36px; color: white; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">🔐</span>
-                </div>
                 <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">Xác Thực Tài Khoản</h1>
                 <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0; font-size: 16px;">Ứng Dụng Nhắn Tin Bảo Mật Niel</p>
               </div>
