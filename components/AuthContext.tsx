@@ -58,7 +58,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: data.email,
             fullName: data.fullName,
             age: data.age,
-            avatar: data.avatar
+            avatar: data.avatar,
+            isVerified: data.isVerified
           });
         }
       })
