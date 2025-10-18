@@ -248,7 +248,8 @@ router.post('/verify-otp', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         age: user.age,
-        avatar: user.avatar
+        avatar: user.avatar,
+        isVerified: user.isVerified
       }
     });
   } catch (error) {
@@ -396,7 +397,8 @@ router.post('/verify-login', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         age: user.age,
-        avatar: user.avatar
+        avatar: user.avatar,
+        isVerified: user.isVerified
       }
     });
   } catch (error) {

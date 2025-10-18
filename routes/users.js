@@ -78,7 +78,8 @@ router.put('/profile', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         age: user.age,
-        avatar: user.avatar
+        avatar: user.avatar,
+        isVerified: user.isVerified
       }
     });
   } catch (error) {
