@@ -24,7 +24,7 @@ const sendOTPEmail = async (email, otp) => {
     console.log('Attempting to send email to:', email);
     console.log('OTP code:', otp);
     
-    const response = await fetch('https://api.brevo.com/v3/sendEmail', {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
