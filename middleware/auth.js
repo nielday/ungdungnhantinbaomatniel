@@ -27,7 +27,11 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    if (!user.isVerified) {
+    // Allow unverified users for verification routes
+    const verificationRoutes = ['/users/send-verification-otp', '/users/verify-account'];
+    const isVerificationRoute = verificationRoutes.some(route => req.path.includes(route));
+    
+    if (!user.isVerified && !isVerificationRoute) {
       console.log('Auth middleware - User not verified');
       return res.status(401).json({ message: 'User not verified' });
     }
