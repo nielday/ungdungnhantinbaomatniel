@@ -85,35 +85,37 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Create new user (no OTP needed)
+    // Create new user with OTP verification
     const user = new User({
       phoneNumber,
       email,
       fullName,
       age,
-      isVerified: true  // Auto verify
+      isVerified: false  // Require OTP verification
     });
 
     await user.save();
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // Generate OTP
+    const otpCode = generateOTP();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    user.otpCode = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send OTP email
+    const emailSent = await sendOTPEmail(user.email, otpCode);
+    if (!emailSent) {
+      return res.status(500).json({
+        message: 'Không thể gửi email OTP'
+      });
+    }
 
     res.status(201).json({
-      message: 'Đăng ký thành công',
-      token,
-      user: {
-        id: user._id,
-        phoneNumber: user.phoneNumber,
-        email: user.email,
-        fullName: user.fullName,
-        age: user.age,
-        avatar: user.avatar
-      }
+      message: 'Đăng ký thành công. Vui lòng kiểm tra email để lấy mã OTP.',
+      userId: user._id,
+      email: user.email
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -249,24 +251,26 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate JWT token (no OTP needed)
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // Generate OTP for login
+    const otpCode = generateOTP();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    user.otpCode = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send OTP email
+    const emailSent = await sendOTPEmail(user.email, otpCode);
+    if (!emailSent) {
+      return res.status(500).json({
+        message: 'Không thể gửi email OTP'
+      });
+    }
 
     res.json({
-      message: 'Đăng nhập thành công',
-      token,
-      user: {
-        id: user._id,
-        phoneNumber: user.phoneNumber,
-        email: user.email,
-        fullName: user.fullName,
-        age: user.age,
-        avatar: user.avatar
-      }
+      message: 'Vui lòng kiểm tra email để lấy mã OTP.',
+      userId: user._id,
+      email: user.email
     });
   } catch (error) {
     console.error('Login error:', error);

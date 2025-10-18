@@ -28,8 +28,9 @@ export default function AuthPage() {
     try {
       const result = await login(formData.phoneNumber);
       if (result.success) {
-        // Login successful, user is already set in AuthContext
-        // No need to go to verify step
+        // Store userId for OTP verification
+        setUserId(result.userId);
+        setStep('verify');
       }
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại');
@@ -51,8 +52,9 @@ export default function AuthPage() {
         parseInt(formData.age)
       );
       if (result.success) {
-        // Register successful, user is already set in AuthContext
-        // No need to go to verify step
+        // Store userId for OTP verification
+        setUserId(result.userId);
+        setStep('verify');
       }
     } catch (err: any) {
       setError(err.message || 'Đăng ký thất bại');

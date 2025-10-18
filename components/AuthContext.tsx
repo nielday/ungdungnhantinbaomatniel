@@ -13,9 +13,9 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (phoneNumber: string) => Promise<{ success: boolean }>;
+  login: (phoneNumber: string) => Promise<{ success: boolean; userId: string; email: string }>;
   verifyLogin: (userId: string, otpCode: string) => Promise<void>;
-  register: (phoneNumber: string, email: string, fullName: string, age: number) => Promise<{ success: boolean }>;
+  register: (phoneNumber: string, email: string, fullName: string, age: number) => Promise<{ success: boolean; userId: string; email: string }>;
   verifyRegister: (userId: string, otpCode: string) => Promise<void>;
   resendOtp: (userId: string) => Promise<void>;
   updateUser: (updatedUser: User) => void;
@@ -88,9 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    localStorage.setItem('token', data.token);
-    setUser(data.user);
-    return { success: true };
+    // Return userId for OTP verification instead of auto-login
+    return { success: true, userId: data.userId, email: data.email };
   };
 
   const verifyLogin = async (userId: string, otpCode: string) => {
@@ -127,9 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    localStorage.setItem('token', data.token);
-    setUser(data.user);
-    return { success: true };
+    // Return userId for OTP verification instead of auto-login
+    return { success: true, userId: data.userId, email: data.email };
   };
 
   const verifyRegister = async (userId: string, otpCode: string) => {
