@@ -28,6 +28,7 @@
     "mongoose": "^8.0.3",
     "multer": "^1.4.5-lts.1",
     "next": "^14.2.31",
+    "node-fetch": "^2.7.0",
     "next-intl": "^3.26.5",
     "nodemailer": "^6.9.7",
     "postcss": "^8",

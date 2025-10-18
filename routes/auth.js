@@ -2,25 +2,15 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const fetch = require('node-fetch');
 const { User } = require('../models');
 
 const router = express.Router();
 
-// Email configuration for Brevo (Sendinblue)
-console.log('Brevo config debug:', {
+// Email configuration for Brevo API
+console.log('Brevo API config debug:', {
   apiKey: process.env.BREVO_API_KEY ? 'Present' : 'Missing',
   fromEmail: process.env.BREVO_FROM_EMAIL || 'Missing'
-});
-
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS
-  }
 });
 
 // Generate OTP
@@ -28,28 +18,48 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send OTP email using Brevo SMTP
+// Send OTP email using Brevo API
 const sendOTPEmail = async (email, otp) => {
   try {
     console.log('Attempting to send email to:', email);
     console.log('OTP code:', otp);
     
-    await transporter.sendMail({
-      from: process.env.BREVO_FROM_EMAIL,
-      to: email,
-      subject: 'Mã OTP xác thực tài khoản',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Xác thực tài khoản</h2>
-          <p>Mã OTP của bạn là:</p>
-          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; color: #007bff; letter-spacing: 5px;">
-            ${otp}
+    const response = await fetch('https://api.brevo.com/v3/sendEmail', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': process.env.BREVO_API_KEY
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'Messaging App Niel',
+          email: process.env.BREVO_FROM_EMAIL
+        },
+        to: [
+          {
+            email: email
+          }
+        ],
+        subject: 'Mã OTP xác thực tài khoản',
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Xác thực tài khoản</h2>
+            <p>Mã OTP của bạn là:</p>
+            <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; color: #007bff; letter-spacing: 5px;">
+              ${otp}
+            </div>
+            <p>Mã này có hiệu lực trong 5 phút.</p>
+            <p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
           </div>
-          <p>Mã này có hiệu lực trong 5 phút.</p>
-          <p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
-        </div>
-      `
+        `
+      })
     });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Brevo API error:', error);
+      return false;
+    }
     
     console.log('Email sent successfully to:', email);
     return true;
