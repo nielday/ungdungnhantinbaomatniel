@@ -28,7 +28,7 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Allow unverified users for verification routes
-    const verificationRoutes = ['/users/send-verification-otp', '/users/verify-account'];
+    const verificationRoutes = ['/send-verification-otp', '/verify-account'];
     const isVerificationRoute = verificationRoutes.some(route => req.path.includes(route));
     
     if (!user.isVerified && !isVerificationRoute) {
