@@ -27,7 +27,7 @@ const sendOTPEmail = async (email, otp) => {
     console.log('OTP code:', otp);
     
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL,
+      from: 'onboarding@resend.dev',
       to: email,
       subject: 'Mã OTP xác thực tài khoản',
       html: `
