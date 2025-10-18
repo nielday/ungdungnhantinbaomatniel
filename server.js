@@ -6,7 +6,7 @@ const path = require('path');
 require('dotenv').config();
 
 const { connectDB } = require('./models');
-const authRoutes = require('./routes/auth');
+const { router: authRoutes } = require('./routes/auth');
 const conversationRoutes = require('./routes/conversations');
 const messageRoutes = require('./routes/messages');
 const userRoutes = require('./routes/users');
