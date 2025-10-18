@@ -42,15 +42,83 @@ const sendOTPEmail = async (email, otp) => {
         ],
         subject: 'Mã OTP xác thực tài khoản',
         htmlContent: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Xác thực tài khoản</h2>
-            <p>Mã OTP của bạn là:</p>
-            <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; color: #007bff; letter-spacing: 5px;">
-              ${otp}
+          <!DOCTYPE html>
+          <html lang="vi">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Mã OTP Xác Thực</title>
+          </head>
+          <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+              
+              <!-- Header -->
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; text-align: center;">
+                <div style="background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; width: 80px; height: 80px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 36px; color: white;">🔐</span>
+                </div>
+                <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">Xác Thực Tài Khoản</h1>
+                <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0; font-size: 16px;">Ứng Dụng Nhắn Tin Bảo Mật Niel</p>
+              </div>
+              
+              <!-- Content -->
+              <div style="padding: 40px 30px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <h2 style="color: #2d3748; margin: 0 0 15px; font-size: 24px; font-weight: 600;">Mã Xác Thực Của Bạn</h2>
+                  <p style="color: #718096; margin: 0; font-size: 16px; line-height: 1.5;">
+                    Chúng tôi đã nhận được yêu cầu xác thực tài khoản của bạn. 
+                    Vui lòng sử dụng mã OTP bên dưới để hoàn tất quá trình đăng ký/đăng nhập.
+                  </p>
+                </div>
+                
+                <!-- OTP Code -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
+                  <p style="color: rgba(255, 255, 255, 0.9); margin: 0 0 15px; font-size: 16px; font-weight: 500;">Mã OTP của bạn</p>
+                  <div style="background-color: rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 20px; display: inline-block;">
+                    <span style="font-size: 32px; font-weight: 700; color: white; letter-spacing: 8px; font-family: 'Courier New', monospace;">${otp}</span>
+                  </div>
+                </div>
+                
+                <!-- Info Box -->
+                <div style="background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 20px; border-radius: 8px; margin: 30px 0;">
+                  <h3 style="color: #2d3748; margin: 0 0 10px; font-size: 18px; font-weight: 600;">📋 Thông Tin Quan Trọng</h3>
+                  <ul style="color: #4a5568; margin: 0; padding-left: 20px; line-height: 1.6;">
+                    <li>Mã OTP có hiệu lực trong <strong>5 phút</strong></li>
+                    <li>Mã chỉ có thể sử dụng <strong>1 lần</strong></li>
+                    <li>Không chia sẻ mã này với bất kỳ ai</li>
+                    <li>Nếu không yêu cầu, vui lòng bỏ qua email này</li>
+                  </ul>
+                </div>
+                
+                <!-- Security Notice -->
+                <div style="background-color: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; padding: 20px; margin: 30px 0;">
+                  <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 20px; margin-right: 10px;">🛡️</span>
+                    <h3 style="color: #c53030; margin: 0; font-size: 16px; font-weight: 600;">Bảo Mật Tài Khoản</h3>
+                  </div>
+                  <p style="color: #742a2a; margin: 0; font-size: 14px; line-height: 1.5;">
+                    Để bảo vệ tài khoản của bạn, chúng tôi khuyến nghị:
+                  </p>
+                  <ul style="color: #742a2a; margin: 10px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.5;">
+                    <li>Sử dụng mật khẩu mạnh và duy nhất</li>
+                    <li>Không chia sẻ thông tin đăng nhập</li>
+                    <li>Đăng xuất khỏi các thiết bị công cộng</li>
+                  </ul>
+                </div>
+                
+                <!-- Footer -->
+                <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 1px solid #e2e8f0;">
+                  <p style="color: #718096; margin: 0 0 10px; font-size: 14px;">
+                    Nếu bạn gặp vấn đề, vui lòng liên hệ hỗ trợ
+                  </p>
+                  <p style="color: #a0aec0; margin: 0; font-size: 12px;">
+                    © 2024 Ứng Dụng Nhắn Tin Bảo Mật Niel. Tất cả quyền được bảo lưu.
+                  </p>
+                </div>
+              </div>
             </div>
-            <p>Mã này có hiệu lực trong 5 phút.</p>
-            <p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
-          </div>
+          </body>
+          </html>
         `
       })
     });
