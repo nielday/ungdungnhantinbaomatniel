@@ -407,4 +407,4 @@ router.post('/verify-login', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = { router, sendOTPEmail };

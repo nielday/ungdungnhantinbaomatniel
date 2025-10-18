@@ -216,7 +216,7 @@ router.post('/send-verification-otp', async (req, res) => {
 
     // Send OTP email
     const { sendOTPEmail } = require('./auth');
-    await sendOTPEmail(user.email, otpCode, 'Xác thực tài khoản');
+    await sendOTPEmail(user.email, otpCode);
 
     res.json({ 
       message: 'Mã OTP đã được gửi đến email của bạn',
