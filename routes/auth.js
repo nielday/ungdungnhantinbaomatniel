@@ -2,32 +2,40 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const { User } = require('../models');
 
 const router = express.Router();
 
-// Email configuration for Resend
-console.log('Resend config debug:', {
-  apiKey: process.env.RESEND_API_KEY ? 'Present' : 'Missing',
-  fromEmail: process.env.RESEND_FROM_EMAIL || 'Missing'
+// Email configuration for Brevo (Sendinblue)
+console.log('Brevo config debug:', {
+  apiKey: process.env.BREVO_API_KEY ? 'Present' : 'Missing',
+  fromEmail: process.env.BREVO_FROM_EMAIL || 'Missing'
 });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransporter({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS
+  }
+});
 
 // Generate OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send OTP email using Resend
+// Send OTP email using Brevo SMTP
 const sendOTPEmail = async (email, otp) => {
   try {
     console.log('Attempting to send email to:', email);
     console.log('OTP code:', otp);
     
-    const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev',
+    await transporter.sendMail({
+      from: process.env.BREVO_FROM_EMAIL,
       to: email,
       subject: 'Mã OTP xác thực tài khoản',
       html: `
@@ -42,11 +50,6 @@ const sendOTPEmail = async (email, otp) => {
         </div>
       `
     });
-    
-    if (error) {
-      console.error('Resend error:', error);
-      return false;
-    }
     
     console.log('Email sent successfully to:', email);
     return true;
