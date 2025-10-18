@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, User, Phone, Mail, Camera, Save } from 'lucide-react';
+import { X, User, Phone, Mail, Camera, Save, Shield, CheckCircle } from 'lucide-react';
 
 interface User {
   id: string;
@@ -11,6 +11,7 @@ interface User {
   fullName: string;
   age: number;
   avatar?: string;
+  isVerified?: boolean;
 }
 
 interface ProfileModalProps {
@@ -28,6 +29,9 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
   const [avatar, setAvatar] = useState(user?.avatar || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
 
   // Update avatar when user changes
   useEffect(() => {
@@ -176,6 +180,89 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
     }
   };
 
+  const handleSendVerificationOTP = async () => {
+    setVerifying(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Không tìm thấy token xác thực');
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/send-verification-otp`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gửi OTP thất bại');
+      }
+
+      setOtpSent(true);
+    } catch (err: any) {
+      console.error('Error sending verification OTP:', err);
+      setError(err.message || 'Gửi OTP thất bại');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleVerifyAccount = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Không tìm thấy token xác thực');
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/verify-account`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            otpCode: otpCode
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Xác thực thất bại');
+      }
+
+      const updatedUser = await response.json();
+      console.log('Account verified successfully:', updatedUser);
+      
+      if (onUserUpdate) {
+        onUserUpdate(updatedUser.user || updatedUser);
+      }
+      
+      setOtpSent(false);
+      setOtpCode('');
+    } catch (err: any) {
+      console.error('Error verifying account:', err);
+      setError(err.message || 'Xác thực thất bại');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <motion.div
@@ -291,6 +378,99 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">Email không thể thay đổi</p>
+            </div>
+
+            {/* Account Verification Status */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <Shield className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Trạng thái tài khoản</span>
+                </div>
+                {user?.isVerified ? (
+                  <div className="flex items-center space-x-1 text-green-600">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="text-sm font-medium">Đã xác thực</span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-orange-600 font-medium">Chưa xác thực</span>
+                )}
+              </div>
+
+              {!user?.isVerified && (
+                <div className="space-y-3">
+                  {!otpSent ? (
+                    <button
+                      onClick={handleSendVerificationOTP}
+                      disabled={verifying}
+                      className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                    >
+                      {verifying ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Đang gửi...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="w-4 h-4" />
+                          <span>Gửi mã xác thực</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                        <p>Mã OTP đã được gửi đến email <strong>{user?.email}</strong></p>
+                        <p className="text-xs text-gray-500 mt-1">Vui lòng kiểm tra hộp thư và nhập mã xác thực</p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Mã xác thực (OTP)
+                        </label>
+                        <input
+                          type="text"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Nhập mã OTP 6 chữ số"
+                          maxLength={6}
+                        />
+                      </div>
+                      
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handleVerifyAccount}
+                          disabled={loading || !otpCode.trim()}
+                          className="flex-1 bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                        >
+                          {loading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Đang xác thực...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Xác thực</span>
+                            </>
+                          )}
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            setOtpSent(false);
+                            setOtpCode('');
+                          }}
+                          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

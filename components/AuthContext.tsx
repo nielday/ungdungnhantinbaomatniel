@@ -9,6 +9,7 @@ interface User {
   fullName: string;
   age: number;
   avatar?: string;
+  isVerified?: boolean;
 }
 
 interface AuthContextType {

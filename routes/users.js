@@ -194,4 +194,88 @@ router.get('/phone/:phoneNumber', async (req, res) => {
   }
 });
 
+// Send verification OTP for account verification
+router.post('/send-verification-otp', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    // Generate OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update user with OTP
+    user.otpCode = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send OTP email
+    const { sendOTPEmail } = require('./auth');
+    await sendOTPEmail(user.email, otpCode, 'Xác thực tài khoản');
+
+    res.json({ 
+      message: 'Mã OTP đã được gửi đến email của bạn',
+      email: user.email 
+    });
+  } catch (error) {
+    console.error('Send verification OTP error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Verify account with OTP
+router.post('/verify-account', async (req, res) => {
+  try {
+    const { otpCode } = req.body;
+    const userId = req.user.id;
+
+    if (!otpCode) {
+      return res.status(400).json({ message: 'Vui lòng nhập mã OTP' });
+    }
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    // Check if OTP is valid
+    if (!user.otpCode || user.otpCode !== otpCode) {
+      return res.status(400).json({ message: 'Mã OTP không đúng' });
+    }
+
+    // Check if OTP is expired
+    if (user.otpExpires && new Date() > user.otpExpires) {
+      return res.status(400).json({ message: 'Mã OTP đã hết hạn' });
+    }
+
+    // Verify account
+    user.isVerified = true;
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.json({ 
+      message: 'Tài khoản đã được xác thực thành công',
+      user: {
+        id: user._id,
+        phoneNumber: user.phoneNumber,
+        email: user.email,
+        fullName: user.fullName,
+        age: user.age,
+        avatar: user.avatar,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error('Verify account error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 module.exports = router;
