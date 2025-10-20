@@ -236,7 +236,7 @@ router.post('/verify-otp', async (req, res) => {
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30m' }
     );
 
     res.json({
@@ -385,7 +385,7 @@ router.post('/verify-login', async (req, res) => {
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30m' }
     );
 
     res.json({
