@@ -385,10 +385,15 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   // Handle camera capture
   const handleCameraCapture = async (imageBlob: Blob) => {
     try {
+      console.log('Handling camera capture, blob size:', imageBlob.size, 'type:', imageBlob.type);
+      
       const formData = new FormData();
       formData.append('files', imageBlob, 'camera-capture.jpg');
+      console.log('FormData created with file');
 
       const token = localStorage.getItem('token');
+      console.log('Token available:', !!token);
+      
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
@@ -400,14 +405,22 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         }
       );
 
+      console.log('Upload response status:', response.status);
+      
       if (response.ok) {
         const newMsg = await response.json();
+        console.log('Camera capture uploaded successfully:', newMsg);
         // Don't add message here - Socket.io will handle it
         onUpdateConversations();
         setShowCameraCapture(false);
+      } else {
+        const errorData = await response.json();
+        console.error('Upload failed:', errorData);
+        alert('Không thể gửi ảnh: ' + (errorData.message || 'Lỗi không xác định'));
       }
     } catch (error) {
       console.error('Error uploading camera capture:', error);
+      alert('Có lỗi xảy ra khi gửi ảnh: ' + error);
     }
   };
 

@@ -70,15 +70,20 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
 
   // Capture photo
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      console.error('Video or canvas ref not available');
+      return;
+    }
 
     setIsCapturing(true);
+    console.log('Starting photo capture...');
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
 
     if (!context) {
+      console.error('Canvas context not available');
       setIsCapturing(false);
       return;
     }
@@ -86,6 +91,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    console.log('Canvas dimensions set:', canvas.width, 'x', canvas.height);
 
     // Draw video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -93,9 +99,16 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
     // Convert to blob
     canvas.toBlob((blob) => {
       if (blob) {
+        console.log('Photo captured successfully, blob size:', blob.size);
         const imageUrl = URL.createObjectURL(blob);
         setCapturedImage(imageUrl);
         setIsCapturing(false);
+      } else {
+        console.error('Failed to create blob from canvas');
+        setIsCapturing(false);
+        if (onError) {
+          onError('Không thể chụp ảnh. Vui lòng thử lại.');
+        }
       }
     }, 'image/jpeg', 0.9);
   };
@@ -110,15 +123,30 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
 
   // Confirm and send photo
   const confirmPhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!capturedImage) {
+      console.error('No captured image to confirm');
+      return;
+    }
 
-    const canvas = canvasRef.current;
-    canvas.toBlob((blob) => {
-      if (blob) {
+    console.log('Confirming photo, captured image URL:', capturedImage);
+
+    // Convert the captured image URL back to blob
+    fetch(capturedImage)
+      .then(response => {
+        console.log('Fetch response status:', response.status);
+        return response.blob();
+      })
+      .then(blob => {
+        console.log('Blob created successfully, size:', blob.size);
         onCapture(blob);
         handleClose();
-      }
-    }, 'image/jpeg', 0.9);
+      })
+      .catch(error => {
+        console.error('Error converting image to blob:', error);
+        if (onError) {
+          onError('Không thể xử lý ảnh. Vui lòng thử lại.');
+        }
+      });
   };
 
   // Switch camera
