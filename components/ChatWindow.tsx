@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSocket } from './SocketContext';
 import SimpleEmojiPicker from './SimpleEmojiPicker';
+import CameraCapture from './CameraCapture';
 
 // Audio Player Component
 const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string }) => {
@@ -81,7 +82,8 @@ import {
   Pause,
   ArrowLeft,
   Users,
-  Trash2
+  Trash2,
+  Camera
 } from 'lucide-react';
 
 interface Message {
@@ -134,6 +136,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [isTyping, setIsTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFilePicker, setShowFilePicker] = useState(false);
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -376,6 +379,35 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       }
     } catch (error) {
       console.error('Error uploading audio:', error);
+    }
+  };
+
+  // Handle camera capture
+  const handleCameraCapture = async (imageBlob: Blob) => {
+    try {
+      const formData = new FormData();
+      formData.append('files', imageBlob, 'camera-capture.jpg');
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        }
+      );
+
+      if (response.ok) {
+        const newMsg = await response.json();
+        // Don't add message here - Socket.io will handle it
+        onUpdateConversations();
+        setShowCameraCapture(false);
+      }
+    } catch (error) {
+      console.error('Error uploading camera capture:', error);
     }
   };
 
@@ -765,6 +797,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 <div className={`flex ${isMobile ? 'flex-col space-y-1' : 'space-x-2'}`}>
                   <button
                     type="button"
+                    onClick={() => setShowCameraCapture(true)}
+                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Camera</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
                   >
@@ -843,6 +883,17 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         onEmojiClick={(emoji) => {
           setNewMessage(prev => prev + emoji);
           setShowEmojiPicker(false);
+        }}
+      />
+
+      {/* Camera Capture */}
+      <CameraCapture
+        isOpen={showCameraCapture}
+        onClose={() => setShowCameraCapture(false)}
+        onCapture={handleCameraCapture}
+        onError={(error) => {
+          console.error('Camera error:', error);
+          alert(error);
         }}
       />
     </div>
