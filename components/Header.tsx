@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, LogOut, Settings, BookOpen, ChevronDown } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import SettingsModal from './SettingsModal';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from './LanguageSwitcher';
+import SlackLogo from './SlackLogo';
 
 const Header: React.FC = () => {
   const t = useTranslations();
@@ -22,8 +23,8 @@ const Header: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+              <SlackLogo size={32} />
             </div>
             <h1 className="text-xl font-bold text-gray-800 dark:text-white">Ứng Dụng Nhắn Tin Niel</h1>
           </div>
