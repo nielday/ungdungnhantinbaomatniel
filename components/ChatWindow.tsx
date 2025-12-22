@@ -6,11 +6,28 @@ import { useSocket } from './SocketContext';
 import SimpleEmojiPicker from './SimpleEmojiPicker';
 import CameraCapture from './CameraCapture';
 
+// Helper function to normalize file URLs (used by AudioPlayer)
+const normalizeFileUrlHelper = (fileUrl: string): string => {
+  if (!fileUrl) return '';
+  
+  if (fileUrl.startsWith('http')) {
+    if (fileUrl.includes('railway.app/uploads/')) {
+      const uploadsPath = fileUrl.split('/uploads/')[1];
+      return `/uploads/${uploadsPath}`;
+    }
+    return fileUrl;
+  }
+  
+  return fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+};
+
 // Audio Player Component
 const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string }) => {
   const [duration, setDuration] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  const normalizedUrl = normalizeFileUrlHelper(fileUrl);
 
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
@@ -21,7 +38,7 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
   };
 
   const handleError = () => {
-    console.error('Audio load error for:', fileName);
+    console.error('Audio load error for:', fileName, 'URL:', normalizedUrl);
     setIsLoaded(false);
   };
 
@@ -36,24 +53,15 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
         onError={handleError}
       >
         <source 
-          src={fileUrl.startsWith('http') 
-            ? fileUrl 
-            : `https://ungdungnhantinbaomatniel-production.up.railway.app${fileUrl}`
-          } 
+          src={normalizedUrl}
           type="audio/mpeg"
         />
         <source 
-          src={fileUrl.startsWith('http') 
-            ? fileUrl 
-            : `https://ungdungnhantinbaomatniel-production.up.railway.app${fileUrl}`
-          } 
+          src={normalizedUrl}
           type="audio/wav"
         />
         <source 
-          src={fileUrl.startsWith('http') 
-            ? fileUrl 
-            : `https://ungdungnhantinbaomatniel-production.up.railway.app${fileUrl}`
-          } 
+          src={normalizedUrl}
           type="audio/ogg"
         />
         Trình duyệt của bạn không hỗ trợ phát audio.
@@ -476,6 +484,25 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     }
   };
 
+  // Helper function to normalize file URLs - use Vercel proxy for uploads
+  const normalizeFileUrl = (fileUrl: string): string => {
+    if (!fileUrl) return '';
+    
+    // If already a full HTTP URL, check if it's Railway and convert to relative
+    if (fileUrl.startsWith('http')) {
+      if (fileUrl.includes('railway.app/uploads/')) {
+        // Convert Railway URL to relative path for Vercel proxy
+        const uploadsPath = fileUrl.split('/uploads/')[1];
+        return `/uploads/${uploadsPath}`;
+      }
+      // Keep other full URLs as-is
+      return fileUrl;
+    }
+    
+    // If relative path, ensure it starts with /
+    return fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('vi-VN', { 
@@ -639,47 +666,54 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   {message.messageType === 'image' && message.attachments && (
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
-                      {message.attachments.map((attachment, index) => (
-                        <div key={index} className="relative">
-                          <img 
-                            src={attachment.fileUrl.startsWith('http') 
-                              ? attachment.fileUrl 
-                              : `https://ungdungnhantinbaomatniel-production.up.railway.app${attachment.fileUrl}`
-                            } 
-                            alt={attachment.fileName}
-                            className="max-w-full h-auto rounded"
-                            onError={(e) => {
-                              console.error('Image load error:', attachment.fileUrl);
-                              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjOTk5Ii8+Cjwvc3ZnPgo=';
-                            }}
-                          />
-                        </div>
-                      ))}
+                      {message.attachments.map((attachment, index) => {
+                        const imageUrl = normalizeFileUrl(attachment.fileUrl);
+                        
+                        return (
+                          <div key={index} className="relative">
+                            <img 
+                              src={imageUrl}
+                              alt={attachment.fileName}
+                              className="max-w-full h-auto rounded"
+                              loading="lazy"
+                              onError={(e) => {
+                                console.error('Image load error:', attachment.fileUrl, 'Normalized:', imageUrl);
+                                // Fallback to Railway URL if Vercel proxy fails
+                                if (!imageUrl.startsWith('http')) {
+                                  e.currentTarget.src = `https://ungdungnhantinbaomatniel-production.up.railway.app${imageUrl}`;
+                                } else {
+                                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjOTk5Ii8+Cjwvc3ZnPgo=';
+                                }
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   
                   {message.messageType === 'file' && message.attachments && (
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
-                      {message.attachments.map((attachment, index) => (
-                        <div key={index} className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
-                          <File className="w-4 h-4" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{attachment.fileName}</p>
-                            <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
+                      {message.attachments.map((attachment, index) => {
+                        const fileUrl = normalizeFileUrl(attachment.fileUrl);
+                        return (
+                          <div key={index} className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
+                            <File className="w-4 h-4" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{attachment.fileName}</p>
+                              <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
+                            </div>
+                            <a 
+                              href={fileUrl}
+                              download={attachment.fileName}
+                              className="p-1 hover:bg-gray-200 rounded"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
                           </div>
-                          <a 
-                            href={attachment.fileUrl.startsWith('http') 
-                              ? attachment.fileUrl 
-                              : `https://ungdungnhantinbaomatniel-production.up.railway.app${attachment.fileUrl}`
-                            }
-                            download={attachment.fileName}
-                            className="p-1 hover:bg-gray-200 rounded"
-                          >
-                            <Download className="w-4 h-4" />
-                          </a>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   
