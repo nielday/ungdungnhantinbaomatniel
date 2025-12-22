@@ -178,6 +178,12 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     scrollToBottom();
   }, [messages]);
 
+  // Clear typing indicator when conversation changes
+  useEffect(() => {
+    clearTypingIndicator();
+    setIsTyping(false);
+  }, [conversation._id]);
+
   // Socket.io event listeners
   useEffect(() => {
     if (!socket) return;
@@ -218,10 +224,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       socket.off('user-typing', handleTyping);
       socket.off('message-deleted', handleMessageDeleted);
       
-      // Clear typing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      // Clear typing indicator when leaving conversation
+      clearTypingIndicator();
     };
   }, [socket, conversation._id, currentUser?.id, onUpdateConversations]);
 
@@ -289,6 +293,21 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     sendMessage(newMessage);
   };
 
+  // Clear typing indicator
+  const clearTypingIndicator = () => {
+    if (socket && currentUser?.id) {
+      socket.emit('typing', {
+        conversationId: conversation._id,
+        userId: currentUser.id,
+        isTyping: false
+      });
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  };
+
   // Handle typing indicator with debounce
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
@@ -306,22 +325,19 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           isTyping: true
         });
         
-        // Set timeout to stop typing indicator
+        // Set timeout to stop typing indicator after 2 seconds of no typing
         typingTimeoutRef.current = setTimeout(() => {
-          socket.emit('typing', {
-            conversationId: conversation._id,
-            userId: currentUser?.id,
-            isTyping: false
-          });
-        }, 1000);
+          clearTypingIndicator();
+        }, 2000);
       } else {
-        socket.emit('typing', {
-          conversationId: conversation._id,
-          userId: currentUser?.id,
-          isTyping: false
-        });
+        clearTypingIndicator();
       }
     }
+  };
+
+  // Handle input blur - clear typing when user leaves input
+  const handleInputBlur = () => {
+    clearTypingIndicator();
   };
 
   const handleFileUpload = async (files: FileList) => {
@@ -802,6 +818,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               type="text"
               value={newMessage}
               onChange={handleTyping}
+              onBlur={handleInputBlur}
               placeholder="Nhập tin nhắn..."
               className={`w-full ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'} border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
             />
