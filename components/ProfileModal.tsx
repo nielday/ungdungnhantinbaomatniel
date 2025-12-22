@@ -264,41 +264,41 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4"
+        className="bg-white rounded-lg shadow-2xl w-full max-w-sm mx-4 max-h-[90vh] overflow-y-auto"
       >
-        <div className="p-6">
+        <div className="p-4">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-800">Thông tin cá nhân</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">Thông tin cá nhân</h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <X className="w-4 h-4 text-gray-600" />
             </button>
           </div>
 
           {/* Avatar Section */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-4">
             <div className="relative inline-block">
-              <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
                 {avatar ? (
                   <img 
                     src={avatar} 
                     alt={user?.fullName}
-                    className="w-24 h-24 rounded-full object-cover"
+                    className="w-16 h-16 rounded-full object-cover"
                   />
                 ) : (
-                  <User className="w-12 h-12 text-white" />
+                  <User className="w-8 h-8 text-white" />
                 )}
               </div>
-              <label className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full cursor-pointer hover:bg-blue-600 transition-colors">
-                <Camera className="w-4 h-4" />
+              <label className="absolute bottom-0 right-0 bg-blue-500 text-white p-1.5 rounded-full cursor-pointer hover:bg-blue-600 transition-colors">
+                <Camera className="w-3 h-3" />
                 <input
                   type="file"
                   accept="image/*"
@@ -307,40 +307,40 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                 />
               </label>
             </div>
-            <p className="text-sm text-gray-500">Nhấn để thay đổi ảnh đại diện</p>
+            <p className="text-xs text-gray-500">Nhấn để thay đổi ảnh đại diện</p>
           </div>
 
           {/* Form */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Họ và tên
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <User className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Nhập họ và tên"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Tuổi
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <User className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="number"
                   name="age"
                   value={formData.age}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Nhập tuổi"
                   min="1"
                   max="120"
@@ -349,90 +349,90 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Số điện thoại
               </label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Phone className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="tel"
                   value={user?.phoneNumber || ''}
                   disabled
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Số điện thoại không thể thay đổi</p>
+              <p className="text-xs text-gray-500 mt-0.5">Số điện thoại không thể thay đổi</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Mail className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="email"
                   value={user?.email || ''}
                   disabled
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Email không thể thay đổi</p>
+              <p className="text-xs text-gray-500 mt-0.5">Email không thể thay đổi</p>
             </div>
 
             {/* Account Verification Status */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <Shield className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Trạng thái tài khoản</span>
+            <div className="border-t pt-3 mt-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-1.5">
+                  <Shield className="w-4 h-4 text-gray-600" />
+                  <span className="text-xs font-medium text-gray-700">Trạng thái tài khoản</span>
                 </div>
                 {user?.isVerified ? (
                   <div className="flex items-center space-x-1 text-green-600">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">Đã xác thực</span>
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">Đã xác thực</span>
                   </div>
                 ) : (
-                  <span className="text-sm text-orange-600 font-medium">Chưa xác thực</span>
+                  <span className="text-xs text-orange-600 font-medium">Chưa xác thực</span>
                 )}
               </div>
 
               {!user?.isVerified && (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {!otpSent ? (
                     <button
                       onClick={handleSendVerificationOTP}
                       disabled={verifying}
-                      className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                      className="w-full bg-blue-500 text-white py-1.5 px-3 text-xs rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1.5"
                     >
                       {verifying ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                           <span>Đang gửi...</span>
                         </>
                       ) : (
                         <>
-                          <Shield className="w-4 h-4" />
+                          <Shield className="w-3 h-3" />
                           <span>Gửi mã xác thực</span>
                         </>
                       )}
                     </button>
                   ) : (
-                    <div className="space-y-3">
-                      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                    <div className="space-y-2">
+                      <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded-lg">
                         <p>Mã OTP đã được gửi đến email <strong>{user?.email}</strong></p>
-                        <p className="text-xs text-gray-500 mt-1">Vui lòng kiểm tra hộp thư và nhập mã xác thực</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Vui lòng kiểm tra hộp thư và nhập mã xác thực</p>
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
                           Mã xác thực (OTP)
                         </label>
                         <input
                           type="text"
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="Nhập mã OTP 6 chữ số"
                           maxLength={6}
                         />
@@ -442,16 +442,16 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                         <button
                           onClick={handleVerifyAccount}
                           disabled={loading || !otpCode.trim()}
-                          className="flex-1 bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                          className="flex-1 bg-green-500 text-white py-1.5 px-3 text-xs rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1.5"
                         >
                           {loading ? (
                             <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                               <span>Đang xác thực...</span>
                             </>
                           ) : (
                             <>
-                              <CheckCircle className="w-4 h-4" />
+                              <CheckCircle className="w-3 h-3" />
                               <span>Xác thực</span>
                             </>
                           )}
@@ -462,7 +462,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                             setOtpSent(false);
                             setOtpCode('');
                           }}
-                          className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                         >
                           Hủy
                         </button>
@@ -475,29 +475,29 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-xs mt-3">
               {error}
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex space-x-3 mt-6">
+          <div className="flex space-x-2 mt-4">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Hủy
             </button>
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+              className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-1.5"
             >
               {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
               ) : (
                 <>
-                  <Save className="w-4 h-4" />
+                  <Save className="w-3.5 h-3.5" />
                   <span>Lưu</span>
                 </>
               )}
