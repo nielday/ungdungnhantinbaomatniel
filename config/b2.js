@@ -92,8 +92,6 @@ async function generatePresignedUrl(fileUrl, expiresIn = 86400) { // 24 hours de
       key = urlParts.slice(3).join('/');
     }
     
-    const { GetObjectCommand } = require('@aws-sdk/client-s3');
-    
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key
