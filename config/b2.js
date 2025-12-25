@@ -2,22 +2,44 @@ const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = re
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 require('dotenv').config();
 
+// Check if B2 is configured
+const isB2Configured = () => {
+  return !!(process.env.B2_KEY_ID && 
+            process.env.B2_APPLICATION_KEY && 
+            process.env.B2_BUCKET_NAME &&
+            process.env.B2_ENDPOINT &&
+            process.env.B2_REGION);
+};
+
 // Backblaze B2 Configuration
 // B2 is S3-compatible, so we use AWS SDK
-const b2Client = new S3Client({
-  endpoint: process.env.B2_ENDPOINT || 'https://s3.us-west-004.backblazeb2.com',
-  region: process.env.B2_REGION || 'us-west-004',
-  credentials: {
-    accessKeyId: process.env.B2_KEY_ID,
-    secretAccessKey: process.env.B2_APPLICATION_KEY
-  },
-  forcePathStyle: true // Required for B2
-});
+let b2Client = null;
+let BUCKET_NAME = null;
 
-const BUCKET_NAME = process.env.B2_BUCKET_NAME;
+if (isB2Configured()) {
+  console.log('✅ Backblaze B2 configured, initializing client...');
+  b2Client = new S3Client({
+    endpoint: process.env.B2_ENDPOINT,
+    region: process.env.B2_REGION,
+    credentials: {
+      accessKeyId: process.env.B2_KEY_ID,
+      secretAccessKey: process.env.B2_APPLICATION_KEY
+    },
+    forcePathStyle: true // Required for B2
+  });
+  BUCKET_NAME = process.env.B2_BUCKET_NAME;
+  console.log('✅ B2 client initialized for bucket:', BUCKET_NAME);
+} else {
+  console.warn('⚠️ Backblaze B2 not configured. File uploads will not work.');
+  console.warn('Required env vars: B2_KEY_ID, B2_APPLICATION_KEY, B2_BUCKET_NAME, B2_ENDPOINT, B2_REGION');
+}
 
 // Upload file to B2
 async function uploadToB2(fileBuffer, fileName, mimeType, folder = 'uploads') {
+  if (!b2Client || !BUCKET_NAME) {
+    throw new Error('Backblaze B2 is not configured. Please set B2 environment variables.');
+  }
+  
   try {
     const key = `${folder}/${Date.now()}-${fileName}`;
     
@@ -46,6 +68,11 @@ async function uploadToB2(fileBuffer, fileName, mimeType, folder = 'uploads') {
 
 // Delete file from B2
 async function deleteFromB2(fileUrl) {
+  if (!b2Client || !BUCKET_NAME) {
+    console.warn('B2 not configured, skipping delete');
+    return false;
+  }
+  
   try {
     // Extract key from URL
     // For private buckets: https://{endpoint}/file/{bucketName}/{key}
@@ -78,6 +105,10 @@ async function deleteFromB2(fileUrl) {
 
 // Generate presigned URL for private bucket files
 async function generatePresignedUrl(fileUrl, expiresIn = 86400) { // 24 hours default
+  if (!b2Client || !BUCKET_NAME) {
+    throw new Error('Backblaze B2 is not configured');
+  }
+  
   try {
     // Extract key from B2 file URL
     // Format: https://{endpoint}/file/{bucketName}/{key}
@@ -111,6 +142,7 @@ module.exports = {
   uploadToB2,
   deleteFromB2,
   generatePresignedUrl,
-  BUCKET_NAME
+  BUCKET_NAME,
+  isB2Configured
 };
 
