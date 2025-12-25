@@ -4,23 +4,12 @@ const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const { Message, Conversation, Group } = require('../models');
+const { uploadToB2, deleteFromB2 } = require('../config/b2');
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = process.env.UPLOAD_PATH || './uploads';
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configure multer for file uploads (memory storage for B2)
+const storage = multer.memoryStorage(); // Store in memory instead of disk
 
 const upload = multer({
   storage: storage,
@@ -276,13 +265,34 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
       });
     }
 
-    // Process attachments
-    const attachments = req.files.map(file => ({
-      fileName: file.originalname,
-      fileUrl: `/uploads/${file.filename}`,
-      fileSize: file.size,
-      mimeType: file.mimetype
-    }));
+    // Upload files to B2 and process attachments
+    const attachments = [];
+    for (const file of req.files) {
+      try {
+        // Upload to B2
+        const fileUrl = await uploadToB2(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          'messages'
+        );
+        
+        attachments.push({
+          fileName: file.originalname,
+          fileUrl: fileUrl, // B2 public URL
+          fileSize: file.size,
+          mimeType: file.mimetype
+        });
+        
+        console.log('File uploaded to B2:', fileUrl);
+      } catch (uploadError) {
+        console.error('Failed to upload file to B2:', uploadError);
+        return res.status(500).json({
+          message: 'Không thể tải file lên',
+          error: uploadError.message
+        });
+      }
+    }
 
     // Determine message type based on file type
     const firstFile = req.files[0];
@@ -354,54 +364,44 @@ router.use((error, req, res, next) => {
   next(error);
 });
 
-// Clean up old files that no longer exist
+// Clean up old files (B2 version - for migrating from local to B2)
 router.get('/cleanup', async (req, res) => {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    const uploadsPath = path.join(__dirname, '../uploads');
+    // This endpoint is now primarily for reference
+    // B2 files don't need cleanup like local files
+    // Files are stored permanently on B2
     
-    // Get all files in uploads directory
-    const existingFiles = fs.readdirSync(uploadsPath).filter(file => file !== '.gitkeep');
-    console.log('Existing files:', existingFiles);
-    
-    // Find messages with attachments
     const messages = await Message.find({ 
       attachments: { $exists: true, $ne: [] },
       isDeleted: false 
     });
     
-    let cleanedCount = 0;
-    const filesToClean = [];
+    const stats = {
+      totalMessages: messages.length,
+      totalAttachments: 0,
+      b2Files: 0,
+      localFiles: 0
+    };
     
     for (const message of messages) {
       if (message.attachments && message.attachments.length > 0) {
-        const validAttachments = [];
+        stats.totalAttachments += message.attachments.length;
         
         for (const attachment of message.attachments) {
-          const fileName = attachment.fileUrl.split('/').pop();
-          if (existingFiles.includes(fileName)) {
-            validAttachments.push(attachment);
+          if (attachment.fileUrl.startsWith('http')) {
+            stats.b2Files++;
           } else {
-            console.log('File not found, removing:', fileName);
-            filesToClean.push(fileName);
+            stats.localFiles++;
           }
-        }
-        
-        if (validAttachments.length !== message.attachments.length) {
-          message.attachments = validAttachments;
-          await message.save();
-          cleanedCount++;
         }
       }
     }
     
     res.json({
       status: 'OK',
-      message: `Cleaned up ${cleanedCount} messages`,
-      filesToClean,
-      existingFiles,
-      cleanedCount
+      message: 'File statistics',
+      stats,
+      note: 'B2 files are stored permanently and do not need cleanup'
     });
   } catch (error) {
     console.error('Cleanup error:', error);
@@ -430,6 +430,19 @@ router.delete('/:messageId', async (req, res) => {
       return res.status(403).json({
         message: 'Bạn chỉ có thể xóa tin nhắn của chính mình'
       });
+    }
+
+    // Delete attachments from B2 before soft-deleting message
+    if (message.attachments && message.attachments.length > 0) {
+      for (const attachment of message.attachments) {
+        try {
+          await deleteFromB2(attachment.fileUrl);
+          console.log('Deleted file from B2:', attachment.fileUrl);
+        } catch (error) {
+          console.error('Failed to delete file from B2:', error);
+          // Continue anyway - better to delete message reference than fail
+        }
+      }
     }
 
     // Soft delete - mark as deleted instead of actually deleting

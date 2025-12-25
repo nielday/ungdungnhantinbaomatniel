@@ -3,23 +3,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { User } = require('../models');
+const { uploadToB2, deleteFromB2 } = require('../config/b2');
 
 const router = express.Router();
 
-// Configure multer for avatar upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = process.env.UPLOAD_PATH || './uploads';
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configure multer for avatar upload (memory storage for B2)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -108,22 +97,41 @@ router.post('/avatar', upload.single('avatar'), async (req, res) => {
       });
     }
 
-    // Delete old avatar if exists
-    if (user.avatar) {
-      const oldAvatarPath = path.join(process.env.UPLOAD_PATH || './uploads', path.basename(user.avatar));
-      if (fs.existsSync(oldAvatarPath)) {
-        fs.unlinkSync(oldAvatarPath);
+    // Delete old avatar from B2 if exists
+    if (user.avatar && user.avatar.startsWith('http')) {
+      try {
+        await deleteFromB2(user.avatar);
+        console.log('Deleted old avatar from B2:', user.avatar);
+      } catch (error) {
+        console.error('Failed to delete old avatar from B2:', error);
+        // Continue anyway
       }
     }
 
-    // Update user avatar
-    user.avatar = `/uploads/${req.file.filename}`;
-    await user.save();
+    // Upload new avatar to B2
+    try {
+      const avatarUrl = await uploadToB2(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        'avatars'
+      );
 
-    res.json({
-      message: 'Cập nhật ảnh đại diện thành công',
-      avatar: user.avatar
-    });
+      // Update user avatar
+      user.avatar = avatarUrl;
+      await user.save();
+
+      res.json({
+        message: 'Cập nhật ảnh đại diện thành công',
+        avatar: user.avatar
+      });
+    } catch (uploadError) {
+      console.error('Failed to upload avatar to B2:', uploadError);
+      return res.status(500).json({
+        message: 'Không thể tải ảnh lên',
+        error: uploadError.message
+      });
+    }
   } catch (error) {
     console.error('Upload avatar error:', error);
     res.status(500).json({

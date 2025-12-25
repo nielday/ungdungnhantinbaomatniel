@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { Group, User } = require('../models');
+const { uploadToB2, deleteFromB2 } = require('../config/b2');
 
 const router = express.Router();
 
@@ -11,20 +12,8 @@ const getSocketIO = () => {
   return require('../server').io;
 };
 
-// Configure multer for avatar uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = process.env.UPLOAD_PATH || './uploads';
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'group-avatar-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configure multer for avatar uploads (memory storage for B2)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -411,60 +400,73 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
     });
 
     if (!group) {
-      // Delete uploaded file if group not found
-      fs.unlinkSync(req.file.path);
       return res.status(404).json({
         message: 'Nhóm không tồn tại hoặc bạn không có quyền chỉnh sửa'
       });
     }
 
-    // Delete old avatar if exists
-    if (group.avatar) {
-      const oldAvatarPath = path.join(process.env.UPLOAD_PATH || './uploads', path.basename(group.avatar));
-      if (fs.existsSync(oldAvatarPath)) {
-        fs.unlinkSync(oldAvatarPath);
+    // Delete old avatar from B2 if exists
+    if (group.avatar && group.avatar.startsWith('http')) {
+      try {
+        await deleteFromB2(group.avatar);
+        console.log('Deleted old group avatar from B2:', group.avatar);
+      } catch (error) {
+        console.error('Failed to delete old group avatar from B2:', error);
+        // Continue anyway
       }
     }
 
-    // Update group avatar
-    group.avatar = `/uploads/${req.file.filename}`;
-    await group.save();
-
-    // Populate full member information before transforming
-    await group.populate('members.user', 'fullName avatar phoneNumber');
-    await group.populate('createdBy', 'fullName avatar phoneNumber');
-
-    // Transform group to include full member information
-    const groupObj = group.toObject();
-    groupObj.members = groupObj.members.map(member => ({
-      ...member,
-      fullName: member.user?.fullName || 'Unknown',
-      phoneNumber: member.user?.phoneNumber || '',
-      avatar: member.user?.avatar || null,
-      _id: member.user?._id || member.user
-    }));
-
-    res.json(groupObj);
-    
-    // Emit socket event to notify all group members
+    // Upload new avatar to B2
     try {
-      const io = getSocketIO();
-      if (io) {
-        io.to(`conversation-${groupId}`).emit('group-info-updated', {
-          conversationId: groupId,
-          group: groupObj
-        });
-        console.log('Emitted group-updated event for avatar upload:', groupId);
+      const avatarUrl = await uploadToB2(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        'group-avatars'
+      );
+
+      // Update group avatar
+      group.avatar = avatarUrl;
+      await group.save();
+
+      // Populate full member information before transforming
+      await group.populate('members.user', 'fullName avatar phoneNumber');
+      await group.populate('createdBy', 'fullName avatar phoneNumber');
+
+      // Transform group to include full member information
+      const groupObj = group.toObject();
+      groupObj.members = groupObj.members.map(member => ({
+        ...member,
+        fullName: member.user?.fullName || 'Unknown',
+        phoneNumber: member.user?.phoneNumber || '',
+        avatar: member.user?.avatar || null,
+        _id: member.user?._id || member.user
+      }));
+
+      res.json(groupObj);
+      
+      // Emit socket event to notify all group members
+      try {
+        const io = getSocketIO();
+        if (io) {
+          io.to(`conversation-${groupId}`).emit('group-info-updated', {
+            conversationId: groupId,
+            group: groupObj
+          });
+          console.log('Emitted group-updated event for avatar upload:', groupId);
+        }
+      } catch (socketError) {
+        console.error('Socket emit error:', socketError);
       }
-    } catch (socketError) {
-      console.error('Socket emit error:', socketError);
+    } catch (uploadError) {
+      console.error('Failed to upload group avatar to B2:', uploadError);
+      return res.status(500).json({
+        message: 'Không thể tải ảnh lên',
+        error: uploadError.message
+      });
     }
   } catch (error) {
     console.error('Upload avatar error:', error);
-    // Delete uploaded file on error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
     res.status(500).json({
       message: 'Lỗi server'
     });

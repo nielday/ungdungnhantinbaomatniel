@@ -160,6 +160,13 @@ Backend (Railway):
 - MONGODB_URI=mongodb+srv://...
 - JWT_SECRET=your-secret-key
 - PORT=3001
+- B2_KEY_ID=your-b2-key-id
+- B2_APPLICATION_KEY=your-b2-application-key
+- B2_BUCKET_NAME=your-bucket-name
+- B2_ENDPOINT=https://s3.us-west-004.backblazeb2.com
+- B2_REGION=us-west-004
+- BREVO_API_KEY=your-brevo-api-key
+- BREVO_FROM_EMAIL=your-email@domain.com
 
 Frontend (Vercel):
 - NEXT_PUBLIC_API_URL=/api
@@ -184,6 +191,8 @@ Backend:
 - bcryptjs@2.4.3
 - nodemailer@6.9.7
 - cors@2.8.5
+- @aws-sdk/client-s3@latest (for Backblaze B2)
+- @aws-sdk/s3-request-presigner@latest
 
 🚀 CÁCH CHẠY LOCAL
 -----------------
@@ -211,8 +220,19 @@ Backend:
 - Next.js SSR/SSG
 - MongoDB indexing
 - Socket.io optimization
+- Backblaze B2 CDN (permanent file storage)
 - Image optimization
 - Code splitting
+
+💾 FILE STORAGE
+--------------
+- Backblaze B2 Cloud Storage
+- Permanent storage (không mất file khi deploy)
+- $0.005/GB/month (rất rẻ)
+- Free bandwidth (3x storage)
+- S3-compatible API
+- Sẵn sàng cho E2EE encryption
+- Xem docs/B2_SETUP.md để setup
 
 🔍 DEBUGGING
 -----------
