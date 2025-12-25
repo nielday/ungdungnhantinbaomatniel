@@ -13,6 +13,7 @@ const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const groupRoutes = require('./routes/groups');
 const { authenticateToken } = require('./middleware/auth');
+const fileRoutes = require('./routes/files');
 
 const app = express();
 const server = http.createServer(app);
@@ -108,6 +109,7 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/conversations', authenticateToken, conversationRoutes);
 app.use('/api/messages', authenticateToken, messageRoutes);
 app.use('/api/groups', authenticateToken, groupRoutes);
+app.use('/api/files', fileRoutes); // File proxy for private B2 bucket
 app.use('/api/admin', adminRoutes);
 
 // Cleanup route (no auth required)

@@ -484,9 +484,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     }
   };
 
-  // Helper function to normalize file URLs - use Vercel proxy for uploads
+  // Helper function to normalize file URLs - use proxy for B2 private bucket
   const normalizeFileUrl = (fileUrl: string): string => {
     if (!fileUrl) return '';
+    
+    // If it's a B2 URL (private bucket), use proxy endpoint
+    if (fileUrl.includes('backblazeb2.com')) {
+      // Use proxy endpoint to generate presigned URL
+      const encodedUrl = encodeURIComponent(fileUrl);
+      return `https://ungdungnhantinbaomatniel-production.up.railway.app/api/files/proxy?fileUrl=${encodedUrl}`;
+    }
     
     // If already a full HTTP URL, check if it's Railway and convert to relative
     if (fileUrl.startsWith('http')) {

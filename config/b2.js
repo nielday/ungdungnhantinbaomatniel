@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 require('dotenv').config();
 
@@ -76,18 +76,31 @@ async function deleteFromB2(fileUrl) {
   }
 }
 
-// Generate presigned URL (for future E2EE downloads)
-async function generatePresignedUrl(fileUrl, expiresIn = 3600) {
+// Generate presigned URL for private bucket files
+async function generatePresignedUrl(fileUrl, expiresIn = 86400) { // 24 hours default
   try {
-    const urlParts = fileUrl.split('/');
-    const key = urlParts.slice(3).join('/');
+    // Extract key from B2 file URL
+    // Format: https://{endpoint}/file/{bucketName}/{key}
+    let key;
     
-    const command = new PutObjectCommand({
+    if (fileUrl.includes('/file/')) {
+      const parts = fileUrl.split(`/file/${BUCKET_NAME}/`);
+      key = parts[1];
+    } else {
+      // Fallback
+      const urlParts = fileUrl.split('/');
+      key = urlParts.slice(3).join('/');
+    }
+    
+    const { GetObjectCommand } = require('@aws-sdk/client-s3');
+    
+    const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key
     });
 
     const signedUrl = await getSignedUrl(b2Client, command, { expiresIn });
+    console.log('Generated presigned URL for:', key);
     return signedUrl;
   } catch (error) {
     console.error('Generate presigned URL error:', error);
