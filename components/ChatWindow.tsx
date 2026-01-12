@@ -160,6 +160,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showMessageMenu, setShowMessageMenu] = useState<string | null>(null);
+  const [encryptionMode, setEncryptionMode] = useState<'none' | 'e2ee'>(conversation.encryptionMode || 'none');
+  const [isTogglingEncryption, setIsTogglingEncryption] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -268,6 +270,35 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleEncryption = async () => {
+    setIsTogglingEncryption(true);
+    try {
+      const token = localStorage.getItem('token');
+      const newMode = encryptionMode === 'e2ee' ? 'none' : 'e2ee';
+
+      const response = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}/encryption-mode`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ encryptionMode: newMode })
+        }
+      );
+
+      if (response.ok) {
+        setEncryptionMode(newMode);
+        onUpdateConversations();
+      }
+    } catch (error) {
+      console.error('Error toggling encryption:', error);
+    } finally {
+      setIsTogglingEncryption(false);
     }
   };
 
@@ -592,6 +623,22 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {/* Encryption Toggle Button */}
+              <button
+                onClick={handleToggleEncryption}
+                disabled={isTogglingEncryption}
+                className={`p-2 rounded-lg transition-colors flex items-center space-x-1 ${encryptionMode === 'e2ee'
+                    ? 'bg-green-100 hover:bg-green-200 text-green-600'
+                    : 'hover:bg-gray-100 text-gray-500'
+                  }`}
+                title={encryptionMode === 'e2ee' ? t('encryption.e2eeOn') : t('encryption.e2eeOff')}
+              >
+                {encryptionMode === 'e2ee' ? (
+                  <Lock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
+                ) : (
+                  <Unlock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
+                )}
+              </button>
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <Phone className="w-5 h-5 text-gray-600" />
               </button>
