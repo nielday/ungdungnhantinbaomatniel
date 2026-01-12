@@ -6,6 +6,7 @@ import { useSocket } from './SocketContext';
 import { useTranslations } from 'next-intl';
 import SimpleEmojiPicker from './SimpleEmojiPicker';
 import CameraCapture from './CameraCapture';
+import * as encryption from '../lib/encryption';
 
 // Helper function to normalize file URLs (used by AudioPlayer)
 const normalizeFileUrlHelper = (fileUrl: string): string => {
@@ -81,6 +82,45 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
     </div>
   );
 };
+
+// Encrypted Message Content Component
+interface EncryptedMessageProps {
+  message: {
+    _id: string;
+    content: string;
+    isEncrypted?: boolean;
+    encryptionData?: { iv: string; algorithm: string };
+    senderId: { _id: string; fullName: string };
+  };
+  decryptedMessages: Record<string, string>;
+  decryptMessageContent: (message: any) => Promise<string>;
+}
+
+const EncryptedMessageContent: React.FC<EncryptedMessageProps> = ({
+  message,
+  decryptedMessages,
+  decryptMessageContent
+}) => {
+  const [displayContent, setDisplayContent] = React.useState<string>(
+    message.isEncrypted ? '🔒 Đang giải mã...' : message.content
+  );
+
+  React.useEffect(() => {
+    if (message.isEncrypted) {
+      // Check cache first
+      if (decryptedMessages[message._id]) {
+        setDisplayContent(decryptedMessages[message._id]);
+      } else {
+        // Decrypt the message
+        decryptMessageContent(message).then(setDisplayContent);
+      }
+    } else {
+      setDisplayContent(message.content);
+    }
+  }, [message, decryptedMessages, decryptMessageContent]);
+
+  return <span>{displayContent}</span>;
+};
 import {
   Send,
   Paperclip,
@@ -127,6 +167,12 @@ interface Message {
     readAt: string;
   }[];
   createdAt: string;
+  // E2EE fields
+  isEncrypted?: boolean;
+  encryptionData?: {
+    iv: string;
+    algorithm: string;
+  };
 }
 
 interface Conversation {
@@ -162,6 +208,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [showMessageMenu, setShowMessageMenu] = useState<string | null>(null);
   const [encryptionMode, setEncryptionMode] = useState<'none' | 'e2ee'>(conversation.encryptionMode || 'none');
   const [isTogglingEncryption, setIsTogglingEncryption] = useState(false);
+  const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -306,11 +353,121 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Decrypt an encrypted message
+  const decryptMessageContent = async (message: Message): Promise<string> => {
+    // Return cached decrypted content if available
+    if (decryptedMessages[message._id]) {
+      return decryptedMessages[message._id];
+    }
+
+    if (!message.isEncrypted || !message.encryptionData?.iv) {
+      return message.content;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+
+      // Get sender's public key
+      const senderKeyResponse = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (!senderKeyResponse.ok) {
+        return `🔒 ${t('encryption.decryptFailed')}`;
+      }
+
+      const senderKeyData = await senderKeyResponse.json();
+
+      // Get my private key
+      const myKeysResponse = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (!myKeysResponse.ok) {
+        return `🔒 ${t('encryption.decryptFailed')}`;
+      }
+
+      const myKeysData = await myKeysResponse.json();
+
+      if (!senderKeyData.publicKey || !myKeysData.encryptedPrivateKey) {
+        return `🔒 ${t('encryption.decryptFailed')}`;
+      }
+
+      // Import keys and derive shared secret
+      const senderPublicKey = await encryption.importPublicKey(senderKeyData.publicKey);
+      const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+      const sharedKey = await encryption.deriveSharedKey(myPrivateKey, senderPublicKey);
+
+      // Decrypt the message
+      const decrypted = await encryption.decryptMessage(
+        message.content,
+        message.encryptionData.iv,
+        sharedKey
+      );
+
+      // Cache the decrypted content
+      setDecryptedMessages(prev => ({ ...prev, [message._id]: decrypted }));
+
+      return decrypted;
+    } catch (error) {
+      console.error('Decryption error:', error);
+      return `🔒 ${t('encryption.decryptFailed')}`;
+    }
+  };
+
   const sendMessage = async (content: string, messageType: 'text' = 'text', attachments?: any[]) => {
     if (!content.trim() && !attachments?.length) return;
 
     try {
       const token = localStorage.getItem('token');
+      let messageContent = content;
+      let encryptionData = null;
+
+      // If E2EE is enabled, encrypt the message
+      if (encryptionMode === 'e2ee' && messageType === 'text') {
+        try {
+          // Get recipient's public key
+          const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+          if (otherUser?._id) {
+            const keyResponse = await fetch(
+              `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+              { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+
+            if (keyResponse.ok) {
+              const keyData = await keyResponse.json();
+              if (keyData.publicKey) {
+                // Get my private key
+                const myKeysResponse = await fetch(
+                  `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+                  { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+
+                if (myKeysResponse.ok) {
+                  const myKeysData = await myKeysResponse.json();
+                  if (myKeysData.encryptedPrivateKey) {
+                    // Import keys and derive shared secret
+                    const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                    const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                    const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
+
+                    // Encrypt the message
+                    const encrypted = await encryption.encryptMessage(content, sharedKey);
+                    messageContent = encrypted.ciphertext;
+                    encryptionData = { iv: encrypted.iv, algorithm: 'AES-256-GCM' };
+                  }
+                }
+              }
+            }
+          }
+        } catch (encError) {
+          console.error('Encryption error, sending plaintext:', encError);
+          // Fall back to plaintext if encryption fails
+        }
+      }
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/${messageType}`,
         {
@@ -320,8 +477,10 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            content,
-            replyTo: replyingTo?._id
+            content: messageContent,
+            replyTo: replyingTo?._id,
+            isEncrypted: encryptionData !== null,
+            encryptionData: encryptionData
           })
         }
       );
@@ -628,8 +787,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 onClick={handleToggleEncryption}
                 disabled={isTogglingEncryption}
                 className={`p-2 rounded-lg transition-colors flex items-center space-x-1 ${encryptionMode === 'e2ee'
-                    ? 'bg-green-100 hover:bg-green-200 text-green-600'
-                    : 'hover:bg-gray-100 text-gray-500'
+                  ? 'bg-green-100 hover:bg-green-200 text-green-600'
+                  : 'hover:bg-gray-100 text-gray-500'
                   }`}
                 title={encryptionMode === 'e2ee' ? t('encryption.e2eeOn') : t('encryption.e2eeOff')}
               >
@@ -722,9 +881,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   )}
 
                   {message.messageType === 'text' && (
-                    <p className={`text-sm ${message.isDeleted ? 'italic text-gray-500' : ''}`}>
-                      {message.content}
-                    </p>
+                    <div className={`text-sm ${message.isDeleted ? 'italic text-gray-500' : ''}`}>
+                      {message.isEncrypted && (
+                        <Lock className="w-3 h-3 inline-block mr-1 text-green-500" />
+                      )}
+                      <EncryptedMessageContent
+                        message={message}
+                        decryptedMessages={decryptedMessages}
+                        decryptMessageContent={decryptMessageContent}
+                      />
+                    </div>
                   )}
 
                   {message.messageType === 'image' && message.attachments && (
