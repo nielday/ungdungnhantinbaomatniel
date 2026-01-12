@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Bell, Palette, Shield, Globe, Save, Moon, Sun } from 'lucide-react';
+import { X, User, Bell, Palette, Shield, Globe, Save, Moon, Sun, Camera } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import { useTranslations } from 'next-intl';
@@ -15,7 +15,8 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const t = useTranslations();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [settings, setSettings] = useState({
     notifications: true,
@@ -28,6 +29,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatar, setAvatar] = useState(user?.avatar || '');
 
   // Load settings from localStorage
   useEffect(() => {
@@ -35,7 +38,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
     }
-    
+
     // Load dark mode from localStorage
     const savedDarkMode = localStorage.getItem('darkMode');
     if (savedDarkMode) {
@@ -51,19 +54,56 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       name: user?.fullName || '',
       username: user?.phoneNumber || ''
     });
+    setAvatar(user?.avatar || '');
   }, [user]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      setAvatarLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/avatar`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvatar(data.avatar);
+        // Update user in context
+        if (updateUser && user) {
+          updateUser({ ...user, avatar: data.avatar });
+        }
+      }
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => {
       const newSettings = { ...prev, [key]: value };
       localStorage.setItem('appSettings', JSON.stringify(newSettings));
-      
+
       // Handle dark mode
       if (key === 'darkMode') {
         localStorage.setItem('darkMode', JSON.stringify(value));
         applyDarkMode(value);
       }
-      
+
       return newSettings;
     });
   };
@@ -81,26 +121,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       try {
         // Xóa tất cả dữ liệu học tập (study progress)
         const keys = Object.keys(localStorage);
-        const studyKeys = keys.filter(key => 
-          key.startsWith('studyProgress_') || 
+        const studyKeys = keys.filter(key =>
+          key.startsWith('studyProgress_') ||
           key.startsWith('quizProgress_') ||
           key.startsWith('reviewProgress_') ||
           key.startsWith('practiceProgress_')
         );
-        
+
         studyKeys.forEach(key => localStorage.removeItem(key));
-        
+
         // Xóa chat history
-        const chatKeys = keys.filter(key => 
-          key.startsWith('chatHistory_') || 
+        const chatKeys = keys.filter(key =>
+          key.startsWith('chatHistory_') ||
           key.startsWith('conversation_')
         );
-        
+
         chatKeys.forEach(key => localStorage.removeItem(key));
-        
+
         // Xóa current lecture data
         localStorage.removeItem('currentLectureData');
-        
+
         alert(t('settings.studyDataDeleted'));
       } catch (error) {
         console.error('Error deleting study data:', error);
@@ -116,15 +156,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         const userData = localStorage.getItem('user');
         const appSettings = localStorage.getItem('appSettings');
         const darkMode = localStorage.getItem('darkMode');
-        
+
         // Xóa tất cả localStorage
         localStorage.clear();
-        
+
         // Khôi phục user data và settings
         if (userData) localStorage.setItem('user', userData);
         if (appSettings) localStorage.setItem('appSettings', appSettings);
         if (darkMode) localStorage.setItem('darkMode', darkMode);
-        
+
         alert(t('settings.allDataDeleted'));
       } catch (error) {
         console.error('Error deleting all data:', error);
@@ -190,11 +230,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                          activeTab === tab.id
-                            ? 'bg-blue-500 text-white'
-                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === tab.id
+                          ? 'bg-blue-500 text-white'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
                       >
                         <Icon className="w-5 h-5" />
                         <span className="font-medium">{tab.name}</span>
@@ -220,23 +259,48 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         <h3 className="text-xl font-semibold mb-4 dark:text-white">{t('settings.profileInfo')}</h3>
                         <div className="space-y-4">
                           <div className="flex items-center space-x-4">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                              {user?.avatar ? (
-                                <img 
-                                  src={user.avatar} 
-                                  alt={user.fullName}
-                                  className="w-16 h-16 rounded-full"
-                                />
-                              ) : (
-                                <User className="w-8 h-8 text-white" />
-                              )}
+                            {/* Clickable Avatar with Camera Overlay */}
+                            <div
+                              className="relative group cursor-pointer"
+                              onClick={() => avatarInputRef.current?.click()}
+                            >
+                              <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                                {avatar ? (
+                                  <img
+                                    src={avatar}
+                                    alt={user?.fullName}
+                                    className="w-20 h-20 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <User className="w-10 h-10 text-white" />
+                                )}
+                              </div>
+                              {/* Camera Overlay */}
+                              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                {avatarLoading ? (
+                                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Camera className="w-6 h-6 text-white" />
+                                )}
+                              </div>
+                              {/* Hidden file input */}
+                              <input
+                                type="file"
+                                ref={avatarInputRef}
+                                onChange={handleAvatarUpload}
+                                accept="image/*"
+                                className="hidden"
+                              />
                             </div>
                             <div>
                               <p className="font-medium text-gray-800 dark:text-white">{user?.fullName}</p>
                               <p className="text-gray-500 dark:text-gray-400">{user?.email}</p>
+                              <p className="text-xs text-blue-500 dark:text-blue-400 mt-1 cursor-pointer hover:underline" onClick={() => avatarInputRef.current?.click()}>
+                                {t('profile.changeAvatar')}
+                              </p>
                             </div>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -263,7 +327,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               />
                             </div>
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Email
@@ -367,7 +431,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
-                          
+
                           <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <div>
                               <p className="font-medium dark:text-white">{t('settings.autoSave')}</p>
@@ -416,7 +480,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                               {t('settings.dataPrivacyDesc')}
                             </p>
-                            <button 
+                            <button
                               onClick={() => setShowPrivacyPolicy(true)}
                               className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium transition-colors"
                             >
@@ -429,13 +493,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               {t('settings.deleteDataDesc')}
                             </p>
                             <div className="space-y-2">
-                              <button 
+                              <button
                                 onClick={handleDeleteStudyData}
                                 className="text-red-600 hover:text-red-700 text-sm font-medium mr-4"
                               >
                                 {t('settings.deleteStudyData')}
                               </button>
-                              <button 
+                              <button
                                 onClick={handleDeleteAllData}
                                 className="text-red-600 hover:text-red-700 text-sm font-medium"
                               >

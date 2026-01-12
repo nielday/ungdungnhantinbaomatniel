@@ -349,7 +349,7 @@ export default function ChatApp() {
               {isMobile && (
                 <button
                   onClick={() => setShowSidebar(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                  className="icon-btn"
                   title={t('sidebar.closeMenu')}
                 >
                   <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -357,28 +357,28 @@ export default function ChatApp() {
               )}
               <button
                 onClick={() => setShowCreateGroup(true)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                className="icon-btn"
                 title={t('sidebar.createGroup')}
               >
                 <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               <button
                 onClick={() => setShowUserSearch(true)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                className="icon-btn"
                 title={t('sidebar.searchUsers')}
               >
                 <Search className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               <button
                 onClick={() => setShowSettings(true)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                className="icon-btn"
                 title={t('sidebar.settings')}
               >
                 <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               <button
                 onClick={handleLogout}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                className="icon-btn"
                 title={t('sidebar.logout')}
               >
                 <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -432,7 +432,7 @@ export default function ChatApp() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setShowSidebar(true)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                className="icon-btn"
                 title={t('sidebar.menu')}
               >
                 <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -455,10 +455,10 @@ export default function ChatApp() {
             </div>
             {activeConversation && (
               <div className="flex items-center space-x-2">
-                <button className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+                <button className="icon-btn">
                   <Phone className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 </button>
-                <button className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+                <button className="icon-btn">
                   <Video className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 </button>
               </div>
