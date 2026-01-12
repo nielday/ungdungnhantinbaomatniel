@@ -108,9 +108,11 @@ export default function ChatApp() {
   // Check if mobile
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
-        setShowSidebar(false);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // On mobile, show sidebar (chat list) by default
+      if (mobile) {
+        setShowSidebar(true);
       }
     };
 
