@@ -323,6 +323,30 @@ router.put('/encryption-keys', async (req, res) => {
   }
 });
 
+// Delete user's encryption keys
+router.delete('/encryption-keys', async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    user.publicKey = undefined;
+    user.encryptedPrivateKey = undefined;
+    user.keySalt = undefined;
+    user.keyCreatedAt = undefined;
+
+    await user.save();
+
+    res.json({ message: 'Đã xóa encryption keys' });
+  } catch (error) {
+    console.error('Delete encryption keys error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 // Get user's own encryption keys (for key recovery)
 router.get('/encryption-keys', async (req, res) => {
   try {
