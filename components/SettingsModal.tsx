@@ -70,7 +70,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   // Password Prompt for Sensitive Actions (Server-side Encryption)
   const [showActionPasswordModal, setShowActionPasswordModal] = useState(false);
   const [actionPassword, setActionPassword] = useState('');
-  const [pendingAction, setPendingAction] = useState<'generate' | 'import' | 'restore' | 'delete' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'generate' | 'import' | 'restore' | 'delete' | 'backup' | null>(null);
   const [tempKeyData, setTempKeyData] = useState<any>(null); // To hold data while waiting for password
 
   const currentDeviceId = typeof window !== 'undefined' ? encryption.getDeviceId() : '';
@@ -371,6 +371,52 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           setPendingAction(null);
           return;
         }
+      } else if (pendingAction === 'backup') {
+        // Backup Flow Step 1: Decrypt Server Key
+        try {
+          // 1. Fetch current keys
+          const keysResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (!keysResponse.ok) throw new Error('Failed to fetch keys');
+
+          const keysData = await keysResponse.json();
+          const serverEncryptedKey = keysData.encryptedPrivateKey;
+
+          // 2. Decrypt with Login Password
+          let decryptedKey = '';
+          let salt = '';
+          let iv = '';
+
+          if (keysData.keySalt) {
+            try {
+              const params = JSON.parse(keysData.keySalt);
+              salt = params.salt;
+              iv = params.iv;
+            } catch (e) { }
+          }
+
+          if (salt && iv) {
+            decryptedKey = await encryption.decryptStringWithPassword(serverEncryptedKey, actionPassword, salt, iv);
+          } else {
+            // Fallback for old keys? Not supported for secure backup.
+            throw new Error('Key format not supported for backup');
+          }
+
+          // 3. Store Raw Key temporarily and Open Backup Modal
+          setTempKeyData(decryptedKey); // Store RAW key
+          setShowActionPasswordModal(false);
+          setActionPassword('');
+          setPendingAction(null); // Clear pending action so we don't trigger this again
+          setShowBackupModal(true); // Open the Backup Password modal
+          return; // Stop here, don't do PUT request
+
+        } catch (e) {
+          console.error('Backup decryption failed:', e);
+          alert(t('encryption.wrongPassword'));
+          return;
+        }
       }
 
       if (Object.keys(body).length > 0) {
@@ -428,21 +474,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     setBackupError('');
 
     try {
-      // 1. Fetch current keys (including private key)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
-      const token = localStorage.getItem('token');
-
-      const response = await fetch(`${apiUrl}/users/encryption-keys`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch keys');
-
-      const keysData = await response.json();
-      const privateKeyRaw = keysData.encryptedPrivateKey;
+      // TempKeyData should contain the RAW private key (from previous step)
+      const privateKeyRaw = tempKeyData;
 
       if (!privateKeyRaw) {
-        throw new Error('No private key found');
+        throw new Error('No private key found. Please try again.');
       }
 
       // 2. Encrypt private key with backup password
@@ -1053,7 +1089,10 @@ To restore:
                                     <span>{t('encryption.deleteKey')}</span>
                                   </button>
                                   <button
-                                    onClick={() => setShowBackupModal(true)}
+                                    onClick={() => {
+                                      setPendingAction('backup');
+                                      setShowActionPasswordModal(true);
+                                    }}
                                     className="flex items-center space-x-2 px-3 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-800/50 rounded-lg transition-colors text-sm"
                                   >
                                     <Save className="w-4 h-4" />
