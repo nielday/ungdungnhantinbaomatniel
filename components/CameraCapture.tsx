@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Camera, X, RotateCcw, Check, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,10 +13,11 @@ interface CameraCaptureProps {
 }
 
 export default function CameraCapture({ isOpen, onClose, onCapture, onError }: CameraCaptureProps) {
+  const t = useTranslations();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  
+
   const [isStreaming, setIsStreaming] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -26,7 +28,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
   const startCamera = async () => {
     try {
       setError(null);
-      
+
       // Stop existing stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -43,7 +45,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
@@ -77,7 +79,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
 
     setIsCapturing(true);
     console.log('Starting photo capture...');
-    
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
@@ -107,7 +109,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
         console.error('Failed to create blob from canvas');
         setIsCapturing(false);
         if (onError) {
-          onError('Không thể chụp ảnh. Vui lòng thử lại.');
+          onError(t('camera.cameraError'));
         }
       }
     }, 'image/jpeg', 0.9);
@@ -144,7 +146,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
       .catch(error => {
         console.error('Error converting image to blob:', error);
         if (onError) {
-          onError('Không thể xử lý ảnh. Vui lòng thử lại.');
+          onError(t('camera.cameraError'));
         }
       });
   };
@@ -169,17 +171,17 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
   const getCameraErrorMessage = (error: any): string => {
     switch (error.name) {
       case 'NotAllowedError':
-        return 'Quyền truy cập camera bị từ chối. Vui lòng cho phép truy cập camera.';
+        return t('camera.cameraError');
       case 'NotFoundError':
-        return 'Không tìm thấy camera. Vui lòng kiểm tra kết nối camera.';
+        return t('camera.cameraError');
       case 'NotReadableError':
-        return 'Camera đang được sử dụng bởi ứng dụng khác.';
+        return t('camera.cameraError');
       case 'OverconstrainedError':
-        return 'Camera không hỗ trợ cài đặt hiện tại.';
+        return t('camera.cameraError');
       case 'SecurityError':
-        return 'Lỗi bảo mật khi truy cập camera.';
+        return t('camera.cameraError');
       default:
-        return 'Không thể truy cập camera. Vui lòng thử lại.';
+        return t('camera.cameraError');
     }
   };
 
@@ -225,7 +227,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800">
-              {capturedImage ? 'Xem trước ảnh' : 'Chụp ảnh từ camera'}
+              {capturedImage ? t('camera.title') : t('camera.title')}
             </h3>
             <button
               onClick={handleClose}
@@ -246,7 +248,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
                     onClick={startCamera}
                     className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                   >
-                    Thử lại
+                    {t('camera.retake')}
                   </button>
                 </div>
               </div>
@@ -270,13 +272,13 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                     <div className="text-white text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                      <p className="text-sm">Đang chụp...</p>
+                      <p className="text-sm">{t('camera.capturing')}</p>
                     </div>
                   </div>
                 )}
               </div>
             )}
-            
+
             {/* Hidden canvas for capturing */}
             <canvas ref={canvasRef} className="hidden" />
           </div>
@@ -289,7 +291,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
                   onClick={handleClose}
                   className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
-                  Đóng
+                  {t('common.close')}
                 </button>
               </div>
             ) : capturedImage ? (
@@ -299,14 +301,14 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
                   className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span>Chụp lại</span>
+                  <span>{t('camera.retake')}</span>
                 </button>
                 <button
                   onClick={confirmPhoto}
                   className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Gửi ảnh</span>
+                  <span>{t('camera.use')}</span>
                 </button>
               </div>
             ) : (
@@ -314,7 +316,6 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
                 <button
                   onClick={switchCamera}
                   className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                  title="Chuyển camera"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
@@ -324,7 +325,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
                   className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Camera className="w-4 h-4" />
-                  <span>{isCapturing ? 'Đang chụp...' : 'Chụp ảnh'}</span>
+                  <span>{isCapturing ? t('camera.capturing') : t('camera.capture')}</span>
                 </button>
                 <button
                   onClick={handleClose}
@@ -335,15 +336,6 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onError }: C
               </div>
             )}
           </div>
-
-          {/* Instructions */}
-          {!capturedImage && !error && (
-            <div className="px-4 pb-4">
-              <p className="text-xs text-gray-500 text-center">
-                Đặt khuôn mặt trong khung và nhấn "Chụp ảnh"
-              </p>
-            </div>
-          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>

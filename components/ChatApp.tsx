@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { 
-  MessageCircle, 
-  Users, 
-  Search, 
-  Plus, 
-  Settings, 
+import {
+  MessageCircle,
+  Users,
+  Search,
+  Plus,
+  Settings,
   LogOut,
   Phone,
   Mail,
@@ -40,7 +41,8 @@ interface Conversation {
 export default function ChatApp() {
   const { user, logout, updateUser } = useAuth();
   const { socket } = useSocket();
-  
+  const t = useTranslations();
+
   // Handle user update with error handling
   const handleUserUpdate = (updatedUser: any) => {
     try {
@@ -52,7 +54,7 @@ export default function ChatApp() {
       console.error('ChatApp - User update error:', error);
     }
   };
-  
+
   // Add error boundary for rendering
   if (!user) {
     console.log('ChatApp - No user found, showing loading');
@@ -60,12 +62,12 @@ export default function ChatApp() {
       <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );
   }
-  
+
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -108,7 +110,7 @@ export default function ChatApp() {
         setShowSidebar(false);
       }
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -132,13 +134,13 @@ export default function ChatApp() {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!isDragging) return;
-      
+
       currentX = e.touches[0].clientX;
       currentY = e.touches[0].clientY;
-      
+
       const deltaX = currentX - startX;
       const deltaY = currentY - startY;
-      
+
       // Swipe right to open sidebar
       if (deltaX > 50 && Math.abs(deltaY) < 100) {
         setShowSidebar(true);
@@ -167,13 +169,13 @@ export default function ChatApp() {
       console.log('Fetching conversations...');
       console.log('ChatApp - Token for conversations:', token ? 'Present' : 'Missing');
       console.log('ChatApp - Token value:', token);
-      
+
       if (!token) {
         console.error('ChatApp - No token found, cannot fetch conversations');
         setLoading(false);
         return;
       }
-      
+
       // Fetch both private conversations and groups
       const [conversationsResponse, groupsResponse] = await Promise.all([
         fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations`, {
@@ -193,12 +195,12 @@ export default function ChatApp() {
           cache: 'no-cache'
         })
       ]);
-      
+
       console.log('Conversations response status:', conversationsResponse.status);
       console.log('Groups response status:', groupsResponse.status);
-      
+
       let allConversations: Conversation[] = [];
-      
+
       // Fetch private conversations
       if (conversationsResponse.ok) {
         const conversationsData = await conversationsResponse.json();
@@ -207,7 +209,7 @@ export default function ChatApp() {
       } else {
         console.error('Conversations error:', await conversationsResponse.json());
       }
-      
+
       // Fetch groups
       if (groupsResponse.ok) {
         const groupsData = await groupsResponse.json();
@@ -227,7 +229,7 @@ export default function ChatApp() {
       } else {
         console.error('Groups error:', await groupsResponse.json());
       }
-      
+
       console.log('All conversations:', allConversations);
       setConversations(allConversations);
     } catch (error) {
@@ -257,7 +259,7 @@ export default function ChatApp() {
 
   const handleGroupUpdated = (updatedGroup: any) => {
     console.log('ChatApp - handleGroupUpdated called with:', updatedGroup);
-    
+
     // Transform the updated group to match Conversation format
     const transformedGroup: Conversation = {
       _id: updatedGroup._id,
@@ -269,11 +271,11 @@ export default function ChatApp() {
       lastMessageAt: updatedGroup.updatedAt,
       createdBy: updatedGroup.createdBy
     };
-    
+
     console.log('ChatApp - Members data in transformed group:', transformedGroup.participants);
-    
+
     console.log('ChatApp - Transformed group:', transformedGroup);
-    
+
     setConversations(prev => {
       const updated = prev.map(conv => {
         if (conv._id === transformedGroup._id) {
@@ -285,7 +287,7 @@ export default function ChatApp() {
       console.log('ChatApp - Updated conversations:', updated);
       return updated;
     });
-    
+
     if (activeConversation?._id === transformedGroup._id) {
       console.log('ChatApp - Updating active conversation with:', transformedGroup);
       setActiveConversation(transformedGroup);
@@ -305,7 +307,7 @@ export default function ChatApp() {
       <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -315,7 +317,7 @@ export default function ChatApp() {
     <div className="h-screen bg-gray-50 flex relative">
       {/* Mobile Overlay */}
       {isMobile && showSidebar && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={() => setShowSidebar(false)}
         />
@@ -337,8 +339,8 @@ export default function ChatApp() {
                 <MessageCircle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-800">Tin nhắn</h1>
-                <p className="text-sm text-gray-500">Ứng dụng nhắn tin</p>
+                <h1 className="text-lg font-semibold text-gray-800">{t('chat.messages')}</h1>
+                <p className="text-sm text-gray-500">{t('chat.messagingApp')}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -346,7 +348,7 @@ export default function ChatApp() {
                 <button
                   onClick={() => setShowSidebar(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Đóng menu"
+                  title={t('sidebar.closeMenu')}
                 >
                   <X className="w-5 h-5 text-gray-600" />
                 </button>
@@ -354,28 +356,28 @@ export default function ChatApp() {
               <button
                 onClick={() => setShowCreateGroup(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Tạo nhóm"
+                title={t('sidebar.createGroup')}
               >
                 <Users className="w-5 h-5 text-gray-600" />
               </button>
               <button
                 onClick={() => setShowUserSearch(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Tìm kiếm người dùng"
+                title={t('sidebar.searchUsers')}
               >
                 <Search className="w-5 h-5 text-gray-600" />
               </button>
               <button
                 onClick={() => setShowProfile(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Cài đặt"
+                title={t('sidebar.settings')}
               >
                 <Settings className="w-5 h-5 text-gray-600" />
               </button>
               <button
                 onClick={handleLogout}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Đăng xuất"
+                title={t('sidebar.logout')}
               >
                 <LogOut className="w-5 h-5 text-gray-600" />
               </button>
@@ -388,8 +390,8 @@ export default function ChatApp() {
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
               {user?.avatar ? (
-                <img 
-                  src={user.avatar} 
+                <img
+                  src={user.avatar}
                   alt={user.fullName}
                   className="w-10 h-10 rounded-full object-cover"
                 />
@@ -429,7 +431,7 @@ export default function ChatApp() {
               <button
                 onClick={() => setShowSidebar(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Menu"
+                title={t('sidebar.menu')}
               >
                 <Menu className="w-5 h-5 text-gray-600" />
               </button>
@@ -440,7 +442,7 @@ export default function ChatApp() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-800">
-                      {activeConversation.type === 'private' 
+                      {activeConversation.type === 'private'
                         ? activeConversation.participants?.find(p => p._id !== user?.id)?.fullName
                         : activeConversation.name
                       }
@@ -474,12 +476,12 @@ export default function ChatApp() {
             <div className="text-center px-4">
               <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">
-                Chọn cuộc trò chuyện
+                {t('chat.selectConversation')}
               </h3>
               <p className="text-gray-500">
-                {isMobile 
-                  ? "Nhấn menu để xem danh sách cuộc trò chuyện"
-                  : "Chọn một cuộc trò chuyện từ danh sách bên trái để bắt đầu nhắn tin"
+                {isMobile
+                  ? t('chat.selectConversationMobile')
+                  : t('chat.selectConversationDesktop')
                 }
               </p>
             </div>

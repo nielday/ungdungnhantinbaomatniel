@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { X, Search, User, Phone, Mail, Plus } from 'lucide-react';
 
@@ -17,6 +18,7 @@ interface UserSearchProps {
 }
 
 export default function UserSearch({ onClose, onNewConversation }: UserSearchProps) {
+  const t = useTranslations();
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,7 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
       console.log('Searching users with query:', searchQuery);
       console.log('UserSearch - Token for search:', token ? 'Present' : 'Missing');
       console.log('UserSearch - Token value:', token);
-      
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?query=${encodeURIComponent(searchQuery)}`,
         {
@@ -48,9 +50,9 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
           cache: 'no-cache'
         }
       );
-      
+
       console.log('Search response status:', response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Search results:', data);
@@ -82,7 +84,7 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
           })
         }
       );
-      
+
       if (response.ok) {
         const conversation = await response.json();
         onNewConversation(conversation);
@@ -103,7 +105,7 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-800">Tìm kiếm người dùng</h2>
+            <h2 className="text-xl font-semibold text-gray-800">{t('userSearch.title')}</h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -117,7 +119,7 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Nhập tên hoặc số điện thoại..."
+              placeholder={t('userSearch.placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -129,15 +131,15 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Đang tìm kiếm...</p>
+                <p className="text-gray-600">{t('userSearch.searching')}</p>
               </div>
             ) : users.length === 0 ? (
               <div className="text-center py-8">
                 <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600">
-                  {searchQuery.length < 2 
-                    ? 'Nhập ít nhất 2 ký tự để tìm kiếm'
-                    : 'Không tìm thấy người dùng nào'
+                  {searchQuery.length < 2
+                    ? t('userSearch.minChars')
+                    : t('userSearch.noResults')
                   }
                 </p>
               </div>
@@ -154,8 +156,8 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                         {user.avatar ? (
-                          <img 
-                            src={user.avatar} 
+                          <img
+                            src={user.avatar}
                             alt={user.fullName}
                             className="w-10 h-10 rounded-full object-cover"
                           />

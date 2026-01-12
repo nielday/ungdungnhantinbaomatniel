@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { X, User, Phone, Mail, Camera, Save, Shield, CheckCircle } from 'lucide-react';
 
@@ -22,6 +23,7 @@ interface ProfileModalProps {
 }
 
 export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpdate }: ProfileModalProps) {
+  const t = useTranslations();
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     age: user?.age || 0
@@ -33,7 +35,6 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
 
-  // Update avatar when user changes
   useEffect(() => {
     console.log('ProfileModal - User changed, updating avatar:', user?.avatar);
     setAvatar(user?.avatar || '');
@@ -72,10 +73,10 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
         setAvatar(data.avatar);
         onUpdateProfile();
       } else {
-        setError('Không thể cập nhật ảnh đại diện');
+        setError(t('profile.uploadAvatarFailed'));
       }
     } catch (error) {
-      setError('Lỗi khi tải lên ảnh');
+      setError(t('profile.uploadAvatarError'));
     } finally {
       setLoading(false);
     }
@@ -86,10 +87,10 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
       console.log('ProfileModal - Saving profile:', formData);
       setLoading(true);
       setError('');
-      
+
       const token = localStorage.getItem('token');
       console.log('ProfileModal - Token:', token ? 'Present' : 'Missing');
-      
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/profile`,
         {
@@ -103,24 +104,21 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
       );
 
       console.log('ProfileModal - Response status:', response.status);
-      
+
       if (response.ok) {
         const responseData = await response.json();
         console.log('ProfileModal - Response data from API:', responseData);
-        
-        // Extract user from response
+
         const updatedUser = responseData.user || responseData;
         console.log('ProfileModal - Extracted user:', updatedUser);
         console.log('ProfileModal - Updated user keys:', Object.keys(updatedUser));
-        
-        // Validate updatedUser structure
+
         if (!updatedUser.id && !updatedUser._id) {
           console.error('ProfileModal - Missing id/_id in updatedUser');
-          setError('Dữ liệu người dùng không hợp lệ');
+          setError(t('profile.invalidUserData'));
           return;
         }
-        
-        // Update user state in AuthContext first
+
         if (onUserUpdate) {
           const userId = updatedUser._id || updatedUser.id;
           console.log('ProfileModal - Calling onUserUpdate with:', {
@@ -131,7 +129,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
             age: updatedUser.age,
             avatar: updatedUser.avatar
           });
-          
+
           try {
             onUserUpdate({
               id: userId,
@@ -144,12 +142,11 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
             console.log('ProfileModal - onUserUpdate called successfully');
           } catch (error) {
             console.error('ProfileModal - Error in onUserUpdate:', error);
-            setError('Lỗi khi cập nhật thông tin người dùng');
+            setError(t('profile.userUpdateError'));
             return;
           }
         }
-        
-        // Then update conversations and close modal
+
         console.log('ProfileModal - Setting timeout for onUpdateProfile and onClose');
         setTimeout(() => {
           console.log('ProfileModal - Executing timeout callback');
@@ -159,7 +156,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
           } catch (error) {
             console.error('ProfileModal - Error in onUpdateProfile:', error);
           }
-          
+
           try {
             onClose();
             console.log('ProfileModal - onClose called successfully');
@@ -170,11 +167,11 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
       } else {
         const errorData = await response.json();
         console.error('ProfileModal - Error response:', errorData);
-        setError('Không thể cập nhật thông tin');
+        setError(t('profile.updateFailed'));
       }
     } catch (error) {
       console.error('ProfileModal - Save error:', error);
-      setError('Lỗi khi cập nhật thông tin');
+      setError(t('profile.updateError'));
     } finally {
       setLoading(false);
     }
@@ -187,7 +184,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setError('Không tìm thấy token xác thực');
+        setError(t('common.error'));
         return;
       }
 
@@ -204,13 +201,13 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Gửi OTP thất bại');
+        throw new Error(errorData.message || t('auth.resendFailed'));
       }
 
       setOtpSent(true);
     } catch (err: any) {
       console.error('Error sending verification OTP:', err);
-      setError(err.message || 'Gửi OTP thất bại');
+      setError(err.message || t('auth.resendFailed'));
     } finally {
       setVerifying(false);
     }
@@ -223,7 +220,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setError('Không tìm thấy token xác thực');
+        setError(t('common.error'));
         return;
       }
 
@@ -243,21 +240,21 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Xác thực thất bại');
+        throw new Error(errorData.message || t('auth.verifyFailed'));
       }
 
       const updatedUser = await response.json();
       console.log('Account verified successfully:', updatedUser);
-      
+
       if (onUserUpdate) {
         onUserUpdate(updatedUser.user || updatedUser);
       }
-      
+
       setOtpSent(false);
       setOtpCode('');
     } catch (err: any) {
       console.error('Error verifying account:', err);
-      setError(err.message || 'Xác thực thất bại');
+      setError(err.message || t('auth.verifyFailed'));
     } finally {
       setLoading(false);
     }
@@ -274,7 +271,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
         <div className="p-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Thông tin cá nhân</h2>
+            <h2 className="text-lg font-semibold text-gray-800">{t('profile.title')}</h2>
             <button
               onClick={onClose}
               className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
@@ -288,8 +285,8 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
             <div className="relative inline-block">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
                 {avatar ? (
-                  <img 
-                    src={avatar} 
+                  <img
+                    src={avatar}
                     alt={user?.fullName}
                     className="w-16 h-16 rounded-full object-cover"
                   />
@@ -307,14 +304,14 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                 />
               </label>
             </div>
-            <p className="text-xs text-gray-500">Nhấn để thay đổi ảnh đại diện</p>
+            <p className="text-xs text-gray-500">{t('profile.changeAvatar')}</p>
           </div>
 
           {/* Form */}
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Họ và tên
+                {t('profile.fullName')}
               </label>
               <div className="relative">
                 <User className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -324,14 +321,14 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                   value={formData.fullName}
                   onChange={handleInputChange}
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập họ và tên"
+                  placeholder={t('profile.fullNamePlaceholder')}
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Tuổi
+                {t('profile.age')}
               </label>
               <div className="relative">
                 <User className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -341,7 +338,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                   value={formData.age}
                   onChange={handleInputChange}
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập tuổi"
+                  placeholder={t('profile.agePlaceholder')}
                   min="1"
                   max="120"
                 />
@@ -350,7 +347,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Số điện thoại
+                {t('profile.phoneNumber')}
               </label>
               <div className="relative">
                 <Phone className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -361,12 +358,12 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">Số điện thoại không thể thay đổi</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('profile.phoneNumberCannotChange')}</p>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Email
+                {t('profile.email')}
               </label>
               <div className="relative">
                 <Mail className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -377,7 +374,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">Email không thể thay đổi</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('profile.emailCannotChange')}</p>
             </div>
 
             {/* Account Verification Status */}
@@ -385,15 +382,15 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-1.5">
                   <Shield className="w-4 h-4 text-gray-600" />
-                  <span className="text-xs font-medium text-gray-700">Trạng thái tài khoản</span>
+                  <span className="text-xs font-medium text-gray-700">{t('auth.accountStatus')}</span>
                 </div>
                 {user?.isVerified ? (
                   <div className="flex items-center space-x-1 text-green-600">
                     <CheckCircle className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">Đã xác thực</span>
+                    <span className="text-xs font-medium">{t('auth.verified')}</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-orange-600 font-medium">Chưa xác thực</span>
+                  <span className="text-xs text-orange-600 font-medium">{t('auth.notVerified')}</span>
                 )}
               </div>
 
@@ -408,36 +405,36 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                       {verifying ? (
                         <>
                           <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Đang gửi...</span>
+                          <span>{t('auth.sendingOtp')}</span>
                         </>
                       ) : (
                         <>
                           <Shield className="w-3 h-3" />
-                          <span>Gửi mã xác thực</span>
+                          <span>{t('auth.sendVerificationCode')}</span>
                         </>
                       )}
                     </button>
                   ) : (
                     <div className="space-y-2">
                       <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded-lg">
-                        <p>Mã OTP đã được gửi đến email <strong>{user?.email}</strong></p>
-                        <p className="text-xs text-gray-500 mt-0.5">Vui lòng kiểm tra hộp thư và nhập mã xác thực</p>
+                        <p>{t('auth.otpSentToEmail')} <strong>{user?.email}</strong></p>
+                        <p className="text-xs text-gray-500 mt-0.5">{t('auth.checkEmailForOtp')}</p>
                       </div>
-                      
+
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Mã xác thực (OTP)
+                          {t('auth.verificationCode')}
                         </label>
                         <input
                           type="text"
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Nhập mã OTP 6 chữ số"
+                          placeholder={t('auth.otpPlaceholder')}
                           maxLength={6}
                         />
                       </div>
-                      
+
                       <div className="flex space-x-2">
                         <button
                           onClick={handleVerifyAccount}
@@ -447,16 +444,16 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                           {loading ? (
                             <>
                               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span>Đang xác thực...</span>
+                              <span>{t('auth.verifying')}</span>
                             </>
                           ) : (
                             <>
                               <CheckCircle className="w-3 h-3" />
-                              <span>Xác thực</span>
+                              <span>{t('auth.verify')}</span>
                             </>
                           )}
                         </button>
-                        
+
                         <button
                           onClick={() => {
                             setOtpSent(false);
@@ -464,7 +461,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
                           }}
                           className="px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                         >
-                          Hủy
+                          {t('common.cancel')}
                         </button>
                       </div>
                     </div>
@@ -486,7 +483,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
               onClick={onClose}
               className="flex-1 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Hủy
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
@@ -498,7 +495,7 @@ export default function ProfileModal({ user, onClose, onUpdateProfile, onUserUpd
               ) : (
                 <>
                   <Save className="w-3.5 h-3.5" />
-                  <span>Lưu</span>
+                  <span>{t('common.save')}</span>
                 </>
               )}
             </button>

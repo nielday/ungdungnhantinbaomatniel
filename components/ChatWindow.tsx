@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSocket } from './SocketContext';
+import { useTranslations } from 'next-intl';
 import SimpleEmojiPicker from './SimpleEmojiPicker';
 import CameraCapture from './CameraCapture';
 
 // Helper function to normalize file URLs (used by AudioPlayer)
 const normalizeFileUrlHelper = (fileUrl: string): string => {
   if (!fileUrl) return '';
-  
+
   if (fileUrl.startsWith('http')) {
     if (fileUrl.includes('railway.app/uploads/')) {
       const uploadsPath = fileUrl.split('/uploads/')[1];
@@ -17,7 +18,7 @@ const normalizeFileUrlHelper = (fileUrl: string): string => {
     }
     return fileUrl;
   }
-  
+
   return fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
 };
 
@@ -26,7 +27,7 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
   const [duration, setDuration] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  
+
   const normalizedUrl = normalizeFileUrlHelper(fileUrl);
 
   const handleLoadedMetadata = () => {
@@ -44,27 +45,27 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
 
   return (
     <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
-      <audio 
+      <audio
         ref={audioRef}
-        controls 
+        controls
         className="flex-1"
         preload="metadata"
         onLoadedMetadata={handleLoadedMetadata}
         onError={handleError}
       >
-        <source 
+        <source
           src={normalizedUrl}
           type="audio/mpeg"
         />
-        <source 
+        <source
           src={normalizedUrl}
           type="audio/wav"
         />
-        <source 
+        <source
           src={normalizedUrl}
           type="audio/ogg"
         />
-        Trình duyệt của bạn không hỗ trợ phát audio.
+        Your browser does not support audio.
       </audio>
       {isLoaded && (
         <div className="text-xs text-gray-500">
@@ -74,12 +75,12 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
     </div>
   );
 };
-import { 
-  Send, 
-  Paperclip, 
-  Smile, 
-  Phone, 
-  Video, 
+import {
+  Send,
+  Paperclip,
+  Smile,
+  Phone,
+  Video,
   MoreVertical,
   Image,
   File,
@@ -139,6 +140,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ conversation, currentUser, onUpdateConversations, onShowGroupManagement }: ChatWindowProps) {
+  const t = useTranslations();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -176,7 +178,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -214,16 +216,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
     socket.on('new-message', handleNewMessage);
     socket.on('user-typing', handleTyping);
-    
+
     const handleMessageDeleted = (data: any) => {
       console.log('Message deleted event:', data);
-      setMessages(prev => prev.map(msg => 
-        msg._id === data.messageId 
-          ? { ...msg, isDeleted: true, content: 'Tin nhắn đã bị xóa', attachments: [] }
+      setMessages(prev => prev.map(msg =>
+        msg._id === data.messageId
+          ? { ...msg, isDeleted: true, content: t('chat.messageDeleted'), attachments: [] }
           : msg
       ));
     };
-    
+
     socket.on('message-deleted', handleMessageDeleted);
 
     return () => {
@@ -231,7 +233,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       socket.off('new-message', handleNewMessage);
       socket.off('user-typing', handleTyping);
       socket.off('message-deleted', handleMessageDeleted);
-      
+
       // Clear typing indicator when leaving conversation
       clearTypingIndicator();
     };
@@ -248,7 +250,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           }
         }
       );
-      
+
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
@@ -319,20 +321,20 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   // Handle typing indicator with debounce
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
-    
+
     if (socket) {
       // Clear previous timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      
+
       if (e.target.value.trim()) {
         socket.emit('typing', {
           conversationId: conversation._id,
           userId: currentUser?.id,
           isTyping: true
         });
-        
+
         // Set timeout to stop typing indicator after 2 seconds of no typing
         typingTimeoutRef.current = setTimeout(() => {
           clearTypingIndicator();
@@ -410,14 +412,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const handleCameraCapture = async (imageBlob: Blob) => {
     try {
       console.log('Handling camera capture, blob size:', imageBlob.size, 'type:', imageBlob.type);
-      
+
       const formData = new FormData();
       formData.append('files', imageBlob, 'camera-capture.jpg');
       console.log('FormData created with file');
 
       const token = localStorage.getItem('token');
       console.log('Token available:', !!token);
-      
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
@@ -430,7 +432,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       );
 
       console.log('Upload response status:', response.status);
-      
+
       if (response.ok) {
         const newMsg = await response.json();
         console.log('Camera capture uploaded successfully:', newMsg);
@@ -440,11 +442,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       } else {
         const errorData = await response.json();
         console.error('Upload failed:', errorData);
-        alert('Không thể gửi ảnh: ' + (errorData.message || 'Lỗi không xác định'));
+        alert(t('chat.sendImageError') + ': ' + (errorData.message || t('common.error')));
       }
     } catch (error) {
       console.error('Error uploading camera capture:', error);
-      alert('Có lỗi xảy ra khi gửi ảnh: ' + error);
+      alert(t('chat.sendImageFailed') + ': ' + error);
     }
   };
 
@@ -465,36 +467,29 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (response.ok) {
         const result = await response.json();
         console.log('Message deleted:', result);
-        
+
         // Update local state
-        setMessages(prev => prev.map(msg => 
-          msg._id === messageId 
-            ? { ...msg, isDeleted: true, content: 'Tin nhắn đã bị xóa', attachments: [] }
+        setMessages(prev => prev.map(msg =>
+          msg._id === messageId
+            ? { ...msg, isDeleted: true, content: t('chat.messageDeleted'), attachments: [] }
             : msg
         ));
-        
+
         setShowMessageMenu(null);
       } else {
         const error = await response.json();
-        alert(error.message || 'Không thể xóa tin nhắn');
+        alert(error.message || t('chat.deleteFailed'));
       }
     } catch (error) {
       console.error('Error deleting message:', error);
-      alert('Có lỗi xảy ra khi xóa tin nhắn');
+      alert(t('chat.deleteError'));
     }
   };
 
-  // Helper function to normalize file URLs - use proxy for B2 private bucket
+  // Helper function to normalize file URLs - use Vercel proxy for uploads
   const normalizeFileUrl = (fileUrl: string): string => {
     if (!fileUrl) return '';
-    
-    // If it's a B2 URL (private bucket), use proxy endpoint
-    if (fileUrl.includes('backblazeb2.com')) {
-      // Use proxy endpoint to generate presigned URL
-      const encodedUrl = encodeURIComponent(fileUrl);
-      return `https://ungdungnhantinbaomatniel-production.up.railway.app/api/files/proxy?fileUrl=${encodedUrl}`;
-    }
-    
+
     // If already a full HTTP URL, check if it's Railway and convert to relative
     if (fileUrl.startsWith('http')) {
       if (fileUrl.includes('railway.app/uploads/')) {
@@ -505,16 +500,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       // Keep other full URLs as-is
       return fileUrl;
     }
-    
+
     // If relative path, ensure it starts with /
     return fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
   };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('vi-VN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -540,7 +535,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải tin nhắn...</p>
+          <p className="text-gray-600">{t('chat.loadingMessages')}</p>
         </div>
       </div>
     );
@@ -555,8 +550,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                 {otherParticipant?.avatar ? (
-                  <img 
-                    src={otherParticipant.avatar} 
+                  <img
+                    src={otherParticipant.avatar}
                     alt={otherParticipant.fullName}
                     className="w-10 h-10 rounded-full object-cover"
                   />
@@ -573,9 +568,9 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   {otherParticipant?.fullName}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {conversation.type === 'group' 
-                    ? `${conversation.participants?.length || 0} thành viên`
-                    : 'Đang hoạt động'
+                  {conversation.type === 'group'
+                    ? `${conversation.participants?.length || 0} ${t('chat.members')}`
+                    : t('chat.online')
                   }
                 </p>
               </div>
@@ -588,10 +583,10 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 <Video className="w-5 h-5 text-gray-600" />
               </button>
               {conversation.type === 'group' && onShowGroupManagement && (
-                <button 
+                <button
                   onClick={onShowGroupManagement}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Quản lý nhóm"
+                  title={t('group.manageGroup')}
                 >
                   <Users className="w-5 h-5 text-gray-600" />
                 </button>
@@ -608,8 +603,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
-            <p>Chưa có tin nhắn nào</p>
-            <p className="text-sm">Hãy bắt đầu cuộc trò chuyện!</p>
+            <p>{t('chat.noMessages')}</p>
+            <p className="text-sm">{t('chat.startConversation')}</p>
           </div>
         ) : (
           messages.map((message) => (
@@ -623,8 +618,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               {message.senderId._id !== currentUser?.id && (
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                   {message.senderId.avatar ? (
-                    <img 
-                      src={message.senderId.avatar} 
+                    <img
+                      src={message.senderId.avatar}
                       alt={message.senderId.fullName}
                       className="w-8 h-8 rounded-full object-cover"
                       onError={(e) => {
@@ -639,7 +634,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   )}
                 </div>
               )}
-              
+
               <div className={`max-w-xs lg:max-w-md ${message.senderId._id === currentUser?.id ? 'order-2' : 'order-1'}`}>
                 {message.senderId._id !== currentUser?.id && (
                   <div className="flex items-center space-x-2 mb-1">
@@ -651,34 +646,33 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     </span>
                   </div>
                 )}
-                
-                <div className={`rounded-lg p-3 ${
-                  message.senderId._id === currentUser?.id 
-                    ? 'bg-blue-500 text-white' 
+
+                <div className={`rounded-lg p-3 ${message.senderId._id === currentUser?.id
+                    ? 'bg-blue-500 text-white'
                     : 'bg-white text-gray-800 border border-gray-200'
-                }`}>
+                  }`}>
                   {message.replyTo && (
                     <div className="mb-2 p-2 bg-gray-100 rounded text-xs border-l-2 border-blue-500">
                       <p className="font-medium">{message.replyTo.senderId.fullName}</p>
                       <p className="text-gray-600 truncate">{message.replyTo.content}</p>
                     </div>
                   )}
-                  
+
                   {message.messageType === 'text' && (
                     <p className={`text-sm ${message.isDeleted ? 'italic text-gray-500' : ''}`}>
                       {message.content}
                     </p>
                   )}
-                  
+
                   {message.messageType === 'image' && message.attachments && (
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
                       {message.attachments.map((attachment, index) => {
                         const imageUrl = normalizeFileUrl(attachment.fileUrl);
-                        
+
                         return (
                           <div key={index} className="relative">
-                            <img 
+                            <img
                               src={imageUrl}
                               alt={attachment.fileName}
                               className="max-w-full h-auto rounded"
@@ -698,7 +692,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                       })}
                     </div>
                   )}
-                  
+
                   {message.messageType === 'file' && message.attachments && (
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
@@ -711,7 +705,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                               <p className="text-xs font-medium truncate">{attachment.fileName}</p>
                               <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
                             </div>
-                            <a 
+                            <a
                               href={fileUrl}
                               download={attachment.fileName}
                               className="p-1 hover:bg-gray-200 rounded"
@@ -723,12 +717,12 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                       })}
                     </div>
                   )}
-                  
+
                   {message.messageType === 'audio' && message.attachments && (
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
                       {message.attachments.map((attachment, index) => (
-                        <AudioPlayer 
+                        <AudioPlayer
                           key={index}
                           fileUrl={attachment.fileUrl}
                           fileName={attachment.fileName}
@@ -736,38 +730,38 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                       ))}
                     </div>
                   )}
-                  
+
                   {message.isEdited && (
-                    <p className="text-xs opacity-70 mt-1">Đã chỉnh sửa</p>
+                    <p className="text-xs opacity-70 mt-1">{t('chat.edited')}</p>
                   )}
                 </div>
-                
+
                 {message.senderId._id === currentUser?.id && (
                   <div className="flex justify-end items-center space-x-2 mt-1">
                     <span className="text-xs text-gray-400">
                       {formatTime(message.createdAt)}
                     </span>
                     <div className="relative">
-                      <button 
+                      <button
                         onClick={() => setShowMessageMenu(showMessageMenu === message._id ? null : message._id)}
                         className="p-1 hover:bg-gray-100 rounded transition-colors"
                       >
                         <MoreVertical className="w-4 h-4 text-gray-400" />
                       </button>
-                      
+
                       {showMessageMenu === message._id && (
                         <div className="message-menu absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
                           {!message.isDeleted && (
                             <button
                               onClick={() => {
-                                if (confirm('Bạn có chắc muốn xóa tin nhắn này?')) {
+                                if (confirm(t('chat.deleteConfirm'))) {
                                   handleDeleteMessage(message._id);
                                 }
                               }}
                               className="w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 flex items-center space-x-2"
                             >
                               <Trash2 className="w-4 h-4" />
-                              <span>Xóa tin nhắn</span>
+                              <span>{t('chat.deleteMessage')}</span>
                             </button>
                           )}
                         </div>
@@ -776,13 +770,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   </div>
                 )}
               </div>
-              
+
               {/* Avatar for current user */}
               {message.senderId._id === currentUser?.id && (
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                   {currentUser?.avatar ? (
-                    <img 
-                      src={currentUser.avatar} 
+                    <img
+                      src={currentUser.avatar}
                       alt={currentUser.fullName}
                       className="w-8 h-8 rounded-full object-cover"
                       onError={(e) => {
@@ -800,7 +794,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             </motion.div>
           ))
         )}
-        
+
         {/* Typing indicator */}
         {isTyping && (
           <div className="flex justify-start">
@@ -812,13 +806,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                   </div>
-                  <span className="text-sm text-gray-500">Đang nhập...</span>
+                  <span className="text-sm text-gray-500">{t('chat.typing')}</span>
                 </div>
               </div>
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -853,14 +847,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           >
             <Paperclip className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
           </button>
-          
+
           <div className="flex-1 relative">
             <input
               type="text"
               value={newMessage}
               onChange={handleTyping}
               onBlur={handleInputBlur}
-              placeholder="Nhập tin nhắn..."
+              placeholder={t('chat.typePlaceholder')}
               className={`w-full ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'} border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
             />
             {showFilePicker && (
@@ -880,7 +874,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
                   >
                     <Image className="w-4 h-4" />
-                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Hình ảnh</span>
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>{t('chatList.image')}</span>
                   </button>
                   <button
                     type="button"
@@ -902,7 +896,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               </div>
             )}
           </div>
-          
+
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -910,7 +904,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           >
             <Smile className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
           </button>
-          
+
           <button
             type="submit"
             disabled={!newMessage.trim()}
@@ -919,7 +913,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             <Send className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
           </button>
         </form>
-        
+
         <input
           ref={fileInputRef}
           type="file"
@@ -933,7 +927,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           }}
           className="hidden"
         />
-        
+
         <input
           ref={audioInputRef}
           type="file"

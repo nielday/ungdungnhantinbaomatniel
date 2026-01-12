@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { 
-  X, 
-  Users, 
-  Settings, 
-  UserPlus, 
-  UserMinus, 
+import {
+  X,
+  Users,
+  Settings,
+  UserPlus,
+  UserMinus,
   Crown,
   Search,
   MoreVertical,
@@ -36,9 +37,9 @@ interface Conversation {
   _id: string;
   type: 'group';
   participants: GroupMember[];
-  name: string; // Changed from groupName
-  description?: string; // Changed from groupDescription
-  avatar?: string; // Changed from groupAvatar
+  name: string;
+  description?: string;
+  avatar?: string;
   createdBy: User;
 }
 
@@ -49,12 +50,13 @@ interface GroupManagementModalProps {
   onGroupUpdated: (group: Conversation) => void;
 }
 
-export default function GroupManagementModal({ 
-  conversation, 
-  currentUser, 
-  onClose, 
-  onGroupUpdated 
+export default function GroupManagementModal({
+  conversation,
+  currentUser,
+  onClose,
+  onGroupUpdated
 }: GroupManagementModalProps) {
+  const t = useTranslations();
   const [activeTab, setActiveTab] = useState<'members' | 'settings'>('members');
   const [searchQuery, setSearchQuery] = useState('');
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
@@ -69,13 +71,11 @@ export default function GroupManagementModal({
 
   const isAdmin = conversation.createdBy._id === currentUser?.id;
 
-  // Sync avatar state with conversation changes
   useEffect(() => {
     console.log('GroupManagementModal - Conversation avatar changed:', conversation.avatar);
     setGroupAvatar(conversation.avatar || null);
   }, [conversation.avatar]);
 
-  // Debug conversation data
   useEffect(() => {
     console.log('GroupManagementModal - Conversation data:', {
       id: conversation._id,
@@ -93,7 +93,6 @@ export default function GroupManagementModal({
   }, [searchQuery, showAddMembers]);
 
   const searchUsers = async () => {
-    // Don't search if query is too short
     if (!searchQuery || searchQuery.trim().length < 2) {
       setAvailableUsers([]);
       return;
@@ -104,7 +103,7 @@ export default function GroupManagementModal({
       const token = localStorage.getItem('token');
       console.log('GroupManagementModal - Searching users with query:', searchQuery);
       console.log('GroupManagementModal - Token:', token ? 'Present' : 'Missing');
-      
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?q=${encodeURIComponent(searchQuery)}`,
         {
@@ -116,12 +115,11 @@ export default function GroupManagementModal({
       );
 
       console.log('GroupManagementModal - Search response status:', response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('GroupManagementModal - Found users:', data.length);
-        // Filter out users already in group
-        const filteredUsers = data.filter((user: User) => 
+        const filteredUsers = data.filter((user: User) =>
           !conversation.participants.some(member => member._id === user._id)
         );
         setAvailableUsers(filteredUsers);
@@ -162,18 +160,18 @@ export default function GroupManagementModal({
         setAvailableUsers([]);
       } else {
         const error = await response.json();
-        alert(error.message || 'Không thể thêm thành viên');
+        alert(error.message || t('group.addMemberFailed'));
       }
     } catch (error) {
       console.error('Error adding member:', error);
-      alert('Có lỗi xảy ra khi thêm thành viên');
+      alert(t('group.addMemberError'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleRemoveMember = async (userId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi nhóm?')) {
+    if (!confirm(t('group.removeMemberConfirm'))) {
       return;
     }
 
@@ -195,11 +193,11 @@ export default function GroupManagementModal({
         onGroupUpdated(updatedGroup);
       } else {
         const error = await response.json();
-        alert(error.message || 'Không thể xóa thành viên');
+        alert(error.message || t('group.removeMemberFailed'));
       }
     } catch (error) {
       console.error('Error removing member:', error);
-      alert('Có lỗi xảy ra khi xóa thành viên');
+      alert(t('group.removeMemberError'));
     } finally {
       setLoading(false);
     }
@@ -227,18 +225,17 @@ export default function GroupManagementModal({
       if (response.ok) {
         const updatedGroup = await response.json();
         console.log('Group description update response:', updatedGroup);
-        
-        // Pass the raw API response to ChatApp for transformation
+
         console.log('Passing raw group data to ChatApp for description update:', updatedGroup);
         onGroupUpdated(updatedGroup);
         setIsEditing(false);
       } else {
         const error = await response.json();
-        alert(error.message || 'Không thể cập nhật nhóm');
+        alert(error.message || t('group.updateFailed'));
       }
     } catch (error) {
       console.error('Error updating group:', error);
-      alert('Có lỗi xảy ra khi cập nhật nhóm');
+      alert(t('group.updateError'));
     } finally {
       setLoading(false);
     }
@@ -265,20 +262,18 @@ export default function GroupManagementModal({
       if (response.ok) {
         const updatedGroup = await response.json();
         console.log('Avatar upload response:', updatedGroup);
-        
-        // Update local state
+
         setGroupAvatar(updatedGroup.avatar);
-        
-        // Pass the raw API response to ChatApp for transformation
+
         console.log('Passing raw group data to ChatApp:', updatedGroup);
         onGroupUpdated(updatedGroup);
       } else {
         const error = await response.json();
-        alert(error.message || 'Không thể cập nhật ảnh nhóm');
+        alert(error.message || t('group.updateAvatarFailed'));
       }
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      alert('Có lỗi xảy ra khi cập nhật ảnh nhóm');
+      alert(t('group.updateAvatarError'));
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -287,15 +282,13 @@ export default function GroupManagementModal({
   const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Vui lòng chọn file ảnh');
+        alert(t('camera.selectImage'));
         return;
       }
-      
-      // Validate file size (max 5MB)
+
       if (file.size > 5 * 1024 * 1024) {
-        alert('File ảnh không được quá 5MB');
+        alert(t('camera.imageTooLarge'));
         return;
       }
 
@@ -325,8 +318,8 @@ export default function GroupManagementModal({
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
               {groupAvatar || conversation.avatar ? (
-                <img 
-                  src={groupAvatar || conversation.avatar} 
+                <img
+                  src={groupAvatar || conversation.avatar}
                   alt={conversation.name}
                   className="w-10 h-10 rounded-full object-cover"
                 />
@@ -339,7 +332,7 @@ export default function GroupManagementModal({
                 {conversation.name}
               </h2>
               <p className="text-sm text-gray-500">
-                {conversation.participants.length} thành viên
+                {conversation.participants.length} {t('group.members').toLowerCase()}
               </p>
             </div>
           </div>
@@ -356,28 +349,26 @@ export default function GroupManagementModal({
           <div className="flex">
             <button
               onClick={() => setActiveTab('members')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'members'
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'members'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-center space-x-2">
                 <Users className="w-4 h-4" />
-                <span>Thành viên</span>
+                <span>{t('group.members')}</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === 'settings'
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'settings'
                   ? 'text-blue-600 border-b-2 border-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-center space-x-2">
                 <Settings className="w-4 h-4" />
-                <span>Cài đặt</span>
+                <span>{t('settings.title')}</span>
               </div>
             </button>
           </div>
@@ -395,7 +386,7 @@ export default function GroupManagementModal({
                     className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                   >
                     <UserPlus className="w-4 h-4" />
-                    <span>Thêm thành viên</span>
+                    <span>{t('group.addMember')}</span>
                   </button>
                 </div>
               )}
@@ -409,7 +400,7 @@ export default function GroupManagementModal({
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Tìm kiếm người dùng..."
+                      placeholder={t('group.searchMember')}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -430,8 +421,8 @@ export default function GroupManagementModal({
                               <div className="flex items-center space-x-3">
                                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
                                   {user.avatar ? (
-                                    <img 
-                                      src={user.avatar} 
+                                    <img
+                                      src={user.avatar}
                                       alt={user.fullName}
                                       className="w-8 h-8 rounded-full object-cover"
                                     />
@@ -455,14 +446,14 @@ export default function GroupManagementModal({
                                 disabled={loading}
                                 className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
                               >
-                                Thêm
+                                {t('common.add')}
                               </button>
                             </div>
                           ))}
                         </div>
                       ) : (
                         <div className="text-center py-4 text-gray-500 text-sm">
-                          Không tìm thấy người dùng nào
+                          {t('group.noMembersFound')}
                         </div>
                       )}
                     </div>
@@ -480,8 +471,8 @@ export default function GroupManagementModal({
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
                         {member.avatar ? (
-                          <img 
-                            src={member.avatar} 
+                          <img
+                            src={member.avatar}
                             alt={member.fullName}
                             className="w-10 h-10 rounded-full object-cover"
                           />
@@ -501,7 +492,7 @@ export default function GroupManagementModal({
                           )}
                         </div>
                         <p className="text-xs text-gray-500">
-                          {member.phoneNumber} • Tham gia {formatDate(member.joinedAt)}
+                          {member.phoneNumber} • {t('group.joinedAt')} {formatDate(member.joinedAt)}
                         </p>
                       </div>
                     </div>
@@ -528,14 +519,14 @@ export default function GroupManagementModal({
                   {/* Group Avatar */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ảnh nhóm
+                      {t('group.groupAvatar')}
                     </label>
                     <div className="flex items-center space-x-4">
                       <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
                         {groupAvatar ? (
-                          <img 
-                            src={groupAvatar} 
-                            alt="Group avatar" 
+                          <img
+                            src={groupAvatar}
+                            alt="Group avatar"
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -545,7 +536,7 @@ export default function GroupManagementModal({
                       <div className="flex space-x-2">
                         <label className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors">
                           <Camera className="w-4 h-4" />
-                          <span className="text-sm">Chụp ảnh</span>
+                          <span className="text-sm">{t('camera.capture')}</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -557,7 +548,7 @@ export default function GroupManagementModal({
                         </label>
                         <label className="flex items-center space-x-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors">
                           <ImageIcon className="w-4 h-4" />
-                          <span className="text-sm">Thư viện</span>
+                          <span className="text-sm">{t('camera.gallery')}</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -570,7 +561,7 @@ export default function GroupManagementModal({
                       {isUploadingAvatar && (
                         <div className="flex items-center space-x-2 text-blue-600">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          <span className="text-sm">Đang tải lên...</span>
+                          <span className="text-sm">{t('common.uploading')}</span>
                         </div>
                       )}
                     </div>
@@ -579,7 +570,7 @@ export default function GroupManagementModal({
                   {/* Group Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tên nhóm
+                      {t('group.groupName')}
                     </label>
                     {isEditing ? (
                       <div className="space-y-2">
@@ -596,7 +587,7 @@ export default function GroupManagementModal({
                             disabled={loading || !groupName.trim()}
                             className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
                           >
-                            {loading ? 'Đang lưu...' : 'Lưu'}
+                            {loading ? t('common.saving') : t('common.save')}
                           </button>
                           <button
                             onClick={() => {
@@ -606,7 +597,7 @@ export default function GroupManagementModal({
                             }}
                             className="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
                           >
-                            Hủy
+                            {t('common.cancel')}
                           </button>
                         </div>
                       </div>
@@ -626,7 +617,7 @@ export default function GroupManagementModal({
                   {/* Group Description */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mô tả nhóm
+                      {t('group.groupDescription')}
                     </label>
                     {isEditing ? (
                       <textarea
@@ -639,7 +630,7 @@ export default function GroupManagementModal({
                     ) : (
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <span className="text-gray-800">
-                          {conversation.description || 'Chưa có mô tả'}
+                          {conversation.description || t('group.noDescription')}
                         </span>
                         <button
                           onClick={() => setIsEditing(true)}
@@ -655,21 +646,21 @@ export default function GroupManagementModal({
                 <div className="text-center py-8">
                   <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">
-                    Chỉ quản trị viên mới có thể chỉnh sửa cài đặt nhóm
+                    {t('group.onlyAdminCanEdit')}
                   </p>
                 </div>
               )}
 
               {/* Group Info */}
               <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Thông tin nhóm</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">{t('group.groupInfo')}</h3>
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex justify-between">
-                    <span>Tạo bởi:</span>
+                    <span>{t('group.createdBy')}:</span>
                     <span>{conversation.createdBy.fullName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Số thành viên:</span>
+                    <span>{t('group.memberCount')}:</span>
                     <span>{conversation.participants.length}</span>
                   </div>
                 </div>
@@ -684,7 +675,7 @@ export default function GroupManagementModal({
             onClick={onClose}
             className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
-            Đóng
+            {t('common.close')}
           </button>
         </div>
       </motion.div>

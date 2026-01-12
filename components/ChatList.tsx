@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { 
-  MessageCircle, 
-  Users, 
-  Plus, 
+import {
+  MessageCircle,
+  Users,
+  Plus,
   Search,
   Phone,
   Mail
@@ -30,49 +31,50 @@ interface ChatListProps {
   onNewConversation: (conversation: Conversation) => void;
 }
 
-export default function ChatList({ 
-  conversations, 
-  activeConversation, 
+export default function ChatList({
+  conversations,
+  activeConversation,
   currentUserId,
   onSelectConversation,
-  onNewConversation 
+  onNewConversation
 }: ChatListProps) {
+  const t = useTranslations();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredConversations = conversations.filter(conversation => {
     if (!searchQuery) return true;
-    
+
     const searchLower = searchQuery.toLowerCase();
-    
+
     if (conversation.type === 'group') {
       return conversation.name?.toLowerCase().includes(searchLower);
     } else {
       const otherParticipant = conversation.participants?.find(p => p._id !== activeConversation?.participants?.[0]?._id);
       return otherParticipant?.fullName?.toLowerCase().includes(searchLower) ||
-             otherParticipant?.phoneNumber?.includes(searchQuery);
+        otherParticipant?.phoneNumber?.includes(searchQuery);
     }
   });
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '';
-    
+
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 24) {
-      return date.toLocaleTimeString('vi-VN', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return date.toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit'
       });
     } else if (diffInHours < 168) { // 7 days
-      return date.toLocaleDateString('vi-VN', { 
-        weekday: 'short' 
+      return date.toLocaleDateString('vi-VN', {
+        weekday: 'short'
       });
     } else {
-      return date.toLocaleDateString('vi-VN', { 
-        day: '2-digit', 
-        month: '2-digit' 
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit'
       });
     }
   };
@@ -82,7 +84,7 @@ export default function ChatList({
       return conversation.name;
     } else {
       const otherParticipant = conversation.participants?.find(p => p._id !== currentUserId);
-      return otherParticipant?.fullName || otherParticipant?.phoneNumber || 'Unknown User';
+      return otherParticipant?.fullName || otherParticipant?.phoneNumber || t('common.unknownUser');
     }
   };
 
@@ -96,19 +98,19 @@ export default function ChatList({
   };
 
   const getLastMessagePreview = (conversation: Conversation) => {
-    if (!conversation.lastMessage) return 'Chưa có tin nhắn';
-    
+    if (!conversation.lastMessage) return t('chatList.noMessage');
+
     const message = conversation.lastMessage;
     if (message.messageType === 'text') {
       return message.content;
     } else if (message.messageType === 'image') {
-      return '📷 Hình ảnh';
+      return `📷 ${t('chatList.image')}`;
     } else if (message.messageType === 'file') {
-      return '📎 File';
+      return `📎 ${t('chatList.file')}`;
     } else if (message.messageType === 'audio') {
-      return '🎵 Âm thanh';
+      return `🎵 ${t('chatList.audio')}`;
     }
-    return 'Tin nhắn mới';
+    return t('chatList.newMessage');
   };
 
   return (
@@ -119,7 +121,7 @@ export default function ChatList({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Tìm kiếm cuộc trò chuyện..."
+            placeholder={t('chatList.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -131,7 +133,7 @@ export default function ChatList({
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            {searchQuery ? 'Không tìm thấy cuộc trò chuyện nào' : 'Chưa có cuộc trò chuyện nào'}
+            {searchQuery ? t('chatList.noResults') : t('chatList.noConversations')}
           </div>
         ) : (
           <div className="space-y-1">
@@ -142,17 +144,16 @@ export default function ChatList({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => onSelectConversation(conversation)}
-                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
-                  activeConversation?._id === conversation._id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
-                }`}
+                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${activeConversation?._id === conversation._id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                  }`}
               >
                 <div className="flex items-center space-x-3">
                   {/* Avatar */}
                   <div className="relative">
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                       {getConversationAvatar(conversation) ? (
-                        <img 
-                          src={getConversationAvatar(conversation)} 
+                        <img
+                          src={getConversationAvatar(conversation)}
                           alt={getConversationName(conversation)}
                           className="w-12 h-12 rounded-full object-cover"
                         />
@@ -204,7 +205,7 @@ export default function ChatList({
           className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center space-x-2"
         >
           <Plus className="w-5 h-5" />
-          <span>Cuộc trò chuyện mới</span>
+          <span>{t('chatList.newConversation')}</span>
         </motion.button>
       </div>
     </div>

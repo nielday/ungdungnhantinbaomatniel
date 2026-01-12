@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 export default function AuthPage() {
+  const t = useTranslations();
   const [step, setStep] = useState<'login' | 'register' | 'verify'>('login');
   const [formData, setFormData] = useState({
     phoneNumber: '',
@@ -33,7 +35,7 @@ export default function AuthPage() {
         setStep('verify');
       }
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại');
+      setError(err.message || t('auth.loginFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +59,7 @@ export default function AuthPage() {
         setStep('verify');
       }
     } catch (err: any) {
-      setError(err.message || 'Đăng ký thất bại');
+      setError(err.message || t('auth.registerFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +81,7 @@ export default function AuthPage() {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Xác thực thất bại');
+      setError(err.message || t('auth.verifyFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +95,7 @@ export default function AuthPage() {
       await resendOtp(userId);
       setError('');
     } catch (err: any) {
-      setError(err.message || 'Không thể gửi lại OTP');
+      setError(err.message || t('auth.resendFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -137,14 +139,14 @@ export default function AuthPage() {
               <User className="w-8 h-8 text-white" />
             </motion.div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              {step === 'login' && 'Đăng nhập'}
-              {step === 'register' && 'Đăng ký'}
-              {step === 'verify' && 'Xác thực OTP'}
+              {step === 'login' && t('auth.login')}
+              {step === 'register' && t('auth.register')}
+              {step === 'verify' && t('auth.verifyOtp')}
             </h1>
             <p className="text-gray-600">
-              {step === 'login' && 'Nhập số điện thoại để đăng nhập'}
-              {step === 'register' && 'Tạo tài khoản mới'}
-              {step === 'verify' && 'Nhập mã OTP đã gửi đến email của bạn'}
+              {step === 'login' && t('auth.loginSubtitle')}
+              {step === 'register' && t('auth.registerSubtitle')}
+              {step === 'verify' && t('auth.verifySubtitle')}
             </p>
           </div>
 
@@ -159,7 +161,7 @@ export default function AuthPage() {
               className="mb-4 flex items-center text-blue-600 hover:text-blue-700 transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Quay lại
+              {t('common.back')}
             </motion.button>
           )}
 
@@ -171,7 +173,7 @@ export default function AuthPage() {
                 transition={{ delay: 0.3 }}
               >
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số điện thoại
+                  {t('auth.phoneNumber')}
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -181,7 +183,7 @@ export default function AuthPage() {
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    placeholder="Nhập số điện thoại"
+                    placeholder={t('auth.phonePlaceholder')}
                     required
                   />
                 </div>
@@ -196,7 +198,7 @@ export default function AuthPage() {
                   transition={{ delay: 0.3 }}
                 >
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Số điện thoại
+                    {t('auth.phoneNumber')}
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -206,7 +208,7 @@ export default function AuthPage() {
                       value={formData.phoneNumber}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Nhập số điện thoại"
+                      placeholder={t('auth.phonePlaceholder')}
                       required
                     />
                   </div>
@@ -218,7 +220,7 @@ export default function AuthPage() {
                   transition={{ delay: 0.4 }}
                 >
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
+                    {t('auth.email')}
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -228,7 +230,7 @@ export default function AuthPage() {
                       value={formData.email}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Nhập email của bạn"
+                      placeholder={t('auth.emailPlaceholder')}
                       required
                     />
                   </div>
@@ -240,7 +242,7 @@ export default function AuthPage() {
                   transition={{ delay: 0.5 }}
                 >
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Họ và tên
+                    {t('auth.fullName')}
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -250,7 +252,7 @@ export default function AuthPage() {
                       value={formData.fullName}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Nhập họ và tên"
+                      placeholder={t('auth.fullNamePlaceholder')}
                       required
                     />
                   </div>
@@ -262,7 +264,7 @@ export default function AuthPage() {
                   transition={{ delay: 0.6 }}
                 >
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tuổi
+                    {t('auth.age')}
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -272,7 +274,7 @@ export default function AuthPage() {
                       value={formData.age}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Nhập tuổi"
+                      placeholder={t('auth.agePlaceholder')}
                       min="1"
                       max="120"
                       required
@@ -289,7 +291,7 @@ export default function AuthPage() {
                 transition={{ delay: 0.3 }}
               >
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã OTP
+                  {t('auth.otpCode')}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -299,13 +301,13 @@ export default function AuthPage() {
                     value={formData.otpCode}
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    placeholder="Nhập mã OTP 6 số"
+                    placeholder={t('auth.otpPlaceholder')}
                     maxLength={6}
                     required
                   />
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  Mã OTP đã được gửi đến email của bạn
+                  {t('auth.otpSent')}
                 </p>
                 <button
                   type="button"
@@ -313,7 +315,7 @@ export default function AuthPage() {
                   disabled={isLoading}
                   className="text-blue-600 hover:text-blue-700 text-sm mt-2 disabled:opacity-50"
                 >
-                  Gửi lại mã OTP
+                  {t('auth.resendOtp')}
                 </button>
               </motion.div>
             )}
@@ -336,9 +338,9 @@ export default function AuthPage() {
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 focus:ring-4 focus:ring-blue-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Đang xử lý...' : 
-               step === 'login' ? 'Đăng nhập' : 
-               step === 'register' ? 'Đăng ký' : 'Xác thực'}
+              {isLoading ? t('auth.processing') :
+                step === 'login' ? t('auth.login') :
+                  step === 'register' ? t('auth.register') : t('auth.verify')}
             </motion.button>
           </form>
 
@@ -356,7 +358,7 @@ export default function AuthPage() {
                 }}
                 className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
               >
-                {step === 'login' ? 'Chưa có tài khoản? Đăng ký ngay' : 'Đã có tài khoản? Đăng nhập'}
+                {step === 'login' ? t('auth.noAccount') : t('auth.hasAccount')}
               </button>
             </motion.div>
           )}
