@@ -216,5 +216,35 @@
         "gallery": "Gallery",
         "selectImage": "Please select an image file",
         "imageTooLarge": "Image file must not exceed 5MB"
+    },
+    "encryption": {
+        "title": "End-to-End Encryption",
+        "enabled": "Encryption enabled",
+        "disabled": "Not encrypted",
+        "toggle": "Toggle encryption",
+        "enableE2EE": "Enable end-to-end encryption",
+        "disableE2EE": "Disable encryption",
+        "e2eeOn": "E2EE is ON",
+        "e2eeOff": "E2EE is OFF",
+        "warning": "Encrypted messages cannot be recovered if you lose your key",
+        "keyFingerprint": "Key fingerprint",
+        "regenerateKey": "Regenerate key",
+        "noKey": "No encryption key",
+        "generateKey": "Generate encryption key",
+        "keyGenerated": "Encryption key generated successfully",
+        "encryptedMessage": "Encrypted message",
+        "decryptFailed": "Cannot decrypt message",
+        "otherNoKey": "Recipient does not have an encryption key"
+    },
+    "trustedDevices": {
+        "title": "Trusted Devices",
+        "currentDevice": "Current device",
+        "noDevices": "No devices yet",
+        "lastUsed": "Last used",
+        "remove": "Remove device",
+        "confirmRemove": "Are you sure you want to remove this device?",
+        "deviceRemoved": "Device removed",
+        "newDeviceOtp": "New device! Please enter the OTP sent to your email.",
+        "deviceVerified": "Device verified"
     }
 }

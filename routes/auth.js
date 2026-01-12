@@ -23,7 +23,7 @@ const sendOTPEmail = async (email, otp) => {
   try {
     console.log('Attempting to send email to:', email);
     console.log('OTP code:', otp);
-    
+
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -119,13 +119,13 @@ const sendOTPEmail = async (email, otp) => {
         `
       })
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       console.error('Brevo API error:', error);
       return false;
     }
-    
+
     console.log('Email sent successfully to:', email);
     return true;
   } catch (error) {
@@ -406,6 +406,173 @@ router.post('/verify-login', async (req, res) => {
     res.status(500).json({
       message: 'Lỗi server'
     });
+  }
+});
+
+// ============================================
+// TRUSTED DEVICE VERIFICATION FOR E2EE
+// ============================================
+
+// Check if device is trusted (called after login)
+router.post('/check-device', async (req, res) => {
+  try {
+    const { userId, deviceId, deviceName } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    // Check if device is in trusted list
+    const trustedDevice = user.trustedDevices?.find(
+      d => d.deviceId === deviceId && d.isActive
+    );
+
+    if (trustedDevice) {
+      // Update last used
+      trustedDevice.lastUsed = new Date();
+      await user.save();
+
+      return res.json({
+        isTrusted: true,
+        message: 'Thiết bị đã được xác thực',
+        encryptedPrivateKey: user.encryptedPrivateKey,
+        keySalt: user.keySalt,
+        publicKey: user.publicKey
+      });
+    }
+
+    // Device not trusted - send OTP for verification
+    const otpCode = generateOTP();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+
+    user.otpCode = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send OTP email
+    await sendOTPEmail(user.email, otpCode);
+
+    res.json({
+      isTrusted: false,
+      message: 'Thiết bị mới. Vui lòng xác nhận OTP đã gửi đến email.',
+      requireOtp: true
+    });
+  } catch (error) {
+    console.error('Check device error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Verify device with OTP and add to trusted list
+router.post('/verify-device', async (req, res) => {
+  try {
+    const { userId, deviceId, deviceName, otpCode } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    // Verify OTP
+    if (!user.otpCode || user.otpCode !== otpCode) {
+      return res.status(400).json({ message: 'Mã OTP không đúng' });
+    }
+
+    if (new Date() > user.otpExpires) {
+      return res.status(400).json({ message: 'Mã OTP đã hết hạn' });
+    }
+
+    // Add device to trusted list
+    if (!user.trustedDevices) {
+      user.trustedDevices = [];
+    }
+
+    // Remove old entry if exists
+    user.trustedDevices = user.trustedDevices.filter(d => d.deviceId !== deviceId);
+
+    // Add new trusted device
+    user.trustedDevices.push({
+      deviceId,
+      deviceName: deviceName || 'Unknown Device',
+      lastUsed: new Date(),
+      createdAt: new Date(),
+      isActive: true
+    });
+
+    // Clear OTP
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.json({
+      message: 'Thiết bị đã được xác thực thành công',
+      isTrusted: true,
+      encryptedPrivateKey: user.encryptedPrivateKey,
+      keySalt: user.keySalt,
+      publicKey: user.publicKey
+    });
+  } catch (error) {
+    console.error('Verify device error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Get list of trusted devices
+router.get('/trusted-devices', async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Chưa đăng nhập' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    const devices = user.trustedDevices?.filter(d => d.isActive) || [];
+
+    res.json({
+      devices: devices.map(d => ({
+        deviceId: d.deviceId,
+        deviceName: d.deviceName,
+        lastUsed: d.lastUsed,
+        createdAt: d.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Get trusted devices error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Remove a trusted device
+router.delete('/trusted-devices/:deviceId', async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { deviceId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Chưa đăng nhập' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    // Find and deactivate device
+    const device = user.trustedDevices?.find(d => d.deviceId === deviceId);
+    if (device) {
+      device.isActive = false;
+      await user.save();
+    }
+
+    res.json({ message: 'Đã xóa thiết bị khỏi danh sách tin cậy' });
+  } catch (error) {
+    console.error('Delete trusted device error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
   }
 });
 

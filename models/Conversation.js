@@ -18,6 +18,13 @@ const ConversationSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+
+  // E2EE Encryption mode
+  encryptionMode: {
+    type: String,
+    enum: ['none', 'e2ee'],
+    default: 'none'
   }
 }, {
   timestamps: true

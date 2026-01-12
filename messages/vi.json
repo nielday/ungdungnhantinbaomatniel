@@ -216,5 +216,35 @@
         "gallery": "Thư viện",
         "selectImage": "Vui lòng chọn file ảnh",
         "imageTooLarge": "File ảnh không được quá 5MB"
+    },
+    "encryption": {
+        "title": "Mã hóa đầu cuối",
+        "enabled": "Đã bật mã hóa",
+        "disabled": "Chưa mã hóa",
+        "toggle": "Bật/Tắt mã hóa",
+        "enableE2EE": "Bật mã hóa đầu cuối",
+        "disableE2EE": "Tắt mã hóa",
+        "e2eeOn": "Mã hóa E2EE đang bật",
+        "e2eeOff": "Mã hóa E2EE đang tắt",
+        "warning": "Tin nhắn mã hóa không thể khôi phục nếu mất key",
+        "keyFingerprint": "Vân tay khóa",
+        "regenerateKey": "Tạo lại khóa mới",
+        "noKey": "Chưa có khóa mã hóa",
+        "generateKey": "Tạo khóa mã hóa",
+        "keyGenerated": "Đã tạo khóa mã hóa thành công",
+        "encryptedMessage": "Tin nhắn đã mã hóa",
+        "decryptFailed": "Không thể giải mã tin nhắn",
+        "otherNoKey": "Người nhận chưa có khóa mã hóa"
+    },
+    "trustedDevices": {
+        "title": "Thiết bị tin cậy",
+        "currentDevice": "Thiết bị hiện tại",
+        "noDevices": "Chưa có thiết bị nào",
+        "lastUsed": "Sử dụng lần cuối",
+        "remove": "Xóa thiết bị",
+        "confirmRemove": "Bạn có chắc muốn xóa thiết bị này?",
+        "deviceRemoved": "Đã xóa thiết bị",
+        "newDeviceOtp": "Thiết bị mới! Vui lòng nhập mã OTP đã gửi đến email.",
+        "deviceVerified": "Thiết bị đã được xác thực"
     }
 }

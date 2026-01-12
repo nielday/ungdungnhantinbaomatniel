@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Bell, Palette, Shield, Globe, Save, Moon, Sun, Camera } from 'lucide-react';
+import { X, User, Bell, Palette, Shield, Globe, Save, Moon, Sun, Camera, Lock, Smartphone, Key, Trash2, RefreshCw } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from './LanguageSwitcher';
+import * as encryption from '../lib/encryption';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -31,6 +32,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatar, setAvatar] = useState(user?.avatar || '');
+
+  // E2EE Security State
+  const [keyFingerprint, setKeyFingerprint] = useState<string>('');
+  const [trustedDevices, setTrustedDevices] = useState<Array<{
+    deviceId: string;
+    deviceName: string;
+    lastUsed: string;
+    createdAt: string;
+  }>>([]);
+  const [hasEncryptionKey, setHasEncryptionKey] = useState(false);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+  const currentDeviceId = typeof window !== 'undefined' ? encryption.getDeviceId() : '';
 
   // Load settings from localStorage
   useEffect(() => {
@@ -58,6 +72,122 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     const avatarValue = user?.avatar || '';
     setAvatar(isValidImageUrl(avatarValue) ? avatarValue : '');
   }, [user]);
+
+  // Load encryption keys and trusted devices when Security tab is opened
+  useEffect(() => {
+    if (activeTab === 'security' && user) {
+      loadEncryptionData();
+    }
+  }, [activeTab, user]);
+
+  const loadEncryptionData = async () => {
+    if (!user) return;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const token = localStorage.getItem('token');
+
+      // Load encryption keys
+      const keysResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (keysResponse.ok) {
+        const keysData = await keysResponse.json();
+        if (keysData.publicKey) {
+          setHasEncryptionKey(true);
+          const fingerprint = await encryption.getKeyFingerprint(keysData.publicKey);
+          setKeyFingerprint(fingerprint);
+        } else {
+          setHasEncryptionKey(false);
+          setKeyFingerprint('');
+        }
+      }
+
+      // Load trusted devices
+      setIsLoadingDevices(true);
+      const devicesResponse = await fetch(`${apiUrl}/auth/trusted-devices`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (devicesResponse.ok) {
+        const devicesData = await devicesResponse.json();
+        setTrustedDevices(devicesData.devices || []);
+      }
+    } catch (error) {
+      console.error('Error loading encryption data:', error);
+    } finally {
+      setIsLoadingDevices(false);
+    }
+  };
+
+  const handleGenerateKey = async () => {
+    if (!user) return;
+
+    const confirmGenerate = hasEncryptionKey
+      ? confirm(t('encryption.warning'))
+      : true;
+
+    if (!confirmGenerate) return;
+
+    setIsGeneratingKey(true);
+    try {
+      // Generate new key pair
+      const keyPair = await encryption.generateKeyPair();
+      const publicKeyBase64 = await encryption.exportPublicKey(keyPair.publicKey);
+      const privateKeyBase64 = await encryption.exportPrivateKey(keyPair.privateKey);
+
+      // For now, store plaintext (would encrypt with password in production)
+      // TODO: Add password prompt for encryption
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${apiUrl}/users/encryption-keys`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          publicKey: publicKeyBase64,
+          encryptedPrivateKey: privateKeyBase64, // TODO: encrypt with password
+          keySalt: '' // TODO: generate salt for password encryption
+        })
+      });
+
+      if (response.ok) {
+        setHasEncryptionKey(true);
+        const fingerprint = await encryption.getKeyFingerprint(publicKeyBase64);
+        setKeyFingerprint(fingerprint);
+        alert(t('encryption.keyGenerated'));
+      }
+    } catch (error) {
+      console.error('Error generating key:', error);
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  };
+
+  const handleRemoveDevice = async (deviceId: string) => {
+    if (!confirm(t('trustedDevices.confirmRemove'))) return;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${apiUrl}/auth/trusted-devices/${deviceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setTrustedDevices(prev => prev.filter(d => d.deviceId !== deviceId));
+        alert(t('trustedDevices.deviceRemoved'));
+      }
+    } catch (error) {
+      console.error('Error removing device:', error);
+    }
+  };
 
   // Helper function to check if avatar is a valid image URL
   const isValidImageUrl = (url: string): boolean => {
@@ -206,6 +336,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     { id: 'profile', name: t('settings.profile'), icon: User },
     { id: 'notifications', name: t('settings.notifications'), icon: Bell },
     { id: 'appearance', name: t('settings.appearance'), icon: Palette },
+    { id: 'security', name: t('encryption.title'), icon: Lock },
     { id: 'privacy', name: t('settings.privacy'), icon: Shield },
     { id: 'language', name: t('settings.language'), icon: Globe }
   ];
@@ -490,6 +621,114 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                 {t('settings.themePreviewDesc', { theme: settings.darkMode ? t('settings.dark') : t('settings.light') })}
                               </p>
                             </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Security/E2EE Tab */}
+                    {activeTab === 'security' && (
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4 dark:text-white">{t('encryption.title')}</h3>
+                        <div className="space-y-4">
+                          {/* Encryption Key Section */}
+                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex items-center space-x-3 mb-3">
+                              <Key className="w-5 h-5 text-blue-500" />
+                              <h4 className="font-medium dark:text-white">{t('encryption.keyFingerprint')}</h4>
+                            </div>
+
+                            {hasEncryptionKey ? (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                                  <div className="flex items-center space-x-2">
+                                    <Lock className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                    <span className="text-green-700 dark:text-green-300 font-mono text-sm">
+                                      {keyFingerprint || 'Loading...'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={handleGenerateKey}
+                                  disabled={isGeneratingKey}
+                                  className="flex items-center space-x-2 px-4 py-2 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
+                                >
+                                  <RefreshCw className={`w-4 h-4 ${isGeneratingKey ? 'animate-spin' : ''}`} />
+                                  <span>{t('encryption.regenerateKey')}</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                  {t('encryption.noKey')}
+                                </p>
+                                <button
+                                  onClick={handleGenerateKey}
+                                  disabled={isGeneratingKey}
+                                  className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                                >
+                                  <Key className={`w-4 h-4 ${isGeneratingKey ? 'animate-spin' : ''}`} />
+                                  <span>{isGeneratingKey ? t('common.loading') : t('encryption.generateKey')}</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Trusted Devices Section */}
+                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex items-center space-x-3 mb-3">
+                              <Smartphone className="w-5 h-5 text-blue-500" />
+                              <h4 className="font-medium dark:text-white">{t('trustedDevices.title')}</h4>
+                            </div>
+
+                            {isLoadingDevices ? (
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('common.loading')}</p>
+                            ) : trustedDevices.length > 0 ? (
+                              <div className="space-y-2">
+                                {trustedDevices.map((device) => (
+                                  <div
+                                    key={device.deviceId}
+                                    className={`flex items-center justify-between p-3 rounded-lg border ${device.deviceId === currentDeviceId
+                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
+                                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                                      }`}
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <Smartphone className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                      <div>
+                                        <p className="font-medium text-gray-800 dark:text-white text-sm">
+                                          {device.deviceName}
+                                          {device.deviceId === currentDeviceId && (
+                                            <span className="ml-2 text-xs text-blue-500">({t('trustedDevices.currentDevice')})</span>
+                                          )}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          {t('trustedDevices.lastUsed')}: {new Date(device.lastUsed).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {device.deviceId !== currentDeviceId && (
+                                      <button
+                                        onClick={() => handleRemoveDevice(device.deviceId)}
+                                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                        title={t('trustedDevices.remove')}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('trustedDevices.noDevices')}</p>
+                            )}
+                          </div>
+
+                          {/* Warning */}
+                          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <p className="text-yellow-700 dark:text-yellow-300 text-sm">
+                              ⚠️ {t('encryption.warning')}
+                            </p>
                           </div>
                         </div>
                       </div>

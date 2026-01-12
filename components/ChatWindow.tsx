@@ -98,7 +98,9 @@ import {
   ArrowLeft,
   Users,
   Trash2,
-  Camera
+  Camera,
+  Lock,
+  Unlock
 } from 'lucide-react';
 
 interface Message {
@@ -136,6 +138,7 @@ interface Conversation {
   lastMessage?: any;
   lastMessageAt?: string;
   createdBy: any;
+  encryptionMode?: 'none' | 'e2ee'; // E2EE support
 }
 
 interface ChatWindowProps {

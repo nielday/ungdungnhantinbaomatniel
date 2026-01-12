@@ -13,7 +13,7 @@ const MessageSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: function() {
+    required: function () {
       // Content is required only for text messages
       return this.messageType === 'text';
     },
@@ -73,7 +73,23 @@ const MessageSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+
+  // E2EE Encryption fields
+  isEncrypted: {
+    type: Boolean,
+    default: false
+  },
+  encryptionData: {
+    iv: {
+      type: String,
+      default: null
+    },
+    algorithm: {
+      type: String,
+      default: 'AES-256-GCM'
+    }
+  }
 }, {
   timestamps: true
 });

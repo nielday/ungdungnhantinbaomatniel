@@ -40,7 +40,49 @@ const UserSchema = new mongoose.Schema({
   otpExpires: {
     type: Date,
     default: null
-  }
+  },
+
+  // E2EE Encryption Keys
+  publicKey: {
+    type: String,
+    default: null
+  },
+  encryptedPrivateKey: {
+    type: String,
+    default: null
+  },
+  keySalt: {
+    type: String,
+    default: null
+  },
+  keyCreatedAt: {
+    type: Date,
+    default: null
+  },
+
+  // Trusted Devices for E2EE key access
+  trustedDevices: [{
+    deviceId: {
+      type: String,
+      required: true
+    },
+    deviceName: {
+      type: String,
+      default: 'Unknown Device'
+    },
+    lastUsed: {
+      type: Date,
+      default: Date.now
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
+  }]
 }, {
   timestamps: true
 });

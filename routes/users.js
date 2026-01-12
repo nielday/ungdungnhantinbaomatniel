@@ -163,8 +163,8 @@ router.get('/search', async (req, res) => {
         { phoneNumber: { $regex: searchTerm, $options: 'i' } }
       ]
     })
-    .select('_id fullName phoneNumber avatar')
-    .limit(20);
+      .select('_id fullName phoneNumber avatar')
+      .limit(20);
 
     console.log('Found users:', users.length);
     res.json(users);
@@ -207,7 +207,7 @@ router.get('/phone/:phoneNumber', async (req, res) => {
 router.post('/send-verification-otp', async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // Find user
     const user = await User.findById(userId);
     if (!user) {
@@ -227,9 +227,9 @@ router.post('/send-verification-otp', async (req, res) => {
     const { sendOTPEmail } = require('./auth');
     await sendOTPEmail(user.email, otpCode);
 
-    res.json({ 
+    res.json({
       message: 'Mã OTP đã được gửi đến email của bạn',
-      email: user.email 
+      email: user.email
     });
   } catch (error) {
     console.error('Send verification OTP error:', error);
@@ -269,7 +269,7 @@ router.post('/verify-account', async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
-    res.json({ 
+    res.json({
       message: 'Tài khoản đã được xác thực thành công',
       user: {
         id: user._id,
@@ -283,6 +283,89 @@ router.post('/verify-account', async (req, res) => {
     });
   } catch (error) {
     console.error('Verify account error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// ============================================
+// E2EE ENCRYPTION KEY MANAGEMENT
+// ============================================
+
+// Save user's encryption keys
+router.put('/encryption-keys', async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { publicKey, encryptedPrivateKey, keySalt } = req.body;
+
+    if (!publicKey) {
+      return res.status(400).json({ message: 'Thiếu public key' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    user.publicKey = publicKey;
+    if (encryptedPrivateKey) user.encryptedPrivateKey = encryptedPrivateKey;
+    if (keySalt) user.keySalt = keySalt;
+    user.keyCreatedAt = new Date();
+
+    await user.save();
+
+    res.json({
+      message: 'Đã lưu encryption keys',
+      keyCreatedAt: user.keyCreatedAt
+    });
+  } catch (error) {
+    console.error('Save encryption keys error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Get user's own encryption keys (for key recovery)
+router.get('/encryption-keys', async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    res.json({
+      publicKey: user.publicKey,
+      encryptedPrivateKey: user.encryptedPrivateKey,
+      keySalt: user.keySalt,
+      keyCreatedAt: user.keyCreatedAt
+    });
+  } catch (error) {
+    console.error('Get encryption keys error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Get another user's public key (for encryption)
+router.get('/:userId/public-key', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    if (!user.publicKey) {
+      return res.status(404).json({ message: 'Người dùng chưa có encryption key' });
+    }
+
+    res.json({
+      userId: user._id,
+      publicKey: user.publicKey,
+      keyCreatedAt: user.keyCreatedAt
+    });
+  } catch (error) {
+    console.error('Get user public key error:', error);
     res.status(500).json({ message: 'Lỗi server' });
   }
 });

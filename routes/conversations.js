@@ -13,9 +13,9 @@ router.get('/', async (req, res) => {
       participants: userId,
       isActive: true
     })
-    .populate('participants', 'fullName avatar phoneNumber')
-    .populate('lastMessage')
-    .sort({ lastMessageAt: -1 });
+      .populate('participants', 'fullName avatar phoneNumber')
+      .populate('lastMessage')
+      .sort({ lastMessageAt: -1 });
 
     console.log('Found conversations:', conversations.length);
     res.json(conversations);
@@ -88,7 +88,7 @@ router.get('/:id', async (req, res) => {
       participants: userId,
       isActive: true
     })
-    .populate('participants', 'fullName avatar phoneNumber');
+      .populate('participants', 'fullName avatar phoneNumber');
 
     if (!conversation) {
       return res.status(404).json({
@@ -107,5 +107,81 @@ router.get('/:id', async (req, res) => {
 
 // Group management routes have been moved to /api/groups
 // Use /api/groups for all group-related operations
+
+// ============================================
+// E2EE ENCRYPTION MODE
+// ============================================
+
+// Toggle encryption mode for a conversation
+router.put('/:id/encryption-mode', async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const userId = req.user._id;
+    const { encryptionMode } = req.body;
+
+    if (!['none', 'e2ee'].includes(encryptionMode)) {
+      return res.status(400).json({
+        message: 'Chế độ mã hóa không hợp lệ. Sử dụng "none" hoặc "e2ee"'
+      });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId,
+      isActive: true
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+    }
+
+    conversation.encryptionMode = encryptionMode;
+    await conversation.save();
+
+    res.json({
+      message: encryptionMode === 'e2ee'
+        ? 'Đã bật mã hóa đầu cuối'
+        : 'Đã tắt mã hóa đầu cuối',
+      encryptionMode: conversation.encryptionMode
+    });
+  } catch (error) {
+    console.error('Toggle encryption mode error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Get conversation encryption status
+router.get('/:id/encryption-status', async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId,
+      isActive: true
+    }).populate('participants', 'publicKey keyCreatedAt');
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+    }
+
+    // Check if all participants have encryption keys
+    const allHaveKeys = conversation.participants.every(p => p.publicKey);
+
+    res.json({
+      encryptionMode: conversation.encryptionMode || 'none',
+      canEnableE2EE: allHaveKeys,
+      participants: conversation.participants.map(p => ({
+        _id: p._id,
+        hasPublicKey: !!p.publicKey,
+        keyCreatedAt: p.keyCreatedAt
+      }))
+    });
+  } catch (error) {
+    console.error('Get encryption status error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
 
 module.exports = router;
