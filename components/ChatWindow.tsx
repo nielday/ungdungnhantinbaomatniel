@@ -1066,7 +1066,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                   {currentUser?.avatar ? (
                     <img
-                      src={currentUser.avatar}
+                      src={normalizeFileUrlHelper(currentUser.avatar)}
                       alt={currentUser.fullName}
                       className="w-8 h-8 rounded-full object-cover"
                       onError={(e) => {
