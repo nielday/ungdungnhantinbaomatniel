@@ -65,6 +65,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
   };
 
+  // Helper function to normalize avatar URL - use presigned URL for B2
+  const normalizeAvatarUrl = (url: string): string => {
+    if (!url || !isValidImageUrl(url)) return '';
+
+    // If it's a Backblaze B2 URL, use the presigned URL proxy
+    if (url.includes('backblazeb2.com') || url.includes('backblaze.com')) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      return `${apiUrl}/files/proxy?fileUrl=${encodeURIComponent(url)}`;
+    }
+
+    return url;
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -273,11 +286,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               onClick={() => avatarInputRef.current?.click()}
                             >
                               <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
-                                {avatar ? (
+                                {avatar && isValidImageUrl(avatar) ? (
                                   <img
-                                    src={avatar}
+                                    src={normalizeAvatarUrl(avatar)}
                                     alt={user?.fullName}
                                     className="w-20 h-20 rounded-full object-cover"
+                                    onError={(e) => {
+                                      console.error('Avatar load error:', avatar);
+                                      e.currentTarget.style.display = 'none';
+                                    }}
                                   />
                                 ) : (
                                   <User className="w-10 h-10 text-white" />

@@ -393,9 +393,15 @@ export default function ChatApp() {
             <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center overflow-hidden">
               {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
                 <img
-                  src={user.avatar}
+                  src={user.avatar.includes('backblazeb2.com') || user.avatar.includes('backblaze.com')
+                    ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(user.avatar)}`
+                    : user.avatar}
                   alt={user.fullName}
                   className="w-10 h-10 rounded-full object-cover"
+                  onError={(e) => {
+                    console.error('Sidebar avatar load error:', user.avatar);
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
               ) : (
                 <User className="w-6 h-6 text-white" />
