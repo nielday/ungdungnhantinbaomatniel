@@ -54,8 +54,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       name: user?.fullName || '',
       username: user?.phoneNumber || ''
     });
-    setAvatar(user?.avatar || '');
+    // Only set avatar if it's a valid URL (starts with http)
+    const avatarValue = user?.avatar || '';
+    setAvatar(isValidImageUrl(avatarValue) ? avatarValue : '');
   }, [user]);
+
+  // Helper function to check if avatar is a valid image URL
+  const isValidImageUrl = (url: string): boolean => {
+    if (!url) return false;
+    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
