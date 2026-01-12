@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 const { User } = require('../models');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -519,7 +520,7 @@ router.post('/verify-device', async (req, res) => {
 });
 
 // Get list of trusted devices
-router.get('/trusted-devices', async (req, res) => {
+router.get('/trusted-devices', authenticateToken, async (req, res) => {
   try {
     const userId = req.user?._id;
     if (!userId) {
@@ -548,7 +549,7 @@ router.get('/trusted-devices', async (req, res) => {
 });
 
 // Remove a trusted device
-router.delete('/trusted-devices/:deviceId', async (req, res) => {
+router.delete('/trusted-devices/:deviceId', authenticateToken, async (req, res) => {
   try {
     const userId = req.user?._id;
     const { deviceId } = req.params;
