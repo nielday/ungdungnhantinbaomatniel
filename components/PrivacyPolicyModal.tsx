@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Lock, Eye, Database, Users, FileText, Brain } from 'lucide-react';
+import { X, Shield, Lock, Eye, Database, Users, FileText, MessageCircle } from 'lucide-react';
 
 interface PrivacyPolicyModalProps {
   isOpen: boolean;
@@ -16,9 +16,9 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       title: 'Tổng quan',
       icon: Shield,
       content: [
-        'Chính sách bảo mật này mô tả cách ứng dụng nhắn tin Niel thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn.',
+        'Chính sách bảo mật này mô tả cách ứng dụng nhắn tin Niel Chat thu thập, sử dụng và bảo vệ thông tin cá nhân của bạn.',
         'Chúng tôi cam kết bảo vệ quyền riêng tư và thông tin cá nhân của người dùng theo các tiêu chuẩn bảo mật cao nhất.',
-        'Việc sử dụng nền tảng này đồng nghĩa với việc bạn đồng ý với chính sách bảo mật này.'
+        'Việc sử dụng Niel Chat đồng nghĩa với việc bạn đồng ý với chính sách bảo mật này.'
       ]
     },
     {
@@ -26,35 +26,47 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       title: 'Thu thập thông tin',
       icon: Database,
       content: [
-        'Thông tin tài khoản: Tên, email, tên đăng nhập khi đăng ký',
-        'Tài liệu học tập: File PDF, DOCX, TXT bạn upload để xử lý',
-        'Dữ liệu sử dụng: Lịch sử học tập, flashcard đã tạo, tóm tắt bài giảng',
-        'Thông tin kỹ thuật: IP address, browser type, device information',
-        'Cookies: Để cải thiện trải nghiệm người dùng và ghi nhớ cài đặt'
+        'Thông tin tài khoản: Số điện thoại, email, họ tên, tuổi khi đăng ký',
+        'Tin nhắn: Nội dung tin nhắn được mã hóa đầu cuối (E2EE)',
+        'Ảnh đại diện: Avatar bạn tải lên để hiển thị trên hồ sơ',
+        'Thông tin kỹ thuật: Thiết bị, phiên bản ứng dụng, địa chỉ IP',
+        'Khóa mã hóa: Cặp khóa công khai/riêng tư để mã hóa tin nhắn'
       ]
     },
     {
-      id: 'data-usage',
-      title: 'Sử dụng thông tin',
-      icon: Brain,
+      id: 'encryption',
+      title: 'Mã hóa đầu cuối (E2EE)',
+      icon: Lock,
       content: [
-        'Xử lý tài liệu học tập bằng AI để tạo tóm tắt và flashcard',
-        'Cung cấp dịch vụ học tập cá nhân hóa',
-        'Cải thiện chất lượng AI và thuật toán xử lý',
-        'Gửi thông báo về tiến độ học tập (nếu được cho phép)',
-        'Hỗ trợ kỹ thuật và giải quyết vấn đề'
+        'Tất cả tin nhắn được mã hóa bằng thuật toán RSA và AES',
+        'Chỉ bạn và người nhận mới có thể đọc nội dung tin nhắn',
+        'Ngay cả Niel Chat cũng không thể giải mã tin nhắn của bạn',
+        'Khóa riêng tư chỉ lưu trên thiết bị của bạn, không gửi lên server',
+        'Hỗ trợ sao lưu khóa mã hóa có bảo vệ bằng mật khẩu'
       ]
     },
     {
       id: 'data-protection',
       title: 'Bảo vệ dữ liệu',
-      icon: Lock,
+      icon: Shield,
       content: [
+        'Số điện thoại và email không thể thay đổi sau khi đăng ký để đảm bảo danh tính',
         'Mã hóa SSL/TLS cho tất cả dữ liệu truyền tải',
-        'Lưu trữ an toàn trên server được bảo vệ',
-        'Kiểm soát truy cập nghiêm ngặt',
-        'Sao lưu dữ liệu định kỳ',
+        'Xác thực OTP qua email khi đăng ký',
+        'Quản lý thiết bị đáng tin cậy cho mã hóa',
         'Tuân thủ các tiêu chuẩn bảo mật quốc tế'
+      ]
+    },
+    {
+      id: 'data-usage',
+      title: 'Sử dụng thông tin',
+      icon: MessageCircle,
+      content: [
+        'Gửi và nhận tin nhắn giữa người dùng',
+        'Hiển thị thông tin hồ sơ cho người liên hệ',
+        'Thông báo khi có tin nhắn mới (nếu được cho phép)',
+        'Hỗ trợ kỹ thuật và giải quyết vấn đề',
+        'Cải thiện trải nghiệm người dùng'
       ]
     },
     {
@@ -63,9 +75,9 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       icon: Users,
       content: [
         'Không bán, cho thuê hoặc chia sẻ thông tin cá nhân với bên thứ ba',
+        'Tin nhắn được mã hóa nên không ai có thể đọc ngoại trừ người gửi và nhận',
         'Chỉ chia sẻ khi có yêu cầu pháp lý hợp lệ',
-        'Có thể chia sẻ dữ liệu ẩn danh để cải thiện AI',
-        'Thông tin được chia sẻ với nhà cung cấp AI (Groq) theo quy định của họ'
+        'Thông tin hồ sơ công khai chỉ hiển thị cho người liên hệ'
       ]
     },
     {
@@ -74,22 +86,10 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       icon: Eye,
       content: [
         'Quyền truy cập: Xem thông tin cá nhân đã lưu trữ',
-        'Quyền chỉnh sửa: Cập nhật thông tin tài khoản',
-        'Quyền xóa: Xóa tài khoản và dữ liệu cá nhân',
-        'Quyền xuất dữ liệu: Tải xuống dữ liệu cá nhân',
-        'Quyền từ chối: Từ chối nhận thông báo marketing'
-      ]
-    },
-    {
-      id: 'ai-processing',
-      title: 'Xử lý AI',
-      icon: Brain,
-      content: [
-        'Tài liệu của bạn được xử lý bởi AI Groq để tạo nội dung học tập',
-        'Dữ liệu được mã hóa trong quá trình xử lý',
-        'Không lưu trữ nội dung gốc sau khi xử lý xong',
-        'Chỉ sử dụng cho mục đích học tập, không phân tích hành vi',
-        'Có thể sử dụng dữ liệu ẩn danh để cải thiện thuật toán'
+        'Quyền chỉnh sửa: Cập nhật tên hiển thị và tuổi',
+        'Quyền xóa: Xóa lịch sử tin nhắn hoặc toàn bộ tài khoản',
+        'Quyền sao lưu: Sao lưu khóa mã hóa để khôi phục trên thiết bị khác',
+        'Quyền bảo mật: Quản lý thiết bị đáng tin cậy'
       ]
     },
     {
@@ -98,46 +98,21 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       icon: Database,
       content: [
         'Thông tin tài khoản: Lưu trữ cho đến khi bạn xóa tài khoản',
-        'Tài liệu đã xử lý: Lưu trữ trong 30 ngày sau khi xử lý',
-        'Dữ liệu học tập: Lưu trữ cho đến khi bạn xóa',
-        'Logs hệ thống: Lưu trữ tối đa 90 ngày',
-        'Tự động xóa dữ liệu không cần thiết'
-      ]
-    },
-    {
-      id: 'cookies',
-      title: 'Cookies và Tracking',
-      icon: FileText,
-      content: [
-        'Cookies cần thiết: Đăng nhập, cài đặt, bảo mật',
-        'Cookies phân tích: Cải thiện trải nghiệm người dùng',
-        'Cookies tùy chọn: Ghi nhớ sở thích, dark mode',
-        'Không sử dụng tracking quảng cáo',
-        'Có thể tắt cookies trong cài đặt trình duyệt'
+        'Tin nhắn mã hóa: Lưu trữ trên server dưới dạng đã mã hóa',
+        'Khóa mã hóa: Lưu trên thiết bị của bạn, server chỉ lưu khóa công khai',
+        'Logs hệ thống: Lưu trữ tối đa 30 ngày'
       ]
     },
     {
       id: 'security',
-      title: 'Bảo mật',
-      icon: Shield,
+      title: 'Bảo mật tài khoản',
+      icon: Lock,
       content: [
-        'Mã hóa đầu cuối cho tất cả dữ liệu nhạy cảm',
-        'Xác thực hai yếu tố (2FA) khi cần thiết',
-        'Giám sát bảo mật 24/7',
-        'Cập nhật bảo mật thường xuyên',
-        'Đào tạo nhân viên về bảo mật dữ liệu'
-      ]
-    },
-    {
-      id: 'children',
-      title: 'Bảo vệ trẻ em',
-      icon: Users,
-      content: [
-        'Không thu thập thông tin từ trẻ em dưới 13 tuổi',
-        'Yêu cầu sự đồng ý của phụ huynh cho trẻ em 13-18 tuổi',
-        'Giám sát nội dung phù hợp với lứa tuổi',
-        'Công cụ kiểm soát cho phụ huynh',
-        'Báo cáo nội dung không phù hợp'
+        'Xác thực bằng số điện thoại và mã OTP',
+        'Mỗi phiên đăng nhập có token riêng biệt',
+        'Tự động đăng xuất sau thời gian không hoạt động',
+        'Thông báo khi có đăng nhập từ thiết bị mới',
+        'Có thể xóa thiết bị đáng tin cậy bất cứ lúc nào'
       ]
     },
     {
@@ -145,10 +120,9 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       title: 'Thay đổi chính sách',
       icon: FileText,
       content: [
-        'Thông báo trước 30 ngày khi có thay đổi lớn',
+        'Thông báo trước khi có thay đổi lớn',
         'Cập nhật ngày hiệu lực trong chính sách',
         'Tiếp tục sử dụng đồng nghĩa với việc chấp nhận thay đổi',
-        'Có thể từ chối thay đổi bằng cách xóa tài khoản',
         'Lưu trữ phiên bản cũ để tham khảo'
       ]
     },
@@ -157,11 +131,10 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
       title: 'Liên hệ',
       icon: Users,
       content: [
-        'Email: privacy@ailearningplatform.com',
-        'Điện thoại: +84 123 456 789',
-        'Địa chỉ: 123 Đường ABC, Quận XYZ, TP.HCM',
+        'Email: support@nielchat.com',
+        'GitHub: github.com/nielday/ungdungnhantinbaomatniel',
         'Thời gian phản hồi: 24-48 giờ',
-        'Khiếu nại về bảo mật: security@ailearningplatform.com'
+        'Phản hồi về bảo mật: security@nielchat.com'
       ]
     }
   ];
@@ -194,7 +167,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Chính sách bảo mật</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Cập nhật lần cuối: 15/12/2024</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Cập nhật lần cuối: 13/01/2026</p>
                 </div>
               </div>
               <button
@@ -211,8 +184,8 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
                 {/* Introduction */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <p className="text-blue-800 dark:text-blue-200 text-sm">
-                    <strong>Lưu ý quan trọng:</strong> Chính sách này áp dụng cho ứng dụng nhắn tin Niel. 
-                    Việc sử dụng dịch vụ của chúng tôi đồng nghĩa với việc bạn đã đọc, hiểu và đồng ý với chính sách này.
+                    <strong>🔐 Niel Chat - Ứng dụng nhắn tin bảo mật:</strong> Tin nhắn của bạn được mã hóa đầu cuối (E2EE).
+                    Chỉ bạn và người nhận mới có thể đọc nội dung tin nhắn. Ngay cả chúng tôi cũng không thể giải mã.
                   </p>
                 </div>
 
@@ -252,10 +225,10 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Phiên bản: 1.0 | Ngày hiệu lực: 15/12/2024
+                        Phiên bản: 2.0 | Ngày hiệu lực: 13/01/2026
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                        © 2024 Ứng Dụng Nhắn Tin Niel. Tất cả quyền được bảo lưu.
+                        © 2026 Niel Chat. Tất cả quyền được bảo lưu.
                       </p>
                     </div>
                     <button
