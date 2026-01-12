@@ -360,11 +360,7 @@ export default function ChatApp() {
           /* Desktop: Original Header */
           <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-12 h-12 rounded-xl overflow-hidden">
-                  <img src="/logo.png" alt="Niel Chat" className="w-12 h-12 object-cover" />
-                </div>
-              </div>
+              <img src="/logo.png" alt="Niel Chat" className="w-14 h-14 object-contain" />
               <div className="flex items-center space-x-2">
                 <button onClick={() => setShowCreateGroup(true)} className="icon-btn" title={t('sidebar.createGroup')}>
                   <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -564,38 +560,44 @@ export default function ChatApp() {
       </div>
 
       {/* User Search Modal */}
-      {showUserSearch && (
-        <UserSearch
-          onClose={() => setShowUserSearch(false)}
-          onNewConversation={handleNewConversation}
-        />
-      )}
+      {
+        showUserSearch && (
+          <UserSearch
+            onClose={() => setShowUserSearch(false)}
+            onNewConversation={handleNewConversation}
+          />
+        )
+      }
 
 
 
       {/* Create Group Modal */}
-      {showCreateGroup && (
-        <CreateGroupModal
-          onClose={() => setShowCreateGroup(false)}
-          onGroupCreated={handleGroupCreated}
-        />
-      )}
+      {
+        showCreateGroup && (
+          <CreateGroupModal
+            onClose={() => setShowCreateGroup(false)}
+            onGroupCreated={handleGroupCreated}
+          />
+        )
+      }
 
       {/* Group Management Modal */}
-      {showGroupManagement && activeConversation && activeConversation.type === 'group' && (
-        <GroupManagementModal
-          conversation={activeConversation as any}
-          currentUser={user}
-          onClose={() => setShowGroupManagement(false)}
-          onGroupUpdated={handleGroupUpdated}
-        />
-      )}
+      {
+        showGroupManagement && activeConversation && activeConversation.type === 'group' && (
+          <GroupManagementModal
+            conversation={activeConversation as any}
+            currentUser={user}
+            onClose={() => setShowGroupManagement(false)}
+            onGroupUpdated={handleGroupUpdated}
+          />
+        )
+      }
 
       {/* Settings Modal */}
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
-    </div>
+    </div >
   );
 }
