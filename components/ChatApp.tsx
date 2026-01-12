@@ -329,7 +329,7 @@ export default function ChatApp() {
       <div className={`
         ${isMobile ? 'fixed' : 'relative'} 
         ${isMobile ? (showSidebar ? 'translate-x-0' : '-translate-x-full') : ''}
-        w-80 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-700 flex flex-col z-50
+        ${isMobile ? 'w-[85vw] max-w-sm' : 'w-80'} bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-700 flex flex-col z-50
         transition-transform duration-300 ease-in-out
         ${isMobile ? 'h-full' : ''}
       `}>
