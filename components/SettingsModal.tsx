@@ -1474,7 +1474,8 @@ To restore:
               {pendingAction === 'generate' ? t('encryption.generateKey') :
                 pendingAction === 'import' ? t('encryption.importKey') :
                   pendingAction === 'delete' ? t('encryption.deleteKey') :
-                    t('encryption.restoreBackup')}
+                    pendingAction === 'backup' ? t('encryption.backupKey') :
+                      t('encryption.restoreBackup')}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               {t('encryption.enterLoginPassword')}
