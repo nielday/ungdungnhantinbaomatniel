@@ -316,11 +316,11 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex relative">
+    <div className="h-screen flex bg-gray-100 dark:bg-neutral-900 overflow-hidden">
       {/* Mobile Overlay */}
       {isMobile && showSidebar && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 z-40"
           onClick={() => setShowSidebar(false)}
         />
       )}
@@ -329,66 +329,66 @@ export default function ChatApp() {
       <div className={`
         ${isMobile ? 'fixed' : 'relative'} 
         ${isMobile ? (showSidebar ? 'translate-x-0' : '-translate-x-full') : ''}
-        w-80 bg-white border-r border-gray-200 flex flex-col z-50
+        w-80 bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-700 flex flex-col z-50
         transition-transform duration-300 ease-in-out
         ${isMobile ? 'h-full' : ''}
       `}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                 <MessageCircle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-800">{t('chat.messages')}</h1>
-                <p className="text-sm text-gray-500">{t('chat.messagingApp')}</p>
+                <h1 className="text-lg font-semibold text-gray-800 dark:text-white">{t('chat.messages')}</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('chat.messagingApp')}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               {isMobile && (
                 <button
                   onClick={() => setShowSidebar(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                   title={t('sidebar.closeMenu')}
                 >
-                  <X className="w-5 h-5 text-gray-600" />
+                  <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </button>
               )}
               <button
                 onClick={() => setShowCreateGroup(true)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                 title={t('sidebar.createGroup')}
               >
-                <Users className="w-5 h-5 text-gray-600" />
+                <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               <button
                 onClick={() => setShowUserSearch(true)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                 title={t('sidebar.searchUsers')}
               >
-                <Search className="w-5 h-5 text-gray-600" />
+                <Search className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               <button
                 onClick={() => setShowSettings(true)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                 title={t('sidebar.settings')}
               >
-                <Settings className="w-5 h-5 text-gray-600" />
+                <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               <button
                 onClick={handleLogout}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                 title={t('sidebar.logout')}
               >
-                <LogOut className="w-5 h-5 text-gray-600" />
+                <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
           </div>
         </div>
 
         {/* User Info */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
               {user?.avatar ? (
@@ -402,10 +402,10 @@ export default function ChatApp() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">
+              <p className="text-sm font-medium text-gray-800 dark:text-white truncate">
                 {user?.fullName}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {user?.phoneNumber}
               </p>
             </div>
@@ -428,14 +428,14 @@ export default function ChatApp() {
       <div className="flex-1 flex flex-col">
         {/* Mobile Header */}
         {isMobile && (
-          <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+          <div className="bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setShowSidebar(true)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
                 title={t('sidebar.menu')}
               >
-                <Menu className="w-5 h-5 text-gray-600" />
+                <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
               {activeConversation && (
                 <div className="flex items-center space-x-3">
@@ -443,7 +443,7 @@ export default function ChatApp() {
                     <User className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-800">
+                    <h3 className="text-sm font-medium text-gray-800 dark:text-white">
                       {activeConversation.type === 'private'
                         ? activeConversation.participants?.find(p => p._id !== user?.id)?.fullName
                         : activeConversation.name
@@ -455,11 +455,11 @@ export default function ChatApp() {
             </div>
             {activeConversation && (
               <div className="flex items-center space-x-2">
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <Phone className="w-4 h-4 text-gray-600" />
+                <button className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+                  <Phone className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 </button>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <Video className="w-4 h-4 text-gray-600" />
+                <button className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+                  <Video className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 </button>
               </div>
             )}
@@ -474,13 +474,13 @@ export default function ChatApp() {
             onShowGroupManagement={() => setShowGroupManagement(true)}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-neutral-900">
             <div className="text-center px-4">
-              <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-600 mb-2">
+              <MessageCircle className="w-16 h-16 text-gray-300 dark:text-neutral-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
                 {t('chat.selectConversation')}
               </h3>
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-gray-500">
                 {isMobile
                   ? t('chat.selectConversationMobile')
                   : t('chat.selectConversationDesktop')

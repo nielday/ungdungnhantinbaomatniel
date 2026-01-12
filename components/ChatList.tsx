@@ -116,15 +116,15 @@ export default function ChatList({
   return (
     <div className="flex flex-col h-full">
       {/* Search Bar */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
           <input
             type="text"
             placeholder={t('chatList.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-neutral-800 text-gray-800 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function ChatList({
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">
+          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
             {searchQuery ? t('chatList.noResults') : t('chatList.noConversations')}
           </div>
         ) : (
@@ -144,7 +144,7 @@ export default function ChatList({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => onSelectConversation(conversation)}
-                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${activeConversation?._id === conversation._id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-neutral-800 ${activeConversation?._id === conversation._id ? 'bg-blue-50 dark:bg-blue-900/30 border-r-2 border-blue-500' : ''
                   }`}
               >
                 <div className="flex items-center space-x-3">
@@ -164,26 +164,26 @@ export default function ChatList({
                       )}
                     </div>
                     {conversation.type === 'group' && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-neutral-900"></div>
                     )}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm font-medium text-gray-800 truncate">
+                      <h3 className="text-sm font-medium text-gray-800 dark:text-white truncate">
                         {getConversationName(conversation)}
                       </h3>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {formatTime(conversation.lastMessageAt)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {getLastMessagePreview(conversation)}
                       </p>
                       {conversation.type === 'group' && (
-                        <div className="flex items-center text-xs text-gray-400">
+                        <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">
                           <Users className="w-3 h-3 mr-1" />
                           {conversation.participants?.length || 0}
                         </div>
@@ -198,7 +198,7 @@ export default function ChatList({
       </div>
 
       {/* New Chat Button */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 dark:border-neutral-700">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
