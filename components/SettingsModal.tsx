@@ -70,7 +70,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   // Password Prompt for Sensitive Actions (Server-side Encryption)
   const [showActionPasswordModal, setShowActionPasswordModal] = useState(false);
   const [actionPassword, setActionPassword] = useState('');
-  const [pendingAction, setPendingAction] = useState<'generate' | 'import' | 'restore' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'generate' | 'import' | 'restore' | 'delete' | null>(null);
   const [tempKeyData, setTempKeyData] = useState<any>(null); // To hold data while waiting for password
 
   const currentDeviceId = typeof window !== 'undefined' ? encryption.getDeviceId() : '';
@@ -198,29 +198,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleDeleteKey = async () => {
+    // 1. Confirm intent
     if (!confirm(t('encryption.confirmDeleteKey'))) return;
 
-    setIsDeletingKey(true);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
-      const token = localStorage.getItem('token');
-
-      const response = await fetch(`${apiUrl}/users/encryption-keys`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        setHasEncryptionKey(false);
-        setPublicKeyBase64('');
-        setKeyFingerprint('');
-        alert(t('encryption.keyDeleted'));
-      }
-    } catch (error) {
-      console.error('Error deleting key:', error);
-    } finally {
-      setIsDeletingKey(false);
-    }
+    // 2. Prompt for login password to verify identity
+    setPendingAction('delete');
+    setShowActionPasswordModal(true);
   };
 
   const validateKeyFormat = (key: string): boolean => {
@@ -299,18 +282,95 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           encryptedPrivateKey: encryptedData.ciphertext,
           keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
         };
-      } else if (pendingAction === 'restore') {
-        // TempKeyData contains { publicKey, privateKey (decrypted) }
-        fingerprint = await encryption.getKeyFingerprint(tempKeyData.publicKey);
-
-        // Encrypt Private Key
-        const encryptedData = await encryption.encryptStringWithPassword(tempKeyData.privateKey, actionPassword);
-
         body = {
           publicKey: tempKeyData.publicKey,
           encryptedPrivateKey: encryptedData.ciphertext,
           keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
         };
+      } else if (pendingAction === 'delete') {
+        // Special handling for DELETE: Verify password by trying to decrypt current key
+        setIsDeletingKey(true);
+        try {
+          // 1. Fetch current keys
+          const keysResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (!keysResponse.ok) throw new Error('Failed to fetch keys for verification');
+
+          const keysData = await keysResponse.json();
+          // Current key on server (should be encrypted with login password)
+          const serverEncryptedKey = keysData.encryptedPrivateKey;
+
+          let isValidPassword = false;
+
+          // Try to decrypt it
+          try {
+            // Determine format. If it's old unencrypted base64, this will fail or return garbage.
+            // If it's new format, it's a JSON string with iv/salt or we need standard format.
+            // Currently our generate logic sends: encryptedPrivateKey: ciphertext, keySalt: JSON({iv, salt})
+
+            let salt = '';
+            let iv = '';
+
+            if (keysData.keySalt) {
+              try {
+                const params = JSON.parse(keysData.keySalt);
+                salt = params.salt;
+                iv = params.iv;
+              } catch (e) {
+                // Fallback or old format
+              }
+            }
+
+            if (salt && iv) {
+              await encryption.decryptStringWithPassword(serverEncryptedKey, actionPassword, salt, iv);
+              isValidPassword = true;
+            } else {
+              // Fallback: maybe user hasn't migrated to new secure encryption yet?
+              // Allow delete if we can't verify? No, safe to block.
+              // Or checking if password matches login? We can't do that here.
+              // As a fallback for "Migration", we might allow delete if keySalt is missing (old key)
+              isValidPassword = true; // Allow deleting old insecure keys
+            }
+
+          } catch (e) {
+            console.error('Password verification failed:', e);
+            isValidPassword = false;
+          }
+
+          if (!isValidPassword) {
+            alert(t('encryption.wrongPassword'));
+            setIsDeletingKey(false);
+            return;
+          }
+
+          // 2. Proceed to Delete
+          const delResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (delResponse.ok) {
+            setHasEncryptionKey(false);
+            setPublicKeyBase64('');
+            setKeyFingerprint('');
+            alert(t('encryption.keyDeleted'));
+            setShowActionPasswordModal(false);
+          } else {
+            throw new Error('Delete failed');
+          }
+
+        } catch (err) {
+          console.error('Delete error:', err);
+          alert(t('common.error'));
+        } finally {
+          setIsDeletingKey(false);
+          // Return here to avoid executing the PUT logic below
+          setActionPassword('');
+          setPendingAction(null);
+          return;
+        }
       }
 
       if (Object.keys(body).length > 0) {
@@ -1323,7 +1383,8 @@ To restore:
             <h3 className="text-lg font-bold mb-2 dark:text-white">
               {pendingAction === 'generate' ? t('encryption.generateKey') :
                 pendingAction === 'import' ? t('encryption.importKey') :
-                  t('encryption.restoreBackup')}
+                  pendingAction === 'delete' ? t('encryption.deleteKey') :
+                    t('encryption.restoreBackup')}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               {t('encryption.enterLoginPassword')}
