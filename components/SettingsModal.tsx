@@ -840,11 +840,11 @@ To restore:
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+            className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] md:max-h-[90vh] h-[100dvh] md:h-auto overflow-hidden mx-0 md:mx-4"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t('settings.title')}</h2>
+            <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{t('settings.title')}</h2>
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -853,9 +853,9 @@ To restore:
               </button>
             </div>
 
-            <div className="flex h-[600px]">
-              {/* Sidebar */}
-              <div className="w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
+            <div className="flex flex-col md:flex-row h-[calc(100dvh-140px)] md:h-[600px]">
+              {/* Sidebar - Hidden on mobile, visible on md+ */}
+              <div className="hidden md:block w-64 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
                 <nav className="space-y-2">
                   {tabs.map((tab) => {
                     const Icon = tab.icon;
@@ -877,7 +877,7 @@ To restore:
               </div>
 
               {/* Content */}
-              <div className="flex-1 p-6 overflow-y-auto dark:bg-gray-900">
+              <div className="flex-1 p-4 md:p-6 overflow-y-auto dark:bg-gray-900 pb-20 md:pb-6">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeTab}
@@ -1461,8 +1461,30 @@ To restore:
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+            {/* Mobile Bottom Tab Navigation */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-2 py-2 z-50">
+              <div className="flex justify-around items-center">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex flex-col items-center p-2 rounded-lg transition-colors min-w-[60px] ${activeTab === tab.id
+                        ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                        : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[10px] mt-1 truncate max-w-[60px]">{tab.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer - Hidden on mobile */}
+            <div className="hidden md:flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={onClose}
                 className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
