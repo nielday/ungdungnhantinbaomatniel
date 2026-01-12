@@ -372,7 +372,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           return;
         }
       } else if (pendingAction === 'backup') {
-        // Backup Flow Step 1: Decrypt Server Key
+        // Backup Flow Step 1: Decrypt Server Key (or use raw key for old format)
         try {
           // 1. Fetch current keys
           const keysResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
@@ -382,10 +382,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           if (!keysResponse.ok) throw new Error('Failed to fetch keys');
 
           const keysData = await keysResponse.json();
-          const serverEncryptedKey = keysData.encryptedPrivateKey;
+          const serverKey = keysData.encryptedPrivateKey;
 
-          // 2. Decrypt with Login Password
-          let decryptedKey = '';
+          if (!serverKey) {
+            throw new Error('No private key found on server');
+          }
+
+          // 2. Check if key is encrypted (new format) or raw (old format)
+          let rawPrivateKey = '';
           let salt = '';
           let iv = '';
 
@@ -394,18 +398,40 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               const params = JSON.parse(keysData.keySalt);
               salt = params.salt;
               iv = params.iv;
-            } catch (e) { }
+            } catch (e) {
+              // keySalt exists but not valid JSON - treat as old format
+            }
           }
 
           if (salt && iv) {
-            decryptedKey = await encryption.decryptStringWithPassword(serverEncryptedKey, actionPassword, salt, iv);
+            // NEW FORMAT: Decrypt with Login Password
+            try {
+              rawPrivateKey = await encryption.decryptStringWithPassword(serverKey, actionPassword, salt, iv);
+            } catch (decryptError) {
+              // Decryption failed - either wrong password or corrupted data
+              alert(t('encryption.wrongPassword') + ' (Mật khẩu không đúng hoặc khóa bị hỏng)');
+              setShowActionPasswordModal(false);
+              setActionPassword('');
+              setPendingAction(null);
+              return;
+            }
           } else {
-            // Fallback for old keys? Not supported for secure backup.
-            throw new Error('Key format not supported for backup');
+            // OLD FORMAT: Key is NOT encrypted, use as-is
+            // Verify it's a valid private key first
+            try {
+              await encryption.importPrivateKey(serverKey);
+              rawPrivateKey = serverKey; // It's already the raw key
+            } catch (e) {
+              alert('Khóa trên server không hợp lệ. Vui lòng tạo khóa mới.');
+              setShowActionPasswordModal(false);
+              setActionPassword('');
+              setPendingAction(null);
+              return;
+            }
           }
 
           // 3. Store Raw Key temporarily and Open Backup Modal
-          setTempKeyData(decryptedKey); // Store RAW key
+          setTempKeyData(rawPrivateKey); // Store RAW key
           setShowActionPasswordModal(false);
           setActionPassword('');
           setPendingAction(null); // Clear pending action so we don't trigger this again
@@ -413,8 +439,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           return; // Stop here, don't do PUT request
 
         } catch (e) {
-          console.error('Backup decryption failed:', e);
-          alert(t('encryption.wrongPassword'));
+          console.error('Backup error:', e);
+          alert((e as Error).message || t('common.error'));
+          setShowActionPasswordModal(false);
+          setActionPassword('');
+          setPendingAction(null);
           return;
         }
       }
