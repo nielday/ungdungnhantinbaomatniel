@@ -61,6 +61,45 @@ export async function importPrivateKey(privateKeyBase64: string): Promise<Crypto
     );
 }
 
+// Derive public key from private key string (for import validation)
+export async function getPublicKeyFromPrivate(privateKeyBase64: string): Promise<string> {
+    try {
+        // 1. Import private key
+        const privateKey = await importPrivateKey(privateKeyBase64);
+
+        // 2. Export as JWK to get x and y coordinates
+        const jwk = await crypto.subtle.exportKey('jwk', privateKey);
+
+        // 3. Create public JWK
+        const publicJwk: JsonWebKey = {
+            kty: jwk.kty,
+            crv: jwk.crv,
+            x: jwk.x,
+            y: jwk.y,
+            key_ops: [], // Empty ops for public key import
+            ext: true
+        };
+
+        // 4. Import as public key
+        const publicKey = await crypto.subtle.importKey(
+            'jwk',
+            publicJwk,
+            {
+                name: 'ECDH',
+                namedCurve: 'P-256'
+            },
+            true,
+            []
+        );
+
+        // 5. Export to string format
+        return await exportPublicKey(publicKey);
+    } catch (error) {
+        console.error('Error deriving public key:', error);
+        throw new Error('Invalid private key');
+    }
+}
+
 // Derive shared secret from own private key and other's public key
 export async function deriveSharedKey(
     privateKey: CryptoKey,
