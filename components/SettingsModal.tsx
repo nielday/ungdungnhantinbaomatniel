@@ -494,6 +494,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       // 2. Encrypt private key with backup password
       const encryptedBackup = await encryption.encryptStringWithPassword(privateKeyRaw, backupPassword);
 
+      // 2.5 Verify integrity immediately (Self-test)
+      try {
+        await encryption.decryptStringWithPassword(
+          encryptedBackup.ciphertext,
+          backupPassword,
+          encryptedBackup.salt,
+          encryptedBackup.iv
+        );
+      } catch (e) {
+        throw new Error('Backup integrity check failed. Please try again.');
+      }
+
       // 3. Create ZIP file
       const zip = new JSZip();
 
