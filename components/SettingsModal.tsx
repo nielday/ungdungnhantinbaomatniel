@@ -282,11 +282,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           encryptedPrivateKey: encryptedData.ciphertext,
           keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
         };
+
+      } else if (pendingAction === 'restore') {
+        // TempKeyData contains { publicKey, privateKey (decrypted from backup) }
+        fingerprint = await encryption.getKeyFingerprint(tempKeyData.publicKey);
+
+        // Encrypt Private Key with Login Password for server storage
+        const encryptedData = await encryption.encryptStringWithPassword(tempKeyData.privateKey, actionPassword);
+
         body = {
           publicKey: tempKeyData.publicKey,
           encryptedPrivateKey: encryptedData.ciphertext,
           keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
         };
+
       } else if (pendingAction === 'delete') {
         // Special handling for DELETE: Verify password by trying to decrypt current key
         setIsDeletingKey(true);
