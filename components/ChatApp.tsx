@@ -26,6 +26,7 @@ import UserSearch from './UserSearch';
 import ProfileModal from './ProfileModal';
 import CreateGroupModal from './CreateGroupModal';
 import GroupManagementModal from './GroupManagementModal';
+import SettingsModal from './SettingsModal';
 
 interface Conversation {
   _id: string;
@@ -77,6 +78,7 @@ export default function ChatApp() {
   const [loading, setLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -368,7 +370,7 @@ export default function ChatApp() {
                 <Search className="w-5 h-5 text-gray-600" />
               </button>
               <button
-                onClick={() => setShowProfile(true)}
+                onClick={() => setShowSettings(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title={t('sidebar.settings')}
               >
@@ -524,6 +526,12 @@ export default function ChatApp() {
           onGroupUpdated={handleGroupUpdated}
         />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 }
