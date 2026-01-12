@@ -266,7 +266,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         body = {
           publicKey: publicKeyBase64,
           encryptedPrivateKey: encryptedData.ciphertext,
-          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
+          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt }),
+          deviceId: encryption.getDeviceId(),
+          deviceName: encryption.getDeviceName()
         };
 
       } else if (pendingAction === 'import') {
@@ -280,7 +282,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         body = {
           publicKey: publicKey,
           encryptedPrivateKey: encryptedData.ciphertext,
-          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
+          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt }),
+          deviceId: encryption.getDeviceId(),
+          deviceName: encryption.getDeviceName()
         };
 
       } else if (pendingAction === 'restore') {
@@ -293,7 +297,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         body = {
           publicKey: tempKeyData.publicKey,
           encryptedPrivateKey: encryptedData.ciphertext,
-          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
+          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt }),
+          deviceId: encryption.getDeviceId(),
+          deviceName: encryption.getDeviceName()
         };
 
       } else if (pendingAction === 'delete') {

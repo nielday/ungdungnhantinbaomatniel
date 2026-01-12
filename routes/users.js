@@ -295,7 +295,7 @@ router.post('/verify-account', async (req, res) => {
 router.put('/encryption-keys', async (req, res) => {
   try {
     const userId = req.user._id;
-    const { publicKey, encryptedPrivateKey, keySalt } = req.body;
+    const { publicKey, encryptedPrivateKey, keySalt, deviceId, deviceName } = req.body;
 
     if (!publicKey) {
       return res.status(400).json({ message: 'Thiếu public key' });
@@ -310,6 +310,25 @@ router.put('/encryption-keys', async (req, res) => {
     if (encryptedPrivateKey) user.encryptedPrivateKey = encryptedPrivateKey;
     if (keySalt) user.keySalt = keySalt;
     user.keyCreatedAt = new Date();
+
+    // Auto-register device if deviceId is provided
+    if (deviceId) {
+      if (!user.trustedDevices) {
+        user.trustedDevices = [];
+      }
+
+      // Remove old entry if exists
+      user.trustedDevices = user.trustedDevices.filter(d => d.deviceId !== deviceId);
+
+      // Add as trusted device
+      user.trustedDevices.push({
+        deviceId,
+        deviceName: deviceName || 'Unknown Device',
+        lastUsed: new Date(),
+        createdAt: new Date(),
+        isActive: true
+      });
+    }
 
     await user.save();
 
