@@ -367,17 +367,45 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     try {
       const token = localStorage.getItem('token');
 
-      // Get sender's public key
-      const senderKeyResponse = await fetch(
-        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
+      // Determine which public key to use for ECDH
+      // If I am the sender: I need the RECIPIENT's public key (same as when encrypting)
+      // If I am the recipient: I need the SENDER's public key
+      const amISender = message.senderId._id === currentUser?.id;
 
-      if (!senderKeyResponse.ok) {
-        return `🔒 ${t('encryption.decryptFailed')}`;
+      let otherUserPublicKey: string;
+
+      if (amISender) {
+        // I sent this message - need to get recipient's public key
+        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+        if (!otherUser?._id) {
+          return `🔒 ${t('encryption.decryptFailed')}`;
+        }
+
+        const recipientKeyResponse = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+
+        if (!recipientKeyResponse.ok) {
+          return `🔒 ${t('encryption.decryptFailed')}`;
+        }
+
+        const recipientKeyData = await recipientKeyResponse.json();
+        otherUserPublicKey = recipientKeyData.publicKey;
+      } else {
+        // I received this message - need sender's public key
+        const senderKeyResponse = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+
+        if (!senderKeyResponse.ok) {
+          return `🔒 ${t('encryption.decryptFailed')}`;
+        }
+
+        const senderKeyData = await senderKeyResponse.json();
+        otherUserPublicKey = senderKeyData.publicKey;
       }
-
-      const senderKeyData = await senderKeyResponse.json();
 
       // Get my private key
       const myKeysResponse = await fetch(
@@ -391,14 +419,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       const myKeysData = await myKeysResponse.json();
 
-      if (!senderKeyData.publicKey || !myKeysData.encryptedPrivateKey) {
+      if (!otherUserPublicKey || !myKeysData.encryptedPrivateKey) {
         return `🔒 ${t('encryption.decryptFailed')}`;
       }
 
       // Import keys and derive shared secret
-      const senderPublicKey = await encryption.importPublicKey(senderKeyData.publicKey);
+      const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
       const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
-      const sharedKey = await encryption.deriveSharedKey(myPrivateKey, senderPublicKey);
+      const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
 
       // Decrypt the message
       const decrypted = await encryption.decryptMessage(
