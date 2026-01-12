@@ -360,13 +360,9 @@ export default function ChatApp() {
           /* Desktop: Original Header */
           <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden">
-                  <img src="/logo.png" alt="Niel Chat" className="w-10 h-10 object-cover" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-gray-800 dark:text-white">{t('chat.messages')}</h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('chat.messagingApp')}</p>
+              <div className="flex items-center">
+                <div className="w-12 h-12 rounded-xl overflow-hidden">
+                  <img src="/logo.png" alt="Niel Chat" className="w-12 h-12 object-cover" />
                 </div>
               </div>
               <div className="flex items-center space-x-2">
