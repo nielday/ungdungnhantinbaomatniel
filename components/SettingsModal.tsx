@@ -450,12 +450,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     } catch (error) {
       console.error('Error confirming action:', error);
       alert('Operation failed. Please check your password and try again.');
-    } finally {
+
+      // Only clear state on error
       setIsGeneratingKey(false);
       setIsRestoring(false);
       setActionPassword('');
       setPendingAction(null);
       setTempKeyData(null);
+    } finally {
+      // Logic moved to specific blocks to preserve state for backup flow
+      if (pendingAction !== 'backup') {
+        setIsGeneratingKey(false);
+        setIsRestoring(false);
+        setActionPassword('');
+        setPendingAction(null);
+        setTempKeyData(null);
+      }
     }
   };
 
