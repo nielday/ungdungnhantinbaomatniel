@@ -149,6 +149,7 @@
         "changeAvatar": "Tap to change avatar",
         "phoneNumber": "Phone number",
         "phoneNumberCannotChange": "Phone number cannot be changed",
+        "phoneCannotChange": "Phone number cannot be changed",
         "email": "Email",
         "emailCannotChange": "Email cannot be changed",
         "fullName": "Full name",
@@ -162,7 +163,10 @@
         "uploadAvatarFailed": "Unable to update avatar",
         "uploadAvatarError": "Error uploading image",
         "invalidUserData": "Invalid user data",
-        "userUpdateError": "Error updating user information"
+        "userUpdateError": "Error updating user information",
+        "accountStatus": "Account Status",
+        "verified": "Verified",
+        "notVerified": "Not Verified"
     },
     "settings": {
         "title": "Settings",

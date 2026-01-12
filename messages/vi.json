@@ -149,6 +149,7 @@
         "changeAvatar": "Nhấn để thay đổi ảnh đại diện",
         "phoneNumber": "Số điện thoại",
         "phoneNumberCannotChange": "Số điện thoại không thể thay đổi",
+        "phoneCannotChange": "Số điện thoại không thể thay đổi",
         "email": "Email",
         "emailCannotChange": "Email không thể thay đổi",
         "fullName": "Họ và tên",
@@ -162,7 +163,10 @@
         "uploadAvatarFailed": "Không thể cập nhật ảnh đại diện",
         "uploadAvatarError": "Lỗi khi tải lên ảnh",
         "invalidUserData": "Dữ liệu người dùng không hợp lệ",
-        "userUpdateError": "Lỗi khi cập nhật thông tin người dùng"
+        "userUpdateError": "Lỗi khi cập nhật thông tin người dùng",
+        "accountStatus": "Trạng thái tài khoản",
+        "verified": "Đã xác thực",
+        "notVerified": "Chưa xác thực"
     },
     "settings": {
         "title": "Cài đặt",
