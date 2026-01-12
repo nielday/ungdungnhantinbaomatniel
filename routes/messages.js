@@ -72,17 +72,17 @@ router.get('/:conversationId', async (req, res) => {
         // Additional debugging - check if conversation/group exists at all
         const anyConversation = await Conversation.findById(conversationId);
         const anyGroup = await Group.findById(conversationId);
-        
+
         console.log('Any conversation exists:', anyConversation ? 'Yes' : 'No');
         console.log('Any group exists:', anyGroup ? 'Yes' : 'No');
-        
+
         if (anyConversation) {
           console.log('Conversation exists but user not participant:', {
             participants: anyConversation.participants,
             isActive: anyConversation.isActive
           });
         }
-        
+
         if (anyGroup) {
           console.log('Group exists but user not member:', {
             members: anyGroup.members.map(m => m.user),
@@ -100,11 +100,11 @@ router.get('/:conversationId', async (req, res) => {
       conversationId,
       isDeleted: false
     })
-    .populate('senderId', 'fullName avatar')
-    .populate('replyTo')
-    .sort({ createdAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit);
+      .populate('senderId', 'fullName avatar')
+      .populate('replyTo')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
 
     res.json(messages.reverse());
   } catch (error) {
@@ -119,14 +119,15 @@ router.get('/:conversationId', async (req, res) => {
 router.post('/:conversationId/text', async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { content, replyTo } = req.body;
+    const { content, replyTo, isEncrypted, encryptionData } = req.body;
     const userId = req.user._id;
 
     console.log('Send text message request:', {
       conversationId,
       userId,
       content: content ? content.substring(0, 50) + '...' : 'Empty',
-      replyTo
+      replyTo,
+      isEncrypted: !!isEncrypted
     });
 
     // Check if user is participant of conversation or group
@@ -158,17 +159,17 @@ router.post('/:conversationId/text', async (req, res) => {
         // Additional debugging - check if conversation/group exists at all
         const anyConversation = await Conversation.findById(conversationId);
         const anyGroup = await Group.findById(conversationId);
-        
+
         console.log('Any conversation exists for POST:', anyConversation ? 'Yes' : 'No');
         console.log('Any group exists for POST:', anyGroup ? 'Yes' : 'No');
-        
+
         if (anyConversation) {
           console.log('Conversation exists but user not participant for POST:', {
             participants: anyConversation.participants,
             isActive: anyConversation.isActive
           });
         }
-        
+
         if (anyGroup) {
           console.log('Group exists but user not member for POST:', {
             members: anyGroup.members.map(m => m.user),
@@ -187,7 +188,9 @@ router.post('/:conversationId/text', async (req, res) => {
       senderId: userId,
       content,
       messageType: 'text',
-      replyTo: replyTo || null
+      replyTo: replyTo || null,
+      isEncrypted: isEncrypted || false,
+      encryptionData: encryptionData || null
     });
 
     await message.save();
@@ -232,7 +235,7 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
       files: req.files ? req.files.length : 0,
       body: req.body
     });
-    
+
     const { conversationId } = req.params;
     const { content = '', replyTo } = req.body;
     const userId = req.user._id;
@@ -276,14 +279,14 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
           file.mimetype,
           'messages'
         );
-        
+
         attachments.push({
           fileName: file.originalname,
           fileUrl: fileUrl, // B2 public URL
           fileSize: file.size,
           mimeType: file.mimetype
         });
-        
+
         console.log('File uploaded to B2:', fileUrl);
       } catch (uploadError) {
         console.error('Failed to upload file to B2:', uploadError);
@@ -370,23 +373,23 @@ router.get('/cleanup', async (req, res) => {
     // This endpoint is now primarily for reference
     // B2 files don't need cleanup like local files
     // Files are stored permanently on B2
-    
-    const messages = await Message.find({ 
+
+    const messages = await Message.find({
       attachments: { $exists: true, $ne: [] },
-      isDeleted: false 
+      isDeleted: false
     });
-    
+
     const stats = {
       totalMessages: messages.length,
       totalAttachments: 0,
       b2Files: 0,
       localFiles: 0
     };
-    
+
     for (const message of messages) {
       if (message.attachments && message.attachments.length > 0) {
         stats.totalAttachments += message.attachments.length;
-        
+
         for (const attachment of message.attachments) {
           if (attachment.fileUrl.startsWith('http')) {
             stats.b2Files++;
@@ -396,7 +399,7 @@ router.get('/cleanup', async (req, res) => {
         }
       }
     }
-    
+
     res.json({
       status: 'OK',
       message: 'File statistics',
@@ -449,7 +452,7 @@ router.delete('/:messageId', async (req, res) => {
     message.isDeleted = true;
     message.content = 'Tin nhắn đã bị xóa';
     message.attachments = []; // Clear attachments when deleted
-    
+
     await message.save();
 
     // Emit socket event to notify all users in the conversation
