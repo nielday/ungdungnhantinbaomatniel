@@ -11,6 +11,12 @@ import CameraCapture from './CameraCapture';
 const normalizeFileUrlHelper = (fileUrl: string): string => {
   if (!fileUrl) return '';
 
+  // If it's a Backblaze B2 URL, use the presigned URL proxy
+  if (fileUrl.includes('backblazeb2.com') || fileUrl.includes('backblaze.com')) {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+    return `${apiUrl}/files/proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+  }
+
   if (fileUrl.startsWith('http')) {
     if (fileUrl.includes('railway.app/uploads/')) {
       const uploadsPath = fileUrl.split('/uploads/')[1];
@@ -490,6 +496,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const normalizeFileUrl = (fileUrl: string): string => {
     if (!fileUrl) return '';
 
+    // If it's a Backblaze B2 URL, use the presigned URL proxy
+    if (fileUrl.includes('backblazeb2.com') || fileUrl.includes('backblaze.com')) {
+      // Use the files proxy endpoint to get presigned URL
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      return `${apiUrl}/files/proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+    }
+
     // If already a full HTTP URL, check if it's Railway and convert to relative
     if (fileUrl.startsWith('http')) {
       if (fileUrl.includes('railway.app/uploads/')) {
@@ -648,8 +661,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 )}
 
                 <div className={`rounded-lg p-3 ${message.senderId._id === currentUser?.id
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white text-gray-800 border border-gray-200'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white text-gray-800 border border-gray-200'
                   }`}>
                   {message.replyTo && (
                     <div className="mb-2 p-2 bg-gray-100 rounded text-xs border-l-2 border-blue-500">
