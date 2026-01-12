@@ -891,8 +891,8 @@ To restore:
                       <div>
                         <h3 className="text-xl font-semibold mb-4 dark:text-white">{t('settings.profileInfo')}</h3>
                         <div className="space-y-4">
+                          {/* Avatar Section */}
                           <div className="flex items-center space-x-4">
-                            {/* Clickable Avatar with Camera Overlay */}
                             <div
                               className="relative group cursor-pointer"
                               onClick={() => avatarInputRef.current?.click()}
@@ -904,7 +904,6 @@ To restore:
                                     alt={user?.fullName}
                                     className="w-20 h-20 rounded-full object-cover"
                                     onError={(e) => {
-                                      console.error('Avatar load error:', avatar);
                                       e.currentTarget.style.display = 'none';
                                     }}
                                   />
@@ -912,7 +911,6 @@ To restore:
                                   <User className="w-10 h-10 text-white" />
                                 )}
                               </div>
-                              {/* Camera Overlay */}
                               <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                 {avatarLoading ? (
                                   <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -920,7 +918,6 @@ To restore:
                                   <Camera className="w-6 h-6 text-white" />
                                 )}
                               </div>
-                              {/* Hidden file input */}
                               <input
                                 type="file"
                                 ref={avatarInputRef}
@@ -931,13 +928,27 @@ To restore:
                             </div>
                             <div>
                               <p className="font-medium text-gray-800 dark:text-white">{user?.fullName}</p>
-                              <p className="text-gray-500 dark:text-gray-400">{user?.email}</p>
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">{user?.email}</p>
                               <p className="text-xs text-blue-500 dark:text-blue-400 mt-1 cursor-pointer hover:underline" onClick={() => avatarInputRef.current?.click()}>
                                 {t('profile.changeAvatar')}
                               </p>
                             </div>
                           </div>
 
+                          {/* Verification Status */}
+                          <div className={`flex items-center justify-between p-3 rounded-lg ${user?.isVerified ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'}`}>
+                            <div className="flex items-center space-x-2">
+                              <Shield className={`w-5 h-5 ${user?.isVerified ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`} />
+                              <span className={`text-sm font-medium ${user?.isVerified ? 'text-green-700 dark:text-green-300' : 'text-yellow-700 dark:text-yellow-300'}`}>
+                                {t('profile.accountStatus')}
+                              </span>
+                            </div>
+                            <span className={`text-sm font-bold ${user?.isVerified ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                              {user?.isVerified ? `✓ ${t('profile.verified')}` : t('profile.notVerified')}
+                            </span>
+                          </div>
+
+                          {/* Editable Fields */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -953,31 +964,52 @@ To restore:
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                {t('settings.username')}
+                                {t('profile.age')}
                               </label>
                               <input
-                                type="text"
-                                value={profileData.username}
-                                onChange={(e) => setProfileData(prev => ({ ...prev, username: e.target.value }))}
+                                type="number"
+                                value={user?.age || ''}
                                 disabled={!isEditing}
                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                               />
                             </div>
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Email
-                            </label>
-                            <input
-                              type="email"
-                              value={user?.email || ''}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                              disabled
-                            />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('settings.emailCannotChange')}</p>
+                          {/* Locked Fields */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                📱 {t('profile.phoneNumber')}
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={user?.phoneNumber || ''}
+                                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                                  disabled
+                                />
+                                <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">🔒 {t('profile.phoneCannotChange')}</p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                ✉️ Email
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="email"
+                                  value={user?.email || ''}
+                                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                                  disabled
+                                />
+                                <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">🔒 {t('settings.emailCannotChange')}</p>
+                            </div>
                           </div>
 
+                          {/* Action Buttons */}
                           <div className="flex gap-3 pt-4">
                             {isEditing ? (
                               <>

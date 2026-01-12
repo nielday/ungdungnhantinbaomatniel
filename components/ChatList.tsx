@@ -115,16 +115,16 @@ export default function ChatList({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search Bar */}
-      <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
+      {/* Unified Search Bar */}
+      <div className="p-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
           <input
             type="text"
             placeholder={t('chatList.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-neutral-800 text-gray-800 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+            className="w-full pl-12 pr-4 py-3 bg-gray-100 dark:bg-neutral-800 rounded-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm text-gray-800 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
         </div>
       </div>

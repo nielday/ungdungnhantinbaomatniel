@@ -23,7 +23,7 @@ import {
 import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
 import UserSearch from './UserSearch';
-import ProfileModal from './ProfileModal';
+
 import CreateGroupModal from './CreateGroupModal';
 import GroupManagementModal from './GroupManagementModal';
 import SettingsModal from './SettingsModal';
@@ -71,7 +71,6 @@ export default function ChatApp() {
 
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showGroupManagement, setShowGroupManagement] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -339,7 +338,7 @@ export default function ChatApp() {
         {/* Mobile: Messenger-style Header */}
         {isMobile ? (
           <div className="px-4 pt-4 pb-2">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Niel Chat</h1>
               <div className="flex items-center space-x-2">
                 <button
@@ -356,15 +355,6 @@ export default function ChatApp() {
                 </button>
               </div>
             </div>
-
-            {/* Search Bar - Messenger style */}
-            <button
-              onClick={() => setShowUserSearch(true)}
-              className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-100 dark:bg-neutral-800 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
-            >
-              <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sidebar.searchUsers')}</span>
-            </button>
           </div>
         ) : (
           /* Desktop: Original Header */
@@ -400,7 +390,7 @@ export default function ChatApp() {
         {/* Desktop: User Info */}
         {!isMobile && (
           <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
-            <div className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 transition-colors" onClick={() => setShowProfile(true)}>
+            <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center overflow-hidden">
                 {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
                   <img
@@ -451,9 +441,9 @@ export default function ChatApp() {
                 <span className="text-xs text-blue-500 mt-1 font-medium">{t('chat.messages')}</span>
               </button>
 
-              {/* Profile Tab */}
+              {/* Profile Tab - Opens Settings */}
               <button
-                onClick={() => setShowProfile(true)}
+                onClick={() => setShowSettings(true)}
                 className="flex flex-col items-center py-2 px-4"
               >
                 <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center">
@@ -585,15 +575,7 @@ export default function ChatApp() {
         />
       )}
 
-      {/* Profile Modal */}
-      {showProfile && (
-        <ProfileModal
-          user={user}
-          onClose={() => setShowProfile(false)}
-          onUpdateProfile={fetchConversations}
-          onUserUpdate={handleUserUpdate}
-        />
-      )}
+
 
       {/* Create Group Modal */}
       {showCreateGroup && (
