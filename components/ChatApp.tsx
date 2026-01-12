@@ -361,8 +361,8 @@ export default function ChatApp() {
           <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <MessageCircle className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 rounded-full overflow-hidden">
+                  <img src="/logo.png" alt="Niel Chat" className="w-10 h-10 object-cover" />
                 </div>
                 <div>
                   <h1 className="text-lg font-semibold text-gray-800 dark:text-white">{t('chat.messages')}</h1>
