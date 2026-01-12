@@ -273,6 +273,95 @@ export function getDeviceName(): string {
     return `${browser} on ${os}`;
 }
 
+// Encrypt a string with a password (for backup)
+export async function encryptStringWithPassword(
+    text: string,
+    password: string
+): Promise<{ ciphertext: string; iv: string; salt: string }> {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    // Import password
+    const passwordKey = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(password),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+    );
+
+    // Derive encryption key
+    const key = await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        passwordKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt']
+    );
+
+    // Encrypt content
+    const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        new TextEncoder().encode(text)
+    );
+
+    return {
+        ciphertext: arrayBufferToBase64(encrypted),
+        iv: arrayBufferToBase64(iv),
+        salt: arrayBufferToBase64(salt)
+    };
+}
+
+// Decrypt a string with password (for restore)
+export async function decryptStringWithPassword(
+    ciphertext: string,
+    password: string,
+    saltBase64: string,
+    ivBase64: string
+): Promise<string> {
+    const salt = base64ToArrayBuffer(saltBase64);
+    const iv = base64ToArrayBuffer(ivBase64);
+    const encryptedData = base64ToArrayBuffer(ciphertext);
+
+    // Import password
+    const passwordKey = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(password),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+    );
+
+    // Derive encryption key
+    const key = await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt as BufferSource,
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        passwordKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+    );
+
+    // Decrypt content
+    const decryptedBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv as BufferSource },
+        key,
+        encryptedData
+    );
+
+    return new TextDecoder().decode(decryptedBuffer);
+}
+
 // Helper: Convert ArrayBuffer or Uint8Array to Base64
 function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
     const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);

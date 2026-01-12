@@ -326,6 +326,26 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       const token = localStorage.getItem('token');
       const newMode = encryptionMode === 'e2ee' ? 'none' : 'e2ee';
 
+      // If enabling encryption, check if other user has a key
+      if (newMode === 'e2ee' && conversation.type === 'private') {
+        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+        if (otherUser?._id) {
+          const keyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+
+          if (keyResponse.ok) {
+            const keyData = await keyResponse.json();
+            if (!keyData.publicKey) {
+              alert(t('encryption.recipientNoKeyDesc'));
+              setIsTogglingEncryption(false);
+              return;
+            }
+          }
+        }
+      }
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}/encryption-mode`,
         {
@@ -485,14 +505,27 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     const encrypted = await encryption.encryptMessage(content, sharedKey);
                     messageContent = encrypted.ciphertext;
                     encryptionData = { iv: encrypted.iv, algorithm: 'AES-256-GCM' };
+                  } else {
+                    alert(t('encryption.noKey'));
+                    return;
                   }
+                } else {
+                  alert(t('encryption.noKey'));
+                  return;
                 }
+              } else {
+                alert(t('encryption.otherNoKey'));
+                return;
               }
+            } else {
+              alert(t('encryption.otherNoKey'));
+              return;
             }
           }
         } catch (encError) {
-          console.error('Encryption error, sending plaintext:', encError);
-          // Fall back to plaintext if encryption fails
+          console.error('Encryption error:', encError);
+          alert(t('encryption.decryptFailed') + ': ' + encError);
+          return;
         }
       }
 

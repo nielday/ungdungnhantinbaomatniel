@@ -5,9 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Bell, Palette, Shield, Globe, Save, Moon, Sun, Camera, Lock, Smartphone, Key, Trash2, RefreshCw } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from './LanguageSwitcher';
 import * as encryption from '../lib/encryption';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -44,6 +47,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [hasEncryptionKey, setHasEncryptionKey] = useState(false);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+  const [publicKeyBase64, setPublicKeyBase64] = useState<string>('');
+  const [showImportKey, setShowImportKey] = useState(false);
+  const [importKeyValue, setImportKeyValue] = useState('');
+  const [importKeyError, setImportKeyError] = useState('');
+  const [isDeletingKey, setIsDeletingKey] = useState(false);
+
+  // Backup State
+  const [showBackupModal, setShowBackupModal] = useState(false);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [confirmBackupPassword, setConfirmBackupPassword] = useState('');
+  const [backupError, setBackupError] = useState('');
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+
+  // Restore State
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restorePassword, setRestorePassword] = useState('');
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoreError, setRestoreError] = useState('');
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  // Password Prompt for Sensitive Actions (Server-side Encryption)
+  const [showActionPasswordModal, setShowActionPasswordModal] = useState(false);
+  const [actionPassword, setActionPassword] = useState('');
+  const [pendingAction, setPendingAction] = useState<'generate' | 'import' | 'restore' | null>(null);
+  const [tempKeyData, setTempKeyData] = useState<any>(null); // To hold data while waiting for password
+
   const currentDeviceId = typeof window !== 'undefined' ? encryption.getDeviceId() : '';
 
   // Load settings from localStorage
@@ -96,10 +125,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         const keysData = await keysResponse.json();
         if (keysData.publicKey) {
           setHasEncryptionKey(true);
+          setPublicKeyBase64(keysData.publicKey);
           const fingerprint = await encryption.getKeyFingerprint(keysData.publicKey);
           setKeyFingerprint(fingerprint);
         } else {
           setHasEncryptionKey(false);
+          setPublicKeyBase64('');
           setKeyFingerprint('');
         }
       }
@@ -130,42 +161,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
     if (!confirmGenerate) return;
 
-    setIsGeneratingKey(true);
-    try {
-      // Generate new key pair
-      const keyPair = await encryption.generateKeyPair();
-      const publicKeyBase64 = await encryption.exportPublicKey(keyPair.publicKey);
-      const privateKeyBase64 = await encryption.exportPrivateKey(keyPair.privateKey);
-
-      // For now, store plaintext (would encrypt with password in production)
-      // TODO: Add password prompt for encryption
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
-      const token = localStorage.getItem('token');
-
-      const response = await fetch(`${apiUrl}/users/encryption-keys`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          publicKey: publicKeyBase64,
-          encryptedPrivateKey: privateKeyBase64, // TODO: encrypt with password
-          keySalt: '' // TODO: generate salt for password encryption
-        })
-      });
-
-      if (response.ok) {
-        setHasEncryptionKey(true);
-        const fingerprint = await encryption.getKeyFingerprint(publicKeyBase64);
-        setKeyFingerprint(fingerprint);
-        alert(t('encryption.keyGenerated'));
-      }
-    } catch (error) {
-      console.error('Error generating key:', error);
-    } finally {
-      setIsGeneratingKey(false);
-    }
+    // Prompt for password
+    setPendingAction('generate');
+    setShowActionPasswordModal(true);
   };
 
   const handleRemoveDevice = async (deviceId: string) => {
@@ -186,6 +184,327 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       }
     } catch (error) {
       console.error('Error removing device:', error);
+    }
+  };
+
+  const handleCopyKey = async () => {
+    if (!publicKeyBase64) return;
+    try {
+      await navigator.clipboard.writeText(publicKeyBase64);
+      alert(t('encryption.keyCopied'));
+    } catch (error) {
+      console.error('Error copying key:', error);
+    }
+  };
+
+  const handleDeleteKey = async () => {
+    if (!confirm(t('encryption.confirmDeleteKey'))) return;
+
+    setIsDeletingKey(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${apiUrl}/users/encryption-keys`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setHasEncryptionKey(false);
+        setPublicKeyBase64('');
+        setKeyFingerprint('');
+        alert(t('encryption.keyDeleted'));
+      }
+    } catch (error) {
+      console.error('Error deleting key:', error);
+    } finally {
+      setIsDeletingKey(false);
+    }
+  };
+
+  const validateKeyFormat = (key: string): boolean => {
+    // Base64 format check: only valid base64 characters
+    const base64Regex = /^[A-Za-z0-9+/=]+$/;
+    if (!base64Regex.test(key)) return false;
+    // Should be reasonable length for ECDH public key (typically 91 chars in Base64 for P-256)
+    if (key.length < 50 || key.length > 200) return false;
+    return true;
+  };
+
+  const handleImportKey = async () => {
+    setImportKeyError('');
+
+    if (!importKeyValue.trim()) {
+      setImportKeyError(t('encryption.keyRequired'));
+      return;
+    }
+
+    if (!validateKeyFormat(importKeyValue.trim())) {
+      setImportKeyError(t('encryption.invalidKeyFormat'));
+      return;
+    }
+
+    try {
+      // Try to import the key to validate it's a valid ECDH key
+      await encryption.importPublicKey(importKeyValue.trim());
+
+      // If valid, prompt for login password to encrypt and save
+      setTempKeyData(importKeyValue.trim());
+      setPendingAction('import');
+      setShowImportKey(false);
+      setShowActionPasswordModal(true);
+    } catch (error) {
+      console.error('Error importing key:', error);
+      setImportKeyError(t('encryption.invalidKeyFormat'));
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!actionPassword) return;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const token = localStorage.getItem('token');
+      let body: any = {};
+      let fingerprint = '';
+
+      if (pendingAction === 'generate') {
+        setIsGeneratingKey(true);
+        // Generate new key pair
+        const keyPair = await encryption.generateKeyPair();
+        const publicKeyBase64 = await encryption.exportPublicKey(keyPair.publicKey);
+        const privateKeyBase64 = await encryption.exportPrivateKey(keyPair.privateKey);
+        fingerprint = await encryption.getKeyFingerprint(publicKeyBase64);
+
+        // Encrypt Private Key with Login Password
+        const encryptedData = await encryption.encryptStringWithPassword(privateKeyBase64, actionPassword);
+
+        body = {
+          publicKey: publicKeyBase64,
+          encryptedPrivateKey: encryptedData.ciphertext,
+          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
+        };
+
+      } else if (pendingAction === 'import') {
+        // TempKeyData is the RAW private key user imported
+        const publicKey = await encryption.getPublicKeyFromPrivate(tempKeyData);
+        fingerprint = await encryption.getKeyFingerprint(publicKey);
+
+        // Encrypt Private Key
+        const encryptedData = await encryption.encryptStringWithPassword(tempKeyData, actionPassword);
+
+        body = {
+          publicKey: publicKey,
+          encryptedPrivateKey: encryptedData.ciphertext,
+          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
+        };
+      } else if (pendingAction === 'restore') {
+        // TempKeyData contains { publicKey, privateKey (decrypted) }
+        fingerprint = await encryption.getKeyFingerprint(tempKeyData.publicKey);
+
+        // Encrypt Private Key
+        const encryptedData = await encryption.encryptStringWithPassword(tempKeyData.privateKey, actionPassword);
+
+        body = {
+          publicKey: tempKeyData.publicKey,
+          encryptedPrivateKey: encryptedData.ciphertext,
+          keySalt: JSON.stringify({ iv: encryptedData.iv, salt: encryptedData.salt })
+        };
+      }
+
+      if (Object.keys(body).length > 0) {
+        const response = await fetch(`${apiUrl}/users/encryption-keys`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          setHasEncryptionKey(true);
+          setPublicKeyBase64(body.publicKey);
+          setKeyFingerprint(fingerprint);
+
+          if (pendingAction === 'generate') alert(t('encryption.keyGenerated'));
+          else if (pendingAction === 'import') alert(t('encryption.keyImported'));
+          else if (pendingAction === 'restore') alert(t('encryption.restoreSuccess'));
+
+          setShowActionPasswordModal(false);
+          setImportKeyValue('');
+          setRestoreFile(null);
+          setRestorePassword('');
+        } else {
+          alert('Error saving keys to server');
+        }
+      }
+
+    } catch (error) {
+      console.error('Error confirming action:', error);
+      alert('Operation failed. Please check your password and try again.');
+    } finally {
+      setIsGeneratingKey(false);
+      setIsRestoring(false);
+      setActionPassword('');
+      setPendingAction(null);
+      setTempKeyData(null);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    if (!backupPassword) {
+      setBackupError(t('encryption.passwordRequired'));
+      return;
+    }
+
+    if (backupPassword !== confirmBackupPassword) {
+      setBackupError(t('encryption.passwordMismatch'));
+      return;
+    }
+
+    setIsCreatingBackup(true);
+    setBackupError('');
+
+    try {
+      // 1. Fetch current keys (including private key)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${apiUrl}/users/encryption-keys`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch keys');
+
+      const keysData = await response.json();
+      const privateKeyRaw = keysData.encryptedPrivateKey;
+
+      if (!privateKeyRaw) {
+        throw new Error('No private key found');
+      }
+
+      // 2. Encrypt private key with backup password
+      const encryptedBackup = await encryption.encryptStringWithPassword(privateKeyRaw, backupPassword);
+
+      // 3. Create ZIP file
+      const zip = new JSZip();
+
+      // Add secure key file
+      const keyFileContent = JSON.stringify({
+        version: '1.0',
+        created: new Date().toISOString(),
+        fingerprint: keyFingerprint,
+        encryption: {
+          algorithm: 'AES-GCM',
+          params: {
+            iv: encryptedBackup.iv,
+            salt: encryptedBackup.salt
+          }
+        },
+        data: {
+          publicKey: publicKeyBase64,
+          encryptedPrivateKey: encryptedBackup.ciphertext
+        }
+      }, null, 2);
+
+      zip.file('niel-messenger-key.json', keyFileContent);
+
+      // Add Readme
+      zip.file('README.txt', `NIEL MESSENGER BACKUP
+=====================
+Created: ${new Date().toLocaleString()}
+Fingerprint: ${keyFingerprint}
+
+This backup contains your End-to-End Encryption keys.
+The file 'niel-messenger-key.json' is encrypted with your password.
+DO NOT SHARE THIS FILE OR YOUR PASSWORD.
+
+To restore:
+1. Go to Settings > Security
+2. Click 'Import Key'
+3. Open 'niel-messenger-key.json'
+4. Enter your backup password
+`);
+
+      // 4. Generate and download
+      const blob = await zip.generateAsync({ type: 'blob' });
+      saveAs(blob, `niel-backup-${new Date().toISOString().slice(0, 10)}.zip`);
+
+      // Reset and close
+      setShowBackupModal(false);
+      setBackupPassword('');
+      setConfirmBackupPassword('');
+      alert(t('encryption.backupSuccess'));
+
+    } catch (error) {
+      console.error('Backup error:', error);
+      setBackupError(t('encryption.backupError') + ': ' + (error as Error).message);
+    } finally {
+      setIsCreatingBackup(false);
+    }
+  };
+
+  const handleRestoreBackup = async () => {
+    if (!restoreFile || !restorePassword) {
+      setRestoreError(t('encryption.keyRequired'));
+      return;
+    }
+
+    setIsRestoring(true);
+    setRestoreError('');
+
+    try {
+      let keyData: any = null;
+
+      // 1. Read File
+      if (restoreFile.name.endsWith('.zip')) {
+        const zip = await JSZip.loadAsync(restoreFile);
+        const keyFile = zip.file('niel-messenger-key.json');
+        if (!keyFile) throw new Error('Invalid backup file: key json not found');
+        const content = await keyFile.async('string');
+        keyData = JSON.parse(content);
+      } else if (restoreFile.name.endsWith('.json')) {
+        const content = await restoreFile.text();
+        keyData = JSON.parse(content);
+      } else {
+        throw new Error(t('encryption.invalidBackupFile'));
+      }
+
+      // 2. Validate Format
+      if (!keyData.data || !keyData.encryption || !keyData.data.encryptedPrivateKey) {
+        throw new Error('Invalid key file format');
+      }
+
+      // 3. Decrypt Private Key
+      const decryptedPrivateKey = await encryption.decryptStringWithPassword(
+        keyData.data.encryptedPrivateKey,
+        restorePassword,
+        keyData.encryption.params.salt,
+        keyData.encryption.params.iv
+      );
+
+      // 4. Verify Key works
+      try {
+        await encryption.importPrivateKey(decryptedPrivateKey);
+      } catch (e) {
+        throw new Error(t('encryption.wrongPassword'));
+      }
+
+      // 5. Encrypt with Login Password (new flow)
+      setTempKeyData({
+        publicKey: keyData.data.publicKey,
+        privateKey: decryptedPrivateKey
+      });
+      setShowRestoreModal(false);
+      setPendingAction('restore');
+      setShowActionPasswordModal(true);
+
+    } catch (error) {
+      console.error('Restore error:', error);
+      setRestoreError(t('encryption.restoreError') + ': ' + (error as Error).message);
+      setIsRestoring(false);
     }
   };
 
@@ -648,28 +967,211 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                     </span>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={handleGenerateKey}
-                                  disabled={isGeneratingKey}
-                                  className="flex items-center space-x-2 px-4 py-2 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
-                                >
-                                  <RefreshCw className={`w-4 h-4 ${isGeneratingKey ? 'animate-spin' : ''}`} />
-                                  <span>{t('encryption.regenerateKey')}</span>
-                                </button>
+
+                                {/* Key Action Buttons */}
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={handleCopyKey}
+                                    className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/50 rounded-lg transition-colors text-sm"
+                                  >
+                                    <span>📋 {t('encryption.copyKey')}</span>
+                                  </button>
+                                  <button
+                                    onClick={handleGenerateKey}
+                                    disabled={isGeneratingKey}
+                                    className="flex items-center space-x-2 px-3 py-2 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/30 rounded-lg transition-colors text-sm"
+                                  >
+                                    <RefreshCw className={`w-4 h-4 ${isGeneratingKey ? 'animate-spin' : ''}`} />
+                                    <span>{t('encryption.regenerateKey')}</span>
+                                  </button>
+                                  <button
+                                    onClick={handleDeleteKey}
+                                    disabled={isDeletingKey}
+                                    className="flex items-center space-x-2 px-3 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors text-sm"
+                                  >
+                                    <Trash2 className={`w-4 h-4 ${isDeletingKey ? 'animate-pulse' : ''}`} />
+                                    <span>{t('encryption.deleteKey')}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setShowBackupModal(true)}
+                                    className="flex items-center space-x-2 px-3 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-800/50 rounded-lg transition-colors text-sm"
+                                  >
+                                    <Save className="w-4 h-4" />
+                                    <span>{t('encryption.backupKey')}</span>
+                                  </button>
+                                </div>
+
+                                {/* Backup Modal (Inside True Block) */}
+                                {showBackupModal && (
+                                  <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-xl">
+                                      <h3 className="text-lg font-bold mb-2 dark:text-white">{t('encryption.backupTitle')}</h3>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                        {t('encryption.backupDesc')}
+                                      </p>
+
+                                      <div className="space-y-3">
+                                        <div>
+                                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                                            {t('encryption.password')}
+                                          </label>
+                                          <input
+                                            type="password"
+                                            value={backupPassword}
+                                            onChange={(e) => setBackupPassword(e.target.value)}
+                                            className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                                            {t('encryption.confirmPassword')}
+                                          </label>
+                                          <input
+                                            type="password"
+                                            value={confirmBackupPassword}
+                                            onChange={(e) => setConfirmBackupPassword(e.target.value)}
+                                            className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                          />
+                                        </div>
+
+                                        {backupError && (
+                                          <p className="text-red-500 text-xs">{backupError}</p>
+                                        )}
+
+                                        <div className="flex gap-2 mt-4 pt-2">
+                                          <button
+                                            onClick={handleCreateBackup}
+                                            disabled={isCreatingBackup}
+                                            className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                                          >
+                                            {isCreatingBackup ? t('common.loading') : t('encryption.downloadBackup')}
+                                          </button>
+                                          <button
+                                            onClick={() => { setShowBackupModal(false); setBackupPassword(''); setConfirmBackupPassword(''); }}
+                                            className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                                          >
+                                            {t('common.cancel')}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="space-y-3">
                                 <p className="text-gray-500 dark:text-gray-400 text-sm">
                                   {t('encryption.noKey')}
                                 </p>
-                                <button
-                                  onClick={handleGenerateKey}
-                                  disabled={isGeneratingKey}
-                                  className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                                >
-                                  <Key className={`w-4 h-4 ${isGeneratingKey ? 'animate-spin' : ''}`} />
-                                  <span>{isGeneratingKey ? t('common.loading') : t('encryption.generateKey')}</span>
-                                </button>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={handleGenerateKey}
+                                    disabled={isGeneratingKey}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                                  >
+                                    <Key className={`w-4 h-4 ${isGeneratingKey ? 'animate-spin' : ''}`} />
+                                    <span>{isGeneratingKey ? t('common.loading') : t('encryption.generateKey')}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setShowImportKey(true)}
+                                    className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                  >
+                                    <span>📥 {t('encryption.importKey')}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setShowRestoreModal(true)}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-800/50 rounded-lg transition-colors"
+                                  >
+                                    <Save className="w-4 h-4" />
+                                    <span>{t('encryption.restoreBackup')}</span>
+                                  </button>
+                                </div>
+
+                                {/* Import Key Modal */}
+                                {showImportKey && (
+                                  <div className="mt-4 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                    <h5 className="font-medium mb-2 dark:text-white">{t('encryption.importKey')}</h5>
+                                    <textarea
+                                      value={importKeyValue}
+                                      onChange={(e) => setImportKeyValue(e.target.value)}
+                                      placeholder={t('encryption.pasteKeyHere')}
+                                      className="w-full p-2 border border-gray-300 dark:border-gray-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-xs h-24"
+                                    />
+                                    {importKeyError && (
+                                      <p className="text-red-500 text-sm mt-1">{importKeyError}</p>
+                                    )}
+                                    <div className="flex gap-2 mt-2">
+                                      <button
+                                        onClick={handleImportKey}
+                                        className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                                      >
+                                        {t('encryption.import')}
+                                      </button>
+                                      <button
+                                        onClick={() => { setShowImportKey(false); setImportKeyValue(''); setImportKeyError(''); }}
+                                        className="px-3 py-1 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
+                                      >
+                                        {t('common.cancel')}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Restore Modal */}
+                                {showRestoreModal && (
+                                  <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-xl">
+                                      <h3 className="text-lg font-bold mb-2 dark:text-white">{t('encryption.restoreBackup')}</h3>
+
+                                      <div className="space-y-3">
+                                        <div>
+                                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                                            {t('encryption.selectBackupFile')}
+                                          </label>
+                                          <input
+                                            type="file"
+                                            accept=".zip,.json"
+                                            onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+                                            className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                                            {t('encryption.password')}
+                                          </label>
+                                          <input
+                                            type="password"
+                                            value={restorePassword}
+                                            onChange={(e) => setRestorePassword(e.target.value)}
+                                            className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                          />
+                                        </div>
+
+                                        {restoreError && (
+                                          <p className="text-red-500 text-xs">{restoreError}</p>
+                                        )}
+
+                                        <div className="flex gap-2 mt-4 pt-2">
+                                          <button
+                                            onClick={handleRestoreBackup}
+                                            disabled={isRestoring || !restoreFile || !restorePassword}
+                                            className="flex-1 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 disabled:opacity-50"
+                                          >
+                                            {isRestoring ? t('common.loading') : t('encryption.decryptAndRestore')}
+                                          </button>
+                                          <button
+                                            onClick={() => { setShowRestoreModal(false); setRestoreFile(null); setRestorePassword(''); }}
+                                            className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                                          >
+                                            {t('common.cancel')}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -689,8 +1191,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                   <div
                                     key={device.deviceId}
                                     className={`flex items-center justify-between p-3 rounded-lg border ${device.deviceId === currentDeviceId
-                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
-                                        : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                                      ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
+                                      : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
                                       }`}
                                   >
                                     <div className="flex items-center space-x-3">
@@ -811,6 +1313,56 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </button>
             </div>
           </motion.div>
+        </div>
+      )}
+
+      {/* Action Password Modal */}
+      {showActionPasswordModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 shadow-2xl">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm border border-gray-200 dark:border-gray-700 shadow-2xl transform scale-100 transition-all">
+            <h3 className="text-lg font-bold mb-2 dark:text-white">
+              {pendingAction === 'generate' ? t('encryption.generateKey') :
+                pendingAction === 'import' ? t('encryption.importKey') :
+                  t('encryption.restoreBackup')}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {t('encryption.enterLoginPassword')}
+            </p>
+
+            <div className="space-y-3">
+              <input
+                type="password"
+                value={actionPassword}
+                onChange={(e) => setActionPassword(e.target.value)}
+                className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                placeholder={t('encryption.password')}
+                autoFocus
+              />
+
+              <div className="flex gap-2 mt-4 pt-2">
+                <button
+                  onClick={handleConfirmAction}
+                  disabled={!actionPassword}
+                  className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 font-medium"
+                >
+                  {t('common.confirm')}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowActionPasswordModal(false);
+                    setActionPassword('');
+                    setPendingAction(null);
+                    setTempKeyData(null);
+                    setIsGeneratingKey(false);
+                    setIsRestoring(false);
+                  }}
+                  className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
