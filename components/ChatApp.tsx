@@ -328,145 +328,101 @@ export default function ChatApp() {
 
       {/* Sidebar */}
       <div className={`
-        ${isMobile ? 'fixed' : 'relative'} 
+        ${isMobile ? 'fixed inset-0' : 'relative'} 
         ${isMobile ? (showSidebar ? 'translate-x-0' : '-translate-x-full') : ''}
-        ${isMobile ? 'w-[85vw] max-w-sm' : 'w-80'} bg-white dark:bg-neutral-900 border-r border-gray-200 dark:border-neutral-700 flex flex-col z-50
+        ${isMobile ? 'w-full' : 'w-80'} bg-white dark:bg-neutral-900 ${!isMobile ? 'border-r border-gray-200 dark:border-neutral-700' : ''} flex flex-col z-50
         transition-transform duration-300 ease-in-out
-        ${isMobile ? 'h-full' : ''}
       `}>
-        {/* Compact Header with User Avatar */}
-        <div className="p-3 border-b border-gray-200 dark:border-neutral-700">
-          <div className="flex items-center justify-between">
-            {/* User Avatar & Name */}
-            <div
-              className="flex items-center space-x-3 flex-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 transition-colors"
-              onClick={() => setShowProfile(true)}
+
+        {/* Mobile: Messenger-style Header */}
+        {isMobile ? (
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Niel Chat</h1>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowCreateGroup(true)}
+                  className="w-10 h-10 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
+                >
+                  <Users className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="w-10 h-10 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
+                >
+                  <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search Bar - Messenger style */}
+            <button
+              onClick={() => setShowUserSearch(true)}
+              className="w-full flex items-center space-x-3 px-4 py-3 bg-gray-100 dark:bg-neutral-800 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
             >
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden ring-2 ring-white dark:ring-neutral-700 shadow-lg">
+              <Search className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sidebar.searchUsers')}</span>
+            </button>
+          </div>
+        ) : (
+          /* Desktop: Original Header */
+          <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold text-gray-800 dark:text-white">{t('chat.messages')}</h1>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('chat.messagingApp')}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button onClick={() => setShowCreateGroup(true)} className="icon-btn" title={t('sidebar.createGroup')}>
+                  <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <button onClick={() => setShowUserSearch(true)} className="icon-btn" title={t('sidebar.searchUsers')}>
+                  <Search className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <button onClick={() => setShowSettings(true)} className="icon-btn" title={t('sidebar.settings')}>
+                  <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <button onClick={handleLogout} className="icon-btn" title={t('sidebar.logout')}>
+                  <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop: User Info */}
+        {!isMobile && (
+          <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
+            <div className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-lg p-2 -m-2 transition-colors" onClick={() => setShowProfile(true)}>
+              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center overflow-hidden">
                 {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
                   <img
                     src={user.avatar.includes('backblazeb2.com') || user.avatar.includes('backblaze.com')
                       ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(user.avatar)}`
                       : user.avatar}
                     alt={user.fullName}
-                    className="w-12 h-12 rounded-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
+                    className="w-10 h-10 rounded-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                 ) : (
                   <User className="w-6 h-6 text-white" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-base font-bold text-gray-800 dark:text-white truncate">{user?.fullName}</h1>
+                <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{user?.fullName}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.phoneNumber}</p>
               </div>
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-1">
-              {isMobile && (
-                <button
-                  onClick={() => setShowSidebar(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors"
-                  title={t('sidebar.closeMenu')}
-                >
-                  <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                </button>
-              )}
-
-              {/* Desktop: Show all icons */}
-              {!isMobile && (
-                <>
-                  <button
-                    onClick={() => setShowCreateGroup(true)}
-                    className="icon-btn"
-                    title={t('sidebar.createGroup')}
-                  >
-                    <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <button
-                    onClick={() => setShowUserSearch(true)}
-                    className="icon-btn"
-                    title={t('sidebar.searchUsers')}
-                  >
-                    <Search className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="icon-btn"
-                    title={t('sidebar.settings')}
-                  >
-                    <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="icon-btn"
-                    title={t('sidebar.logout')}
-                  >
-                    <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                </>
-              )}
-
-              {/* Mobile: Dropdown Menu */}
-              {isMobile && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowSidebarMenu(!showSidebarMenu)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors"
-                    title="Menu"
-                  >
-                    <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                      <circle cx="12" cy="5" r="2" />
-                      <circle cx="12" cy="12" r="2" />
-                      <circle cx="12" cy="19" r="2" />
-                    </svg>
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {showSidebarMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-neutral-800 rounded-xl shadow-lg border border-gray-200 dark:border-neutral-700 py-2 z-50">
-                      <button
-                        onClick={() => { setShowCreateGroup(true); setShowSidebarMenu(false); }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
-                      >
-                        <Users className="w-5 h-5 text-blue-500" />
-                        <span className="text-sm text-gray-700 dark:text-gray-200">{t('sidebar.createGroup')}</span>
-                      </button>
-                      <button
-                        onClick={() => { setShowUserSearch(true); setShowSidebarMenu(false); }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
-                      >
-                        <Search className="w-5 h-5 text-green-500" />
-                        <span className="text-sm text-gray-700 dark:text-gray-200">{t('sidebar.searchUsers')}</span>
-                      </button>
-                      <button
-                        onClick={() => { setShowSettings(true); setShowSidebarMenu(false); }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
-                      >
-                        <Settings className="w-5 h-5 text-purple-500" />
-                        <span className="text-sm text-gray-700 dark:text-gray-200">{t('sidebar.settings')}</span>
-                      </button>
-                      <div className="border-t border-gray-200 dark:border-neutral-700 my-1" />
-                      <button
-                        onClick={() => { handleLogout(); setShowSidebarMenu(false); }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                      >
-                        <LogOut className="w-5 h-5 text-red-500" />
-                        <span className="text-sm text-red-600 dark:text-red-400">{t('sidebar.logout')}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
-        </div>
+        )}
 
         {/* Chat List */}
-        <div className="flex-1 overflow-hidden">
+        <div className={`flex-1 overflow-hidden ${isMobile ? 'pb-20' : ''}`}>
           <ChatList
             conversations={conversations}
             activeConversation={activeConversation}
@@ -475,6 +431,81 @@ export default function ChatApp() {
             onNewConversation={handleNewConversation}
           />
         </div>
+
+        {/* Mobile: Bottom Navigation - Messenger style */}
+        {isMobile && (
+          <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-700 px-4 py-2 safe-area-inset-bottom">
+            <div className="flex justify-around items-center">
+              {/* Chats Tab - Active */}
+              <button className="flex flex-col items-center py-2 px-4">
+                <div className="relative">
+                  <MessageCircle className="w-6 h-6 text-blue-500" fill="currentColor" />
+                  {conversations.filter(c => c.lastMessage).length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                      {conversations.filter(c => c.lastMessage).length > 9 ? '9+' : conversations.filter(c => c.lastMessage).length}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-blue-500 mt-1 font-medium">{t('chat.messages')}</span>
+              </button>
+
+              {/* Profile Tab */}
+              <button
+                onClick={() => setShowProfile(true)}
+                className="flex flex-col items-center py-2 px-4"
+              >
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center">
+                  {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                    <img
+                      src={user.avatar.includes('backblazeb2.com') || user.avatar.includes('backblaze.com')
+                        ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(user.avatar)}`
+                        : user.avatar}
+                      alt={user.fullName}
+                      className="w-7 h-7 rounded-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <User className="w-4 h-4 text-white" />
+                  )}
+                </div>
+                <span className="text-xs text-gray-600 dark:text-gray-400 mt-1">{t('settings.profile')}</span>
+              </button>
+
+              {/* Menu Tab */}
+              <button
+                onClick={() => setShowSidebarMenu(!showSidebarMenu)}
+                className="flex flex-col items-center py-2 px-4 relative"
+              >
+                <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                <span className="text-xs text-gray-600 dark:text-gray-400 mt-1">Menu</span>
+
+                {/* Menu Popup */}
+                {showSidebarMenu && (
+                  <div className="absolute bottom-full mb-2 right-0 w-56 bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-gray-200 dark:border-neutral-700 py-2 z-50">
+                    <button
+                      onClick={() => { setShowSettings(true); setShowSidebarMenu(false); }}
+                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-neutral-700 flex items-center justify-center">
+                        <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                      </div>
+                      <span className="text-sm text-gray-800 dark:text-gray-200">{t('sidebar.settings')}</span>
+                    </button>
+                    <button
+                      onClick={() => { handleLogout(); setShowSidebarMenu(false); }}
+                      className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
+                      </div>
+                      <span className="text-sm text-red-600 dark:text-red-400">{t('sidebar.logout')}</span>
+                    </button>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Chat Area */}
