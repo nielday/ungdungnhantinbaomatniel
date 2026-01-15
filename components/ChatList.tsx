@@ -89,12 +89,19 @@ export default function ChatList({
   };
 
   const getConversationAvatar = (conversation: Conversation) => {
+    let avatar: string | undefined;
     if (conversation.type === 'group') {
-      return conversation.avatar;
+      avatar = conversation.avatar;
     } else {
       const otherParticipant = conversation.participants?.find(p => p._id !== currentUserId);
-      return otherParticipant?.avatar;
+      avatar = otherParticipant?.avatar;
     }
+
+    // Apply B2 proxy if needed
+    if (avatar && (avatar.includes('backblazeb2.com') || avatar.includes('backblaze.com'))) {
+      return `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(avatar)}`;
+    }
+    return avatar;
   };
 
   const getLastMessagePreview = (conversation: Conversation) => {
@@ -150,12 +157,13 @@ export default function ChatList({
                 <div className="flex items-center space-x-3">
                   {/* Avatar */}
                   <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
                       {getConversationAvatar(conversation) ? (
                         <img
                           src={getConversationAvatar(conversation)}
                           alt={getConversationName(conversation)}
                           className="w-12 h-12 rounded-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : conversation.type === 'group' ? (
                         <Users className="w-6 h-6 text-white" />

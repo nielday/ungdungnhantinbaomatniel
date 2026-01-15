@@ -815,19 +815,20 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         <div className="p-4 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
                 {otherParticipant?.avatar ? (
                   <img
-                    src={otherParticipant.avatar}
+                    src={otherParticipant.avatar.includes('backblazeb2.com') || otherParticipant.avatar.includes('backblaze.com')
+                      ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(otherParticipant.avatar)}`
+                      : otherParticipant.avatar}
                     alt={otherParticipant.fullName}
                     className="w-10 h-10 rounded-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                 ) : (
-                  <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                    <span className="text-white font-medium">
-                      {otherParticipant?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
-                  </div>
+                  <span className="text-white font-medium">
+                    {otherParticipant?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
                 )}
               </div>
               <div>

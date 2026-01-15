@@ -1,0 +1,241 @@
+@startuml Niel Messaging App - Database Schema
+
+!define PRIMARY_KEY(x) <b><color:#b8860b><&key></color> x</b>
+!define FOREIGN_KEY(x) <color:#aaaaaa><&link-intact></color> x
+!define COLUMN(x) <color:#efefef><&media-record></color> x
+!define TABLE(x) entity x << (T,#FFAAAA) >>
+
+title <size:24>Sơ đồ Cấu trúc Database - Niel Messaging App</size>\n<size:14>MongoDB + Mongoose ODM</size>
+
+skinparam backgroundColor #ffffff
+skinparam entity {
+    BackgroundColor #f8f9fa
+    BorderColor #3498db
+    FontColor #2c3e50
+    ArrowColor #e74c3c
+    AttributeFontColor #555555
+}
+skinparam class {
+    HeaderBackgroundColor #3498db
+    BackgroundColor #ffffff
+    BorderColor #3498db
+    FontColor #2c3e50
+}
+skinparam note {
+    BackgroundColor #fffde7
+    BorderColor #f39c12
+    FontColor #2c3e50
+}
+
+package "Users Collection" #e3f2fd {
+    entity "User" as user {
+        PRIMARY_KEY(_id) : ObjectId
+        --
+        COLUMN(phoneNumber) : String <<unique, required>>
+        COLUMN(email) : String <<unique, required>>
+        COLUMN(fullName) : String <<required>>
+        COLUMN(age) : Number <<required, 1-120>>
+        COLUMN(avatar) : String
+        COLUMN(isVerified) : Boolean <<default: false>>
+        --
+        <b>OTP Authentication</b>
+        COLUMN(otpCode) : String
+        COLUMN(otpExpires) : Date
+        --
+        <b>E2EE Encryption Keys</b>
+        COLUMN(publicKey) : String
+        COLUMN(encryptedPrivateKey) : String
+        COLUMN(keySalt) : String
+        COLUMN(keyCreatedAt) : Date
+        --
+        <b>Timestamps</b>
+        COLUMN(createdAt) : Date
+        COLUMN(updatedAt) : Date
+    }
+    
+    entity "TrustedDevice" as device <<embedded>> {
+        COLUMN(deviceId) : String <<required>>
+        COLUMN(deviceName) : String
+        COLUMN(lastUsed) : Date
+        COLUMN(createdAt) : Date
+        COLUMN(isActive) : Boolean
+    }
+}
+
+package "Conversations Collection" #e3f2fd {
+    entity "Conversation" as conversation {
+        PRIMARY_KEY(_id) : ObjectId
+        --
+        FOREIGN_KEY(participants[]) : ObjectId[] → User
+        FOREIGN_KEY(lastMessage) : ObjectId → Message
+        COLUMN(lastMessageAt) : Date
+        COLUMN(isActive) : Boolean <<default: true>>
+        --
+        <b>E2EE Settings</b>
+        COLUMN(encryptionMode) : Enum ['none', 'e2ee']
+        --
+        <b>Timestamps</b>
+        COLUMN(createdAt) : Date
+        COLUMN(updatedAt) : Date
+    }
+}
+
+package "Groups Collection" #e3f2fd {
+    entity "Group" as group {
+        PRIMARY_KEY(_id) : ObjectId
+        --
+        COLUMN(name) : String <<required, max: 50>>
+        COLUMN(description) : String <<max: 200>>
+        COLUMN(avatar) : String
+        --
+        <b>Ownership & Management</b>
+        FOREIGN_KEY(createdBy) : ObjectId → User
+        FOREIGN_KEY(admins[]) : ObjectId[] → User
+        FOREIGN_KEY(lastMessage) : ObjectId → Message
+        COLUMN(lastMessageAt) : Date
+        COLUMN(isActive) : Boolean <<default: true>>
+        --
+        <b>Timestamps</b>
+        COLUMN(createdAt) : Date
+        COLUMN(updatedAt) : Date
+    }
+    
+    entity "GroupMember" as member <<embedded>> {
+        FOREIGN_KEY(user) : ObjectId → User
+        COLUMN(joinedAt) : Date
+        COLUMN(role) : Enum ['member', 'admin']
+    }
+    
+    entity "GroupSettings" as settings <<embedded>> {
+        COLUMN(allowMemberInvite) : Boolean
+        COLUMN(allowMemberLeave) : Boolean
+        COLUMN(maxMembers) : Number <<default: 100>>
+    }
+}
+
+package "Messages Collection" #e3f2fd {
+    entity "Message" as message {
+        PRIMARY_KEY(_id) : ObjectId
+        --
+        FOREIGN_KEY(conversationId) : ObjectId → Conversation|Group
+        FOREIGN_KEY(senderId) : ObjectId → User
+        COLUMN(content) : String
+        COLUMN(messageType) : Enum ['text', 'image', 'file', 'audio']
+        --
+        <b>Reply Feature</b>
+        FOREIGN_KEY(replyTo) : ObjectId → Message
+        --
+        <b>Edit & Delete</b>
+        COLUMN(isEdited) : Boolean
+        COLUMN(editedAt) : Date
+        COLUMN(isDeleted) : Boolean
+        COLUMN(deletedAt) : Date
+        --
+        <b>E2EE Encryption</b>
+        COLUMN(isEncrypted) : Boolean
+        --
+        <b>Timestamps</b>
+        COLUMN(createdAt) : Date
+        COLUMN(updatedAt) : Date
+    }
+    
+    entity "Attachment" as attachment <<embedded>> {
+        COLUMN(fileName) : String <<required>>
+        COLUMN(fileUrl) : String <<required>>
+        COLUMN(fileSize) : Number <<required>>
+        COLUMN(mimeType) : String <<required>>
+    }
+    
+    entity "EncryptionData" as encryption <<embedded>> {
+        COLUMN(iv) : String
+        COLUMN(algorithm) : String <<default: 'AES-256-GCM'>>
+    }
+    
+    entity "ReadReceipt" as readReceipt <<embedded>> {
+        FOREIGN_KEY(userId) : ObjectId → User
+        COLUMN(readAt) : Date
+    }
+}
+
+' ===== RELATIONSHIPS =====
+
+' User relationships
+user "1" *-- "0..*" device : trustedDevices
+
+' Conversation relationships
+conversation "0..*" }o--|| user : participants
+conversation "0..1" o--o| message : lastMessage
+
+' Group relationships
+group "1" ||--o{ member : members
+group "1" *-- "1" settings : settings
+group "0..*" }o--|| user : createdBy
+group "0..*" }o--o| user : admins
+group "0..1" o--o| message : lastMessage
+member "0..*" }o--|| user : user
+
+' Message relationships
+message "0..*" }o--|| user : senderId
+message "0..1" o--o| message : replyTo
+message "1" *-- "0..*" attachment : attachments
+message "1" *-- "0..1" encryption : encryptionData
+message "1" *-- "0..*" readReceipt : readBy
+
+' ===== NOTES =====
+
+note right of user
+    <b>Indexes:</b>
+    • phoneNumber (unique)
+    • email (unique)
+    
+    <b>E2EE Support:</b>
+    • ECDH key pairs
+    • Password-encrypted private keys
+    • Multiple trusted devices
+end note
+
+note right of conversation
+    <b>Indexes:</b>
+    • participants
+    • lastMessageAt (desc)
+    
+    <b>Type:</b>
+    Private chat (1-1)
+end note
+
+note right of group
+    <b>Indexes:</b>
+    • members, isActive
+    • createdBy
+    • lastMessageAt (desc)
+    • name, description (text search)
+    
+    <b>Virtual:</b>
+    • memberCount
+end note
+
+note right of message
+    <b>Indexes:</b>
+    • conversationId, createdAt (desc)
+    • senderId
+    • createdAt (desc)
+    
+    <b>Note:</b>
+    conversationId can reference
+    either Conversation or Group
+end note
+
+' ===== LEGEND =====
+
+legend right
+    |= Symbol |= Meaning |
+    | <&key> | Primary Key |
+    | <&link-intact> | Foreign Key Reference |
+    | <<embedded>> | Embedded Document |
+    | <<required>> | Required Field |
+    | <<unique>> | Unique Constraint |
+endlegend
+
+footer <size:12>Niel Messaging App - Database Schema v1.1.0 | MongoDB + Mongoose ODM</size>
+
+@enduml
