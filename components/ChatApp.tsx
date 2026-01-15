@@ -33,6 +33,7 @@ interface Conversation {
   type: 'private' | 'group';
   participants?: any[]; // Made optional to handle undefined cases
   name?: string; // Changed from groupName
+  description?: string; // Group description
   avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
   lastMessageAt?: string;
@@ -270,6 +271,7 @@ export default function ChatApp() {
       type: 'group' as const,
       participants: updatedGroup.members || [], // members already have full user info from API
       name: updatedGroup.name,
+      description: updatedGroup.description, // Include description
       avatar: updatedGroup.avatar,
       lastMessage: null,
       lastMessageAt: updatedGroup.updatedAt,

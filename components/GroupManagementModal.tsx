@@ -85,6 +85,12 @@ export default function GroupManagementModal({
     setGroupAvatar(conversation.avatar || null);
   }, [conversation.avatar]);
 
+  // Sync groupName and groupDescription when conversation changes
+  useEffect(() => {
+    setGroupName(conversation.name);
+    setGroupDescription(conversation.description || '');
+  }, [conversation.name, conversation.description]);
+
   useEffect(() => {
     console.log('GroupManagementModal - Conversation data:', {
       id: conversation._id,
