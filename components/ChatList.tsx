@@ -186,26 +186,53 @@ export default function ChatList({
   };
 
   const getMessageConversationName = (result: MessageSearchResult) => {
+    // For groups, use the name
     if (result.conversationInfo?.type === 'group') {
       return result.conversationInfo.name || t('common.group');
-    } else {
-      const otherParticipant = result.conversationInfo?.participants?.find(
-        (p: any) => p._id !== currentUserId
-      );
-      return otherParticipant?.fullName || t('common.unknownUser');
     }
+
+    // For private chats, find the other participant
+    const participants = result.conversationInfo?.participants;
+    if (participants && participants.length > 0) {
+      const otherParticipant = participants.find(
+        (p: any) => p._id?.toString() !== currentUserId && p._id !== currentUserId
+      );
+      if (otherParticipant?.fullName) {
+        return otherParticipant.fullName;
+      }
+    }
+
+    // Fallback: try to get from sender info if it's not the current user
+    if (result.senderId && result.senderId._id !== currentUserId) {
+      return result.senderId.fullName || t('common.unknownUser');
+    }
+
+    return t('common.unknownUser');
   };
 
   const handleMessageClick = (result: MessageSearchResult) => {
-    // Find and select the conversation
-    const conv = conversations.find(c => c._id === result.conversationInfo._id);
+    // Get conversation ID as string
+    const conversationId = result.conversationInfo?._id?.toString() || result.conversationId?.toString();
+
+    console.log('handleMessageClick:', { conversationId, result });
+
+    // Find the conversation - compare as strings
+    const conv = conversations.find(c =>
+      c._id === conversationId || c._id?.toString() === conversationId
+    );
+
+    console.log('Found conversation:', conv);
+
     if (conv) {
       onSelectConversation(conv);
       // Optionally notify parent to scroll to message
       if (onSelectMessage) {
-        onSelectMessage(result.conversationInfo._id, result._id);
+        onSelectMessage(conversationId, result._id);
       }
+    } else {
+      console.log('Conversation not found in list, available:', conversations.map(c => c._id));
     }
+
     setSearchQuery('');
     setShowMessageResults(false);
   };

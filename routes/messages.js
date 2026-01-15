@@ -517,58 +517,62 @@ router.get('/search/all', async (req, res) => {
       isEncrypted: { $ne: true } // Only search non-encrypted messages
     })
       .populate('senderId', 'fullName avatar')
-      .populate({
-        path: 'conversationId',
-        select: 'type participants name avatar',
-        populate: {
-          path: 'participants',
-          select: 'fullName avatar'
-        }
-      })
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
-    // Also check groups for conversation info
-    const messagesWithGroupInfo = await Promise.all(
+    // Fetch conversation/group info for each message
+    const messagesWithConversationInfo = await Promise.all(
       messages.map(async (msg) => {
         const msgObj = msg.toObject();
+        const convId = msg.conversationId;
 
-        // If conversationId wasn't populated (it's a group), fetch group info
-        if (!msgObj.conversationId || !msgObj.conversationId.type) {
-          const group = await Group.findById(msg.conversationId)
-            .select('name avatar type')
-            .populate('members.user', 'fullName avatar');
+        // Try to find as a Group first
+        const group = await Group.findById(convId)
+          .select('name avatar')
+          .populate('members.user', 'fullName avatar');
 
-          if (group) {
+        if (group) {
+          msgObj.conversationInfo = {
+            _id: group._id.toString(),
+            type: 'group',
+            name: group.name,
+            avatar: group.avatar,
+            participants: group.members.map(m => ({
+              _id: m.user?._id?.toString(),
+              fullName: m.user?.fullName,
+              avatar: m.user?.avatar
+            }))
+          };
+        } else {
+          // Try as a Conversation
+          const conversation = await Conversation.findById(convId)
+            .select('type name avatar')
+            .populate('participants', 'fullName avatar phoneNumber');
+
+          if (conversation) {
             msgObj.conversationInfo = {
-              _id: group._id,
-              type: 'group',
-              name: group.name,
-              avatar: group.avatar,
-              participants: group.members.map(m => ({
-                _id: m.user?._id,
-                fullName: m.user?.fullName,
-                avatar: m.user?.avatar
-              }))
+              _id: conversation._id.toString(),
+              type: conversation.type || 'private',
+              name: conversation.name,
+              avatar: conversation.avatar,
+              participants: conversation.participants?.map(p => ({
+                _id: p._id?.toString(),
+                fullName: p.fullName,
+                avatar: p.avatar
+              })) || []
             };
           }
-        } else {
-          // It's a regular conversation
-          msgObj.conversationInfo = {
-            _id: msgObj.conversationId._id,
-            type: msgObj.conversationId.type || 'private',
-            name: msgObj.conversationId.name,
-            avatar: msgObj.conversationId.avatar,
-            participants: msgObj.conversationId.participants
-          };
         }
+
+        // Ensure conversationId is a string for frontend matching
+        msgObj.conversationId = convId.toString();
 
         return msgObj;
       })
     );
 
-    console.log('Message search found:', messagesWithGroupInfo.length, 'messages');
-    res.json(messagesWithGroupInfo);
+    console.log('Message search found:', messagesWithConversationInfo.length, 'messages');
+    res.json(messagesWithConversationInfo);
   } catch (error) {
     console.error('Message search error:', error);
     res.status(500).json({
