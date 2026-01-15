@@ -79,9 +79,12 @@
     },
     "chatList": {
         "searchPlaceholder": "Search conversations...",
+        "searchAllPlaceholder": "Search conversations, messages...",
         "noConversations": "No conversations yet",
         "noResults": "No conversations found",
-        "noMessage": "No messages",
+        "noMessages": "No messages",
+        "messageResults": "Message results",
+        "noMessageResults": "No messages found",
         "image": "Image",
         "file": "File",
         "audio": "Audio",

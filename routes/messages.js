@@ -476,4 +476,105 @@ router.delete('/:messageId', async (req, res) => {
   }
 });
 
+// Search messages across all user's conversations
+router.get('/search/all', async (req, res) => {
+  try {
+    const { q, limit = 20 } = req.query;
+    const userId = req.user._id;
+
+    if (!q || q.trim().length < 2) {
+      return res.json([]);
+    }
+
+    console.log('Message search request:', { query: q, userId, limit });
+
+    // Get all conversations user is part of
+    const userConversations = await Conversation.find({
+      participants: userId,
+      isActive: true
+    }).select('_id');
+
+    // Get all groups user is member of
+    const userGroups = await Group.find({
+      'members.user': new mongoose.Types.ObjectId(userId),
+      isActive: true
+    }).select('_id');
+
+    const conversationIds = [
+      ...userConversations.map(c => c._id),
+      ...userGroups.map(g => g._id)
+    ];
+
+    if (conversationIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Search messages (only non-encrypted messages can be searched)
+    const messages = await Message.find({
+      conversationId: { $in: conversationIds },
+      content: { $regex: q.trim(), $options: 'i' },
+      isDeleted: false,
+      isEncrypted: { $ne: true } // Only search non-encrypted messages
+    })
+      .populate('senderId', 'fullName avatar')
+      .populate({
+        path: 'conversationId',
+        select: 'type participants name avatar',
+        populate: {
+          path: 'participants',
+          select: 'fullName avatar'
+        }
+      })
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
+
+    // Also check groups for conversation info
+    const messagesWithGroupInfo = await Promise.all(
+      messages.map(async (msg) => {
+        const msgObj = msg.toObject();
+
+        // If conversationId wasn't populated (it's a group), fetch group info
+        if (!msgObj.conversationId || !msgObj.conversationId.type) {
+          const group = await Group.findById(msg.conversationId)
+            .select('name avatar type')
+            .populate('members.user', 'fullName avatar');
+
+          if (group) {
+            msgObj.conversationInfo = {
+              _id: group._id,
+              type: 'group',
+              name: group.name,
+              avatar: group.avatar,
+              participants: group.members.map(m => ({
+                _id: m.user?._id,
+                fullName: m.user?.fullName,
+                avatar: m.user?.avatar
+              }))
+            };
+          }
+        } else {
+          // It's a regular conversation
+          msgObj.conversationInfo = {
+            _id: msgObj.conversationId._id,
+            type: msgObj.conversationId.type || 'private',
+            name: msgObj.conversationId.name,
+            avatar: msgObj.conversationId.avatar,
+            participants: msgObj.conversationId.participants
+          };
+        }
+
+        return msgObj;
+      })
+    );
+
+    console.log('Message search found:', messagesWithGroupInfo.length, 'messages');
+    res.json(messagesWithGroupInfo);
+  } catch (error) {
+    console.error('Message search error:', error);
+    res.status(500).json({
+      message: 'Lỗi tìm kiếm tin nhắn'
+    });
+  }
+});
+
 module.exports = router;

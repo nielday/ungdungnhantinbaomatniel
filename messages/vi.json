@@ -79,9 +79,12 @@
     },
     "chatList": {
         "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",
+        "searchAllPlaceholder": "Tìm cuộc trò chuyện, tin nhắn...",
         "noConversations": "Chưa có cuộc trò chuyện nào",
         "noResults": "Không tìm thấy cuộc trò chuyện nào",
-        "noMessage": "Chưa có tin nhắn",
+        "noMessages": "Chưa có tin nhắn",
+        "messageResults": "Kết quả tin nhắn",
+        "noMessageResults": "Không tìm thấy tin nhắn",
         "image": "Hình ảnh",
         "file": "File",
         "audio": "Âm thanh",

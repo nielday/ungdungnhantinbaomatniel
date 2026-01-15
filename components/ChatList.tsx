@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import {
@@ -9,7 +9,9 @@ import {
   Plus,
   Search,
   Phone,
-  Mail
+  Mail,
+  FileText,
+  X
 } from 'lucide-react';
 
 interface Conversation {
@@ -23,12 +25,28 @@ interface Conversation {
   createdBy: any;
 }
 
+interface MessageSearchResult {
+  _id: string;
+  content: string;
+  senderId: { _id: string; fullName: string; avatar?: string };
+  conversationId: string;
+  conversationInfo: {
+    _id: string;
+    type: 'private' | 'group';
+    name?: string;
+    avatar?: string;
+    participants?: any[];
+  };
+  createdAt: string;
+}
+
 interface ChatListProps {
   conversations: Conversation[];
   activeConversation: Conversation | null;
   currentUserId: string;
   onSelectConversation: (conversation: Conversation) => void;
   onNewConversation: (conversation: Conversation) => void;
+  onSelectMessage?: (conversationId: string, messageId: string) => void;
 }
 
 export default function ChatList({
@@ -36,10 +54,50 @@ export default function ChatList({
   activeConversation,
   currentUserId,
   onSelectConversation,
-  onNewConversation
+  onNewConversation,
+  onSelectMessage
 }: ChatListProps) {
   const t = useTranslations();
   const [searchQuery, setSearchQuery] = useState('');
+  const [messageResults, setMessageResults] = useState<MessageSearchResult[]>([]);
+  const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+  const [showMessageResults, setShowMessageResults] = useState(false);
+
+  // Debounced message search
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setMessageResults([]);
+      setShowMessageResults(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingMessages(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/messages/search/all?q=${encodeURIComponent(searchQuery.trim())}&limit=10`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setMessageResults(data);
+          setShowMessageResults(true);
+        }
+      } catch (error) {
+        console.error('Message search error:', error);
+      } finally {
+        setIsSearchingMessages(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const filteredConversations = conversations.filter(conversation => {
     if (!searchQuery) return true;
@@ -105,9 +163,16 @@ export default function ChatList({
   };
 
   const getLastMessagePreview = (conversation: Conversation) => {
-    if (!conversation.lastMessage) return t('chatList.noMessage');
-
+    if (!conversation.lastMessage) {
+      return t('chatList.noMessages');
+    }
     const message = conversation.lastMessage;
+    if (message.isDeleted) {
+      return t('chat.messageDeleted');
+    }
+    if (message.isEncrypted) {
+      return '🔒 ' + t('chat.encryptedMessage');
+    }
     if (message.messageType === 'text') {
       return message.content;
     } else if (message.messageType === 'image') {
@@ -120,6 +185,43 @@ export default function ChatList({
     return t('chatList.newMessage');
   };
 
+  const getMessageConversationName = (result: MessageSearchResult) => {
+    if (result.conversationInfo?.type === 'group') {
+      return result.conversationInfo.name || t('common.group');
+    } else {
+      const otherParticipant = result.conversationInfo?.participants?.find(
+        (p: any) => p._id !== currentUserId
+      );
+      return otherParticipant?.fullName || t('common.unknownUser');
+    }
+  };
+
+  const handleMessageClick = (result: MessageSearchResult) => {
+    // Find and select the conversation
+    const conv = conversations.find(c => c._id === result.conversationInfo._id);
+    if (conv) {
+      onSelectConversation(conv);
+      // Optionally notify parent to scroll to message
+      if (onSelectMessage) {
+        onSelectMessage(result.conversationInfo._id, result._id);
+      }
+    }
+    setSearchQuery('');
+    setShowMessageResults(false);
+  };
+
+  const highlightText = (text: string, query: string) => {
+    if (!query) return text;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <span key={i} className="bg-yellow-200 dark:bg-yellow-600">{part}</span>
+      ) : (
+        part
+      )
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Unified Search Bar */}
@@ -128,13 +230,70 @@ export default function ChatList({
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
           <input
             type="text"
-            placeholder={t('chatList.searchPlaceholder')}
+            placeholder={t('chatList.searchAllPlaceholder') || 'Tìm cuộc trò chuyện, tin nhắn...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-100 dark:bg-neutral-800 rounded-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm text-gray-800 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+            className="w-full pl-12 pr-10 py-3 bg-gray-100 dark:bg-neutral-800 rounded-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm text-gray-800 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setShowMessageResults(false);
+              }}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Message Search Results */}
+      {showMessageResults && searchQuery.trim().length >= 2 && (
+        <div className="border-b border-gray-200 dark:border-neutral-700">
+          <div className="px-4 py-2 bg-gray-50 dark:bg-neutral-800 flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+              <FileText className="w-3 h-3 mr-1" />
+              {t('chatList.messageResults') || 'Kết quả tin nhắn'}
+            </span>
+            {isSearchingMessages && (
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+            )}
+          </div>
+
+          {messageResults.length > 0 ? (
+            <div className="max-h-48 overflow-y-auto">
+              {messageResults.map((result) => (
+                <div
+                  key={result._id}
+                  onClick={() => handleMessageClick(result)}
+                  className="px-4 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-b-0"
+                >
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium truncate">
+                        {getMessageConversationName(result)}
+                      </p>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                        {highlightText(result.content.substring(0, 60), searchQuery)}
+                        {result.content.length > 60 && '...'}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {result.senderId?.fullName} • {formatTime(result.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !isSearchingMessages ? (
+            <div className="px-4 py-3 text-center text-sm text-gray-500 dark:text-gray-400">
+              {t('chatList.noMessageResults') || 'Không tìm thấy tin nhắn'}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto">
@@ -187,14 +346,14 @@ export default function ChatList({
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                         {getLastMessagePreview(conversation)}
                       </p>
                       {conversation.type === 'group' && (
-                        <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">
+                        <span className="flex items-center text-xs text-gray-400 ml-2">
                           <Users className="w-3 h-3 mr-1" />
                           {conversation.participants?.length || 0}
-                        </div>
+                        </span>
                       )}
                     </div>
                   </div>
@@ -203,18 +362,6 @@ export default function ChatList({
             ))}
           </div>
         )}
-      </div>
-
-      {/* New Chat Button */}
-      <div className="p-4 border-t border-gray-200 dark:border-neutral-700">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center space-x-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>{t('chatList.newConversation')}</span>
-        </motion.button>
       </div>
     </div>
   );
