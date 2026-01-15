@@ -71,6 +71,15 @@ export default function GroupManagementModal({
 
   const isAdmin = conversation.createdBy._id === currentUser?.id;
 
+  // Helper function to get proxied avatar URL
+  const getProxiedAvatar = (avatarUrl: string | undefined | null): string | undefined => {
+    if (!avatarUrl) return undefined;
+    if (avatarUrl.includes('backblazeb2.com') || avatarUrl.includes('backblaze.com')) {
+      return `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(avatarUrl)}`;
+    }
+    return avatarUrl;
+  };
+
   useEffect(() => {
     console.log('GroupManagementModal - Conversation avatar changed:', conversation.avatar);
     setGroupAvatar(conversation.avatar || null);
@@ -317,11 +326,12 @@ export default function GroupManagementModal({
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
-              {groupAvatar || conversation.avatar ? (
+              {(groupAvatar || conversation.avatar) ? (
                 <img
-                  src={groupAvatar || conversation.avatar}
+                  src={getProxiedAvatar(groupAvatar || conversation.avatar)}
                   alt={conversation.name}
                   className="w-10 h-10 rounded-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
                 <Users className="w-6 h-6 text-white" />
@@ -350,8 +360,8 @@ export default function GroupManagementModal({
             <button
               onClick={() => setActiveTab('members')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'members'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
               <div className="flex items-center justify-center space-x-2">
@@ -362,8 +372,8 @@ export default function GroupManagementModal({
             <button
               onClick={() => setActiveTab('settings')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'settings'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
                 }`}
             >
               <div className="flex items-center justify-center space-x-2">
@@ -419,12 +429,13 @@ export default function GroupManagementModal({
                               className="flex items-center justify-between p-2 hover:bg-gray-100 rounded-lg"
                             >
                               <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center overflow-hidden">
                                   {user.avatar ? (
                                     <img
-                                      src={user.avatar}
+                                      src={getProxiedAvatar(user.avatar)}
                                       alt={user.fullName}
                                       className="w-8 h-8 rounded-full object-cover"
+                                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                     />
                                   ) : (
                                     <span className="text-white text-xs font-medium">
@@ -469,12 +480,13 @@ export default function GroupManagementModal({
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center overflow-hidden">
                         {member.avatar ? (
                           <img
-                            src={member.avatar}
+                            src={getProxiedAvatar(member.avatar)}
                             alt={member.fullName}
                             className="w-10 h-10 rounded-full object-cover"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         ) : (
                           <span className="text-white text-sm font-medium">
@@ -525,9 +537,10 @@ export default function GroupManagementModal({
                       <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
                         {groupAvatar ? (
                           <img
-                            src={groupAvatar}
+                            src={getProxiedAvatar(groupAvatar)}
                             alt="Group avatar"
                             className="w-full h-full object-cover"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         ) : (
                           <Users className="w-8 h-8 text-white" />
