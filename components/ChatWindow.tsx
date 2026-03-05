@@ -1480,7 +1480,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                           decryptVersion={decryptVersion}
                           renderComponent={(url, isLoading, hasError) => {
                             if (isLoading) return <div className="w-32 h-32 bg-gray-200 animate-pulse rounded flex items-center justify-center"><Lock className="w-6 h-6 text-gray-400" /></div>;
-                            if (hasError || !url) return <div className="p-2 bg-red-100 text-red-600 rounded text-xs">{t('encryption.decryptFailed')}</div>;
+                            if (hasError || !url) {
+                              return (
+                                <div className={`p-2 rounded text-xs flex flex-col items-center justify-center w-32 h-32 text-center ${unlockedPrivateKey ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                  <Lock className="w-5 h-5 mb-1" />
+                                  {unlockedPrivateKey ? t('encryption.decryptFailed') : 'Tệp mã hóa'}
+                                </div>
+                              );
+                            }
 
                             return (
                               <div className="relative">
@@ -1529,7 +1536,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                                   <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
                                 </div>
                                 {hasError || !url ? (
-                                  <span className="text-xs text-red-500">Lỗi</span>
+                                  unlockedPrivateKey ? (
+                                    <span className="text-xs text-red-500">Lỗi giải mã</span>
+                                  ) : (
+                                    <span className="text-xs text-gray-500 flex items-center"><Lock className="w-3 h-3 mr-1" /> Bị khóa</span>
+                                  )
                                 ) : (
                                   <a
                                     href={url}
@@ -1561,7 +1572,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                             decryptVersion={decryptVersion}
                             renderComponent={(url, isLoading, hasError) => {
                               if (isLoading) return <div className="p-3 bg-gray-100 rounded text-xs flex items-center"><Lock className="w-4 h-4 animate-pulse mr-2" /> Đang giải mã Audio...</div>;
-                              if (hasError || !url) return <div className="p-2 bg-red-100 text-red-600 rounded text-xs">{t('encryption.decryptFailed')}</div>;
+                              if (hasError || !url) {
+                                return (
+                                  <div className={`p-2 rounded text-xs flex items-center ${unlockedPrivateKey ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                    <Lock className="w-4 h-4 mr-2" />
+                                    {unlockedPrivateKey ? t('encryption.decryptFailed') : 'Tệp mã hóa'}
+                                  </div>
+                                );
+                              }
 
                               return (
                                 <AudioPlayer
