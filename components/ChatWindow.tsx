@@ -104,20 +104,29 @@ const EncryptedMessageContent: React.FC<EncryptedMessageProps> = ({
   const [displayContent, setDisplayContent] = React.useState<string>(
     message.isEncrypted ? '🔒 Đang giải mã...' : message.content
   );
+  const decryptingRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
     if (message.isEncrypted) {
       // Check cache first
       if (decryptedMessages[message._id]) {
         setDisplayContent(decryptedMessages[message._id]);
-      } else {
-        // Decrypt the message
-        decryptMessageContent(message).then(setDisplayContent);
+        decryptingRef.current = false;
+        return;
       }
+
+      // Prevent duplicate calls
+      if (decryptingRef.current) return;
+
+      decryptingRef.current = true;
+      decryptMessageContent(message).then(result => {
+        decryptingRef.current = false;
+        setDisplayContent(result);
+      });
     } else {
       setDisplayContent(message.content);
     }
-  }, [message, decryptedMessages, decryptMessageContent]);
+  }, [message._id, decryptedMessages[message._id]]);
 
   return <span>{displayContent}</span>;
 };
@@ -141,45 +150,61 @@ const EncryptedFileContent: React.FC<EncryptedFileProps> = ({
   const [fileUrl, setFileUrl] = React.useState<string>('');
   const [isLoading, setIsLoading] = React.useState<boolean>(message.isEncrypted || false);
   const [hasError, setHasError] = React.useState<boolean>(false);
+  const decryptingRef = React.useRef<boolean>(false);
+  const lastCacheKeyRef = React.useRef<string>('');
 
   React.useEffect(() => {
     let isMounted = true;
+    const cacheKey = `${message._id}_${attachment.fileUrl}`;
 
     if (message.isEncrypted) {
       // Check cache first
-      const cacheKey = `${message._id}_${attachment.fileUrl}`;
       if (decryptedFiles[cacheKey]) {
-        setFileUrl(decryptedFiles[cacheKey]);
+        if (fileUrl !== decryptedFiles[cacheKey]) {
+          setFileUrl(decryptedFiles[cacheKey]);
+          setHasError(false);
+        }
         setIsLoading(false);
-      } else {
-        setIsLoading(true);
-        // Decrypt the file
-        decryptFileContent(message, attachment.fileUrl, attachment.mimeType)
-          .then(url => {
-            if (!isMounted) return;
-            if (url) {
-              setFileUrl(url);
-            } else {
-              setHasError(true);
-            }
-            setIsLoading(false);
-          })
-          .catch(err => {
-            if (!isMounted) return;
-            console.error('Lỗi hiển thị file giải mã:', err);
-            setHasError(true);
-            setIsLoading(false);
-          });
+        return;
       }
+
+      // Prevent duplicate decrypt calls
+      if (decryptingRef.current && lastCacheKeyRef.current === cacheKey) {
+        return;
+      }
+
+      decryptingRef.current = true;
+      lastCacheKeyRef.current = cacheKey;
+      setIsLoading(true);
+      setHasError(false); // Reset error on retry
+
+      decryptFileContent(message, attachment.fileUrl, attachment.mimeType)
+        .then(url => {
+          if (!isMounted) return;
+          decryptingRef.current = false;
+          if (url) {
+            setFileUrl(url);
+            setHasError(false);
+          } else {
+            setHasError(true);
+          }
+          setIsLoading(false);
+        })
+        .catch(err => {
+          if (!isMounted) return;
+          decryptingRef.current = false;
+          console.error('Lỗi hiển thị file giải mã:', err);
+          setHasError(true);
+          setIsLoading(false);
+        });
     } else {
-      // Not encrypted, just normalize and return the original URL
       const normalized = normalizeFileUrlHelper(attachment.fileUrl);
       setFileUrl(normalized);
       setIsLoading(false);
     }
 
     return () => { isMounted = false; };
-  }, [message, attachment, decryptedFiles, decryptFileContent]);
+  }, [message._id, attachment.fileUrl, decryptedFiles[`${message._id}_${attachment.fileUrl}`]]);
 
   return <>{renderComponent(fileUrl, isLoading, hasError)}</>;
 };
