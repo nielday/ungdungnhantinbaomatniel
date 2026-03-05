@@ -121,6 +121,68 @@ const EncryptedMessageContent: React.FC<EncryptedMessageProps> = ({
 
   return <span>{displayContent}</span>;
 };
+
+// Encrypted File Content Component
+interface EncryptedFileProps {
+  message: Message;
+  attachment: { fileName: string; fileUrl: string; fileSize: number; mimeType: string };
+  decryptedFiles: Record<string, string>;
+  decryptFileContent: (message: Message, fileUrl: string, mimeType: string) => Promise<string | null>;
+  renderComponent: (url: string, isLoading: boolean, hasError: boolean) => React.ReactNode;
+}
+
+const EncryptedFileContent: React.FC<EncryptedFileProps> = ({
+  message,
+  attachment,
+  decryptedFiles,
+  decryptFileContent,
+  renderComponent
+}) => {
+  const [fileUrl, setFileUrl] = React.useState<string>('');
+  const [isLoading, setIsLoading] = React.useState<boolean>(message.isEncrypted || false);
+  const [hasError, setHasError] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    if (message.isEncrypted) {
+      // Check cache first
+      const cacheKey = `${message._id}_${attachment.fileUrl}`;
+      if (decryptedFiles[cacheKey]) {
+        setFileUrl(decryptedFiles[cacheKey]);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+        // Decrypt the file
+        decryptFileContent(message, attachment.fileUrl, attachment.mimeType)
+          .then(url => {
+            if (!isMounted) return;
+            if (url) {
+              setFileUrl(url);
+            } else {
+              setHasError(true);
+            }
+            setIsLoading(false);
+          })
+          .catch(err => {
+            if (!isMounted) return;
+            console.error('Lỗi hiển thị file giải mã:', err);
+            setHasError(true);
+            setIsLoading(false);
+          });
+      }
+    } else {
+      // Not encrypted, just normalize and return the original URL
+      const normalized = normalizeFileUrlHelper(attachment.fileUrl);
+      setFileUrl(normalized);
+      setIsLoading(false);
+    }
+
+    return () => { isMounted = false; };
+  }, [message, attachment, decryptedFiles, decryptFileContent]);
+
+  return <>{renderComponent(fileUrl, isLoading, hasError)}</>;
+};
 import {
   Send,
   Paperclip,
@@ -209,6 +271,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [encryptionMode, setEncryptionMode] = useState<'none' | 'e2ee'>(conversation.encryptionMode || 'none');
   const [isTogglingEncryption, setIsTogglingEncryption] = useState(false);
   const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
+  const [decryptedFiles, setDecryptedFiles] = useState<Record<string, string>>({}); // Add state for decrypted files
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -465,6 +528,90 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     }
   };
 
+  // Decrypt File Content function
+  const decryptFileContent = async (message: Message, fileUrl: string, mimeType: string): Promise<string | null> => {
+    // Return cached URL if available
+    const cacheKey = `${message._id}_${fileUrl}`;
+    if (decryptedFiles[cacheKey]) {
+      return decryptedFiles[cacheKey];
+    }
+
+    if (!message.isEncrypted || !message.encryptionData?.iv) {
+      return normalizeFileUrlHelper(fileUrl);
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const normalizedUrl = normalizeFileUrlHelper(fileUrl);
+
+      // 1. Fetch encrypted file buffer
+      const fileResponse = await fetch(normalizedUrl);
+      if (!fileResponse.ok) throw new Error('Failed to fetch encrypted file');
+      const encryptedBuffer = await fileResponse.arrayBuffer();
+
+      // 2. Derive key (same as text decrypt)
+      const amISender = message.senderId._id === currentUser?.id;
+      let otherUserPublicKey: string;
+
+      if (amISender) {
+        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+        if (!otherUser?._id) return null;
+
+        const recipientKeyResponse = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (!recipientKeyResponse.ok) return null;
+        otherUserPublicKey = (await recipientKeyResponse.json()).publicKey;
+      } else {
+        const senderKeyResponse = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (!senderKeyResponse.ok) return null;
+        otherUserPublicKey = (await senderKeyResponse.json()).publicKey;
+      }
+
+      const myKeysResponse = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!myKeysResponse.ok) return null;
+      const myKeysData = await myKeysResponse.json();
+
+      if (!otherUserPublicKey || !myKeysData.encryptedPrivateKey) return null;
+
+      const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
+      const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+      const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
+
+      // 3. Decrypt
+      const decryptedBuffer = await encryption.decryptFile(
+        encryptedBuffer,
+        message.encryptionData.iv,
+        sharedKey
+      );
+
+      // 4. Create Object URL
+      let determinedMimeType = mimeType;
+      // Trả lại type mime gốc nếu có trong payload để render đúng kiểu blob
+      if (message.encryptionData && (message.encryptionData as any).originalType) {
+        determinedMimeType = (message.encryptionData as any).originalType;
+      }
+
+      const blob = new Blob([decryptedBuffer], { type: determinedMimeType || 'application/octet-stream' });
+      const objectUrl = URL.createObjectURL(blob);
+
+      // 5. Cache
+      setDecryptedFiles(prev => ({ ...prev, [cacheKey]: objectUrl }));
+
+      return objectUrl;
+    } catch (error) {
+      console.error('File decryption error:', error);
+      return null;
+    }
+  };
+
   const sendMessage = async (content: string, messageType: 'text' = 'text', attachments?: any[]) => {
     if (!content.trim() && !attachments?.length) return;
 
@@ -611,13 +758,77 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   };
 
   const handleFileUpload = async (files: FileList) => {
-    const formData = new FormData();
-    Array.from(files).forEach(file => {
-      formData.append('files', file);
-    });
-
     try {
       const token = localStorage.getItem('token');
+      const formData = new FormData();
+
+      let encryptionData = null;
+      let sharedKeyStr = null;
+
+      // Determine if we should encrypt
+      if (encryptionMode === 'e2ee') {
+        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+        if (otherUser?._id) {
+          const keyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+
+          if (keyResponse.ok) {
+            const keyData = await keyResponse.json();
+            if (keyData.publicKey) {
+              const myKeysResponse = await fetch(
+                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+              );
+
+              if (myKeysResponse.ok) {
+                const myKeysData = await myKeysResponse.json();
+                if (myKeysData.encryptedPrivateKey) {
+                  // Import keys and derive shared secret
+                  const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                  const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
+
+                  // Chạy mã hóa từng file
+                  for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const arrayBuffer = await file.arrayBuffer();
+                    const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
+
+                    // Generate a blob out of the encrypted ArrayBuffer
+                    const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+                    formData.append('files', encryptedBlob, `encrypted_${file.name}`);
+
+                    // Keep track of IV - since API only supports one encryptionData object currently per message 
+                    // we assume 1 file = 1 message for now in the simplest approach.
+                    if (!encryptionData) {
+                      encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: file.name, originalType: file.type };
+                    }
+                  }
+                } else {
+                  alert(t('encryption.noKey'));
+                  return;
+                }
+              }
+            } else {
+              alert(t('encryption.otherNoKey'));
+              return;
+            }
+          }
+        }
+      }
+
+      // If not encrypted or failed getting keys, fallback to standard upload or block
+      if (!encryptionData) {
+        Array.from(files).forEach(file => {
+          formData.append('files', file);
+        });
+      } else {
+        formData.append('isEncrypted', 'true');
+        formData.append('encryptionData', JSON.stringify(encryptionData));
+      }
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
@@ -640,13 +851,69 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   };
 
   const handleAudioUpload = async (files: FileList) => {
-    const formData = new FormData();
-    Array.from(files).forEach(file => {
-      formData.append('files', file);
-    });
-
     try {
       const token = localStorage.getItem('token');
+      const formData = new FormData();
+
+      let encryptionData = null;
+
+      if (encryptionMode === 'e2ee') {
+        const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
+        if (otherUser?._id) {
+          const keyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+
+          if (keyResponse.ok) {
+            const keyData = await keyResponse.json();
+            if (keyData.publicKey) {
+              const myKeysResponse = await fetch(
+                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+              );
+
+              if (myKeysResponse.ok) {
+                const myKeysData = await myKeysResponse.json();
+                if (myKeysData.encryptedPrivateKey) {
+                  const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                  const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
+
+                  for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const arrayBuffer = await file.arrayBuffer();
+                    const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
+
+                    const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+                    formData.append('files', encryptedBlob, `encrypted_${file.name}`);
+
+                    if (!encryptionData) {
+                      encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: file.name, originalType: file.type };
+                    }
+                  }
+                } else {
+                  alert(t('encryption.noKey'));
+                  return;
+                }
+              }
+            } else {
+              alert(t('encryption.otherNoKey'));
+              return;
+            }
+          }
+        }
+      }
+
+      if (!encryptionData) {
+        Array.from(files).forEach(file => {
+          formData.append('files', file);
+        });
+      } else {
+        formData.append('isEncrypted', 'true');
+        formData.append('encryptionData', JSON.stringify(encryptionData));
+      }
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
@@ -671,14 +938,60 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   // Handle camera capture
   const handleCameraCapture = async (imageBlob: Blob) => {
     try {
-      console.log('Handling camera capture, blob size:', imageBlob.size, 'type:', imageBlob.type);
-
-      const formData = new FormData();
-      formData.append('files', imageBlob, 'camera-capture.jpg');
-      console.log('FormData created with file');
-
       const token = localStorage.getItem('token');
-      console.log('Token available:', !!token);
+      const formData = new FormData();
+
+      let encryptionData = null;
+
+      if (encryptionMode === 'e2ee') {
+        const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
+        if (otherUser?._id) {
+          const keyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+
+          if (keyResponse.ok) {
+            const keyData = await keyResponse.json();
+            if (keyData.publicKey) {
+              const myKeysResponse = await fetch(
+                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+              );
+
+              if (myKeysResponse.ok) {
+                const myKeysData = await myKeysResponse.json();
+                if (myKeysData.encryptedPrivateKey) {
+                  const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                  const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
+
+                  const arrayBuffer = await imageBlob.arrayBuffer();
+                  const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
+
+                  const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+                  formData.append('files', encryptedBlob, 'encrypted_camera-capture.jpg');
+
+                  encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: 'camera-capture.jpg', originalType: imageBlob.type };
+                } else {
+                  alert(t('encryption.noKey'));
+                  return;
+                }
+              }
+            } else {
+              alert(t('encryption.otherNoKey'));
+              return;
+            }
+          }
+        }
+      }
+
+      if (!encryptionData) {
+        formData.append('files', imageBlob, 'camera-capture.jpg');
+      } else {
+        formData.append('isEncrypted', 'true');
+        formData.append('encryptionData', JSON.stringify(encryptionData));
+      }
 
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
@@ -691,17 +1004,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         }
       );
 
-      console.log('Upload response status:', response.status);
-
       if (response.ok) {
         const newMsg = await response.json();
-        console.log('Camera capture uploaded successfully:', newMsg);
         // Don't add message here - Socket.io will handle it
         onUpdateConversations();
         setShowCameraCapture(false);
       } else {
         const errorData = await response.json();
-        console.error('Upload failed:', errorData);
         alert(t('chat.sendImageError') + ': ' + (errorData.message || t('common.error')));
       }
     } catch (error) {
@@ -958,54 +1267,78 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                   {message.messageType === 'image' && message.attachments && (
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
-                      {message.attachments.map((attachment, index) => {
-                        const imageUrl = normalizeFileUrl(attachment.fileUrl);
+                      {message.attachments.map((attachment, index) => (
+                        <EncryptedFileContent
+                          key={index}
+                          message={message}
+                          attachment={attachment}
+                          decryptedFiles={decryptedFiles}
+                          decryptFileContent={decryptFileContent}
+                          renderComponent={(url, isLoading, hasError) => {
+                            if (isLoading) return <div className="w-32 h-32 bg-gray-200 animate-pulse rounded flex items-center justify-center"><Lock className="w-6 h-6 text-gray-400" /></div>;
+                            if (hasError || !url) return <div className="p-2 bg-red-100 text-red-600 rounded text-xs">{t('encryption.decryptFailed')}</div>;
 
-                        return (
-                          <div key={index} className="relative">
-                            <img
-                              src={imageUrl}
-                              alt={attachment.fileName}
-                              className="max-w-full h-auto rounded"
-                              loading="lazy"
-                              onError={(e) => {
-                                console.error('Image load error:', attachment.fileUrl, 'Normalized:', imageUrl);
-                                // Fallback to Railway URL if Vercel proxy fails
-                                if (!imageUrl.startsWith('http')) {
-                                  e.currentTarget.src = `https://ungdungnhantinbaomatniel-production.up.railway.app${imageUrl}`;
-                                } else {
-                                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjOTk5Ii8+Cjwvc3ZnPgo=';
-                                }
-                              }}
-                            />
-                          </div>
-                        );
-                      })}
+                            return (
+                              <div className="relative">
+                                {message.isEncrypted && <Lock className="absolute top-1 right-1 w-4 h-4 text-green-500 bg-white rounded-full p-0.5" />}
+                                <img
+                                  src={url}
+                                  alt={attachment.fileName}
+                                  className="max-w-full h-auto rounded"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    if (!message.isEncrypted && !url.startsWith('http') && !url.startsWith('blob:')) {
+                                      e.currentTarget.src = `https://ungdungnhantinbaomatniel-production.up.railway.app${url}`;
+                                    }
+                                  }}
+                                />
+                              </div>
+                            );
+                          }}
+                        />
+                      ))}
                     </div>
                   )}
 
                   {message.messageType === 'file' && message.attachments && (
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
-                      {message.attachments.map((attachment, index) => {
-                        const fileUrl = normalizeFileUrl(attachment.fileUrl);
-                        return (
-                          <div key={index} className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
-                            <File className="w-4 h-4" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">{attachment.fileName}</p>
-                              <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
-                            </div>
-                            <a
-                              href={fileUrl}
-                              download={attachment.fileName}
-                              className="p-1 hover:bg-gray-200 rounded"
-                            >
-                              <Download className="w-4 h-4" />
-                            </a>
-                          </div>
-                        );
-                      })}
+                      {message.attachments.map((attachment, index) => (
+                        <EncryptedFileContent
+                          key={index}
+                          message={message}
+                          attachment={attachment}
+                          decryptedFiles={decryptedFiles}
+                          decryptFileContent={decryptFileContent}
+                          renderComponent={(url, isLoading, hasError) => {
+                            if (isLoading) return <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded text-xs"><Lock className="w-4 h-4 animate-pulse" /> Đang giải mã...</div>;
+
+                            return (
+                              <div className={`flex items-center space-x-2 p-2 ${message.isEncrypted ? 'bg-green-50' : 'bg-gray-100'} rounded`}>
+                                <File className="w-4 h-4" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium truncate">
+                                    {message.isEncrypted && <Lock className="w-3 h-3 inline-block mr-1 text-green-600" />}
+                                    {attachment.fileName}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{formatFileSize(attachment.fileSize)}</p>
+                                </div>
+                                {hasError || !url ? (
+                                  <span className="text-xs text-red-500">Lỗi</span>
+                                ) : (
+                                  <a
+                                    href={url}
+                                    download={attachment.fileName}
+                                    className="p-1 hover:bg-gray-200 rounded"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          }}
+                        />
+                      ))}
                     </div>
                   )}
 
@@ -1013,11 +1346,26 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                     <div className="space-y-2">
                       <p className="text-sm">{message.content}</p>
                       {message.attachments.map((attachment, index) => (
-                        <AudioPlayer
-                          key={index}
-                          fileUrl={attachment.fileUrl}
-                          fileName={attachment.fileName}
-                        />
+                        <div key={index} className="relative">
+                          {message.isEncrypted && <Lock className="absolute -left-2 -top-2 w-4 h-4 text-green-500 z-10" />}
+                          <EncryptedFileContent
+                            message={message}
+                            attachment={attachment}
+                            decryptedFiles={decryptedFiles}
+                            decryptFileContent={decryptFileContent}
+                            renderComponent={(url, isLoading, hasError) => {
+                              if (isLoading) return <div className="p-3 bg-gray-100 rounded text-xs flex items-center"><Lock className="w-4 h-4 animate-pulse mr-2" /> Đang giải mã Audio...</div>;
+                              if (hasError || !url) return <div className="p-2 bg-red-100 text-red-600 rounded text-xs">{t('encryption.decryptFailed')}</div>;
+
+                              return (
+                                <AudioPlayer
+                                  fileUrl={url} // url here points to the blob: or plain normalized url
+                                  fileName={attachment.fileName}
+                                />
+                              );
+                            }}
+                          />
+                        </div>
                       ))}
                     </div>
                   )}

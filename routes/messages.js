@@ -237,8 +237,17 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     });
 
     const { conversationId } = req.params;
-    const { content = '', replyTo } = req.body;
+    const { content = '', replyTo, isEncrypted, encryptionData } = req.body;
     const userId = req.user._id;
+
+    let parsedEncryptionData = null;
+    if (isEncrypted === 'true' && encryptionData) {
+      try {
+        parsedEncryptionData = JSON.parse(encryptionData);
+      } catch (e) {
+        console.error("Invalid encryption data JSON", e);
+      }
+    }
 
     // Check if user is participant of conversation or group
     let conversation = await Conversation.findOne({
@@ -300,9 +309,16 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     // Determine message type based on file type
     const firstFile = req.files[0];
     let messageType = 'file';
-    if (firstFile.mimetype.startsWith('image/')) {
+
+    // Nếu có mã hóa thì dùng originalType bù vào thay cho mime (vì payload là octet-stream), nếu ko có thì dùng firstFile.mimetype
+    let mimeToCheck = firstFile.mimetype;
+    if (parsedEncryptionData && parsedEncryptionData.originalType) {
+      mimeToCheck = parsedEncryptionData.originalType;
+    }
+
+    if (mimeToCheck.startsWith('image/')) {
       messageType = 'image';
-    } else if (firstFile.mimetype.startsWith('audio/')) {
+    } else if (mimeToCheck.startsWith('audio/')) {
       messageType = 'audio';
     }
 
@@ -312,7 +328,9 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
       content: content || `Đã gửi ${req.files.length} file(s)`, // Default content for file messages
       messageType,
       attachments,
-      replyTo: replyTo || null
+      replyTo: replyTo || null,
+      isEncrypted: isEncrypted === 'true',
+      encryptionData: parsedEncryptionData
     });
 
     await message.save();

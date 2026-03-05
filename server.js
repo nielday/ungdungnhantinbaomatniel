@@ -30,6 +30,11 @@ const io = socketIo(server, {
 });
 
 // Middleware
+// Middleware cấu hình bảo mật HTTP Headers (Helmet)
+app.use(helmet({
+  // Tùy chỉnh helmet để tương thích với CORS (ví dụ socket.io iframe/ngrok)
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -50,8 +55,8 @@ app.get('/api/health', (req, res) => {
 
 // Debug route to check environment
 app.get('/api/debug', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Debug info',
     jwtSecret: process.env.JWT_SECRET ? 'Present' : 'Missing',
     nodeEnv: process.env.NODE_ENV,
@@ -61,8 +66,8 @@ app.get('/api/debug', (req, res) => {
 
 // Test route without authentication
 app.get('/api/test', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Test route works',
     timestamp: new Date().toISOString()
   });
@@ -70,8 +75,8 @@ app.get('/api/test', (req, res) => {
 
 // Test route with authentication
 app.get('/api/test-auth', authenticateToken, (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Authenticated route works',
     userId: req.user._id,
     timestamp: new Date().toISOString()
@@ -82,7 +87,7 @@ app.get('/api/test-auth', authenticateToken, (req, res) => {
 app.get('/api/uploads-debug', (req, res) => {
   const fs = require('fs');
   const uploadsPath = path.join(__dirname, 'uploads');
-  
+
   try {
     const files = fs.readdirSync(uploadsPath);
     res.json({
@@ -118,30 +123,30 @@ app.get('/api/cleanup', async (req, res) => {
     const fs = require('fs');
     const path = require('path');
     const uploadsPath = process.env.UPLOAD_PATH || path.join(__dirname, 'uploads');
-    
+
     // Create uploads directory if it doesn't exist
     if (!fs.existsSync(uploadsPath)) {
       fs.mkdirSync(uploadsPath, { recursive: true });
     }
-    
+
     // Get all files in uploads directory
     const existingFiles = fs.readdirSync(uploadsPath).filter(file => file !== '.gitkeep');
     console.log('Existing files:', existingFiles);
-    
+
     // Find messages with attachments
     const { Message } = require('./models');
-    const messages = await Message.find({ 
+    const messages = await Message.find({
       attachments: { $exists: true, $ne: [] },
-      isDeleted: false 
+      isDeleted: false
     });
-    
+
     let cleanedCount = 0;
     const filesToClean = [];
-    
+
     for (const message of messages) {
       if (message.attachments && message.attachments.length > 0) {
         const validAttachments = [];
-        
+
         for (const attachment of message.attachments) {
           const fileName = attachment.fileUrl.split('/').pop();
           if (existingFiles.includes(fileName)) {
@@ -151,7 +156,7 @@ app.get('/api/cleanup', async (req, res) => {
             filesToClean.push(fileName);
           }
         }
-        
+
         if (validAttachments.length !== message.attachments.length) {
           message.attachments = validAttachments;
           await message.save();
@@ -159,7 +164,7 @@ app.get('/api/cleanup', async (req, res) => {
         }
       }
     }
-    
+
     res.json({
       status: 'OK',
       message: `Cleaned up ${cleanedCount} messages`,
@@ -181,7 +186,7 @@ io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
     console.log('Socket auth - Token:', token ? 'Present' : 'Missing');
-    
+
     if (!token) {
       console.log('Socket auth - No token provided');
       return next(new Error('Authentication error'));
@@ -191,11 +196,11 @@ io.use(async (socket, next) => {
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Socket auth - Decoded token:', decoded);
-    
+
     // Get user from database
     const { User } = require('./models');
     const user = await User.findById(decoded.userId).select('-otpCode -otpExpires');
-    
+
     if (!user) {
       console.log('Socket auth - User not found');
       return next(new Error('User not found'));

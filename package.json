@@ -25,8 +25,10 @@
     "dotenv": "^16.3.1",
     "emoji-picker-react": "^4.14.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
     "file-saver": "^2.0.5",
     "framer-motion": "^10.18.0",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.292.0",
@@ -45,7 +47,9 @@
     "socket.io-client": "^4.8.1",
     "tailwindcss": "^3.3.0",
     "typescript": "^5",
-    "zod": "^4.0.17"
+    "zod": "^4.0.17",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

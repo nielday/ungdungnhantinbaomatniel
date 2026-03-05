@@ -81,14 +81,8 @@ const MessageSchema = new mongoose.Schema({
     default: false
   },
   encryptionData: {
-    iv: {
-      type: String,
-      default: null
-    },
-    algorithm: {
-      type: String,
-      default: 'AES-256-GCM'
-    }
+    type: mongoose.Schema.Types.Mixed,
+    default: null
   }
 }, {
   timestamps: true

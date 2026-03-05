@@ -3,10 +3,29 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
+const rateLimit = require('express-rate-limit');
 const { User } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
+
+// 1. Áp dụng Rate Limiter cho các API Auth (Chống Spam / Brute-force)
+// Giới hạn 5 requests mỗi 15 phút cho cùng 1 IP
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 5, 
+  message: { message: 'Bạn đã yêu cầu quá nhiều mã OTP. Vui lòng thử lại sau 15 phút.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Giới hạn thao tác login/register
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Quá nhiều yêu cầu đăng nhập/đăng ký. Vui lòng thử lại sau.' }
+});
+
 
 // Email configuration for Brevo API
 console.log('Brevo API config debug:', {
@@ -23,7 +42,7 @@ const generateOTP = () => {
 const sendOTPEmail = async (email, otp) => {
   try {
     console.log('Attempting to send email to:', email);
-    console.log('OTP code:', otp);
+    // console.log('OTP code:', otp); -> Nên ẩn log mã OTP trên Production
 
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -136,7 +155,7 @@ const sendOTPEmail = async (email, otp) => {
 };
 
 // Register user
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { phoneNumber, email, fullName, age } = req.body;
 
@@ -160,21 +179,25 @@ router.post('/register', async (req, res) => {
       isVerified: false  // Require OTP verification
     });
 
-    await user.save();
-
     // Generate OTP
     const otpCode = generateOTP();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    user.otpCode = otpCode;
+    // 2. Hash OTP trước khi lưu vào DB bằng bcrypt
+    const salt = await bcrypt.genSalt(10);
+    const hashedOTP = await bcrypt.hash(otpCode, salt);
+
+    user.otpCode = hashedOTP;
     user.otpExpires = otpExpires;
     await user.save();
 
     // Send OTP email
     const emailSent = await sendOTPEmail(user.email, otpCode);
     if (!emailSent) {
+      // Rollback user creation if email fails
+      await User.findByIdAndDelete(user._id);
       return res.status(500).json({
-        message: 'Không thể gửi email OTP'
+        message: 'Không thể gửi email OTP. Vui lòng thử lại.'
       });
     }
 
@@ -221,7 +244,9 @@ router.post('/verify-otp', async (req, res) => {
       });
     }
 
-    if (user.otpCode !== otpCode) {
+    // 3. Compare OTP gốc với mã Hash trong Database
+    const isMatch = await bcrypt.compare(otpCode, user.otpCode);
+    if (!isMatch) {
       return res.status(400).json({
         message: 'Mã OTP không đúng'
       });
@@ -262,7 +287,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // Resend OTP
-router.post('/resend-otp', async (req, res) => {
+router.post('/resend-otp', otpLimiter, async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -283,7 +308,11 @@ router.post('/resend-otp', async (req, res) => {
     const otpCode = generateOTP();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
-    user.otpCode = otpCode;
+    // Hash OTP before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedOTP = await bcrypt.hash(otpCode, salt);
+
+    user.otpCode = hashedOTP;
     user.otpExpires = otpExpires;
     await user.save();
 
@@ -307,7 +336,7 @@ router.post('/resend-otp', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { phoneNumber } = req.body;
 
@@ -322,7 +351,11 @@ router.post('/login', async (req, res) => {
     const otpCode = generateOTP();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    user.otpCode = otpCode;
+    // Hash OTP trước khi lưu
+    const salt = await bcrypt.genSalt(10);
+    const hashedOTP = await bcrypt.hash(otpCode, salt);
+
+    user.otpCode = hashedOTP;
     user.otpExpires = otpExpires;
     await user.save();
 
@@ -361,7 +394,7 @@ router.post('/verify-login', async (req, res) => {
 
     if (!user.otpCode || !user.otpExpires) {
       return res.status(400).json({
-        message: 'Mã OTP không hợp lệ'
+        message: 'Mã OTP không hợp lệ hoặc đã sử dụng'
       });
     }
 
@@ -371,13 +404,15 @@ router.post('/verify-login', async (req, res) => {
       });
     }
 
-    if (user.otpCode !== otpCode) {
+    // Compare with Hashed OTP
+    const isMatch = await bcrypt.compare(otpCode, user.otpCode);
+    if (!isMatch) {
       return res.status(400).json({
         message: 'Mã OTP không đúng'
       });
     }
 
-    // Clear OTP
+    // Clear OTP sau khi xác thực thành công
     user.otpCode = undefined;
     user.otpExpires = undefined;
     await user.save();
@@ -447,7 +482,10 @@ router.post('/check-device', async (req, res) => {
     const otpCode = generateOTP();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
-    user.otpCode = otpCode;
+    const salt = await bcrypt.genSalt(10);
+    const hashedOTP = await bcrypt.hash(otpCode, salt);
+
+    user.otpCode = hashedOTP;
     user.otpExpires = otpExpires;
     await user.save();
 
@@ -475,13 +513,18 @@ router.post('/verify-device', async (req, res) => {
       return res.status(404).json({ message: 'Người dùng không tồn tại' });
     }
 
-    // Verify OTP
-    if (!user.otpCode || user.otpCode !== otpCode) {
-      return res.status(400).json({ message: 'Mã OTP không đúng' });
+    if (!user.otpCode || !user.otpExpires) {
+      return res.status(400).json({ message: 'Mã OTP không hợp lệ' });
     }
 
     if (new Date() > user.otpExpires) {
       return res.status(400).json({ message: 'Mã OTP đã hết hạn' });
+    }
+
+    // Verify OTP
+    const isMatch = await bcrypt.compare(otpCode, user.otpCode);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Mã OTP không đúng' });
     }
 
     // Add device to trusted list
