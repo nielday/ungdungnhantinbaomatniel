@@ -1514,6 +1514,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                           attachment={attachment}
                           decryptedFiles={decryptedFiles}
                           decryptFileContent={decryptFileContent}
+                          decryptVersion={decryptVersion}
                           renderComponent={(url, isLoading, hasError) => {
                             if (isLoading) return <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded text-xs"><Lock className="w-4 h-4 animate-pulse" /> Đang giải mã...</div>;
 
@@ -1557,6 +1558,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                             attachment={attachment}
                             decryptedFiles={decryptedFiles}
                             decryptFileContent={decryptFileContent}
+                            decryptVersion={decryptVersion}
                             renderComponent={(url, isLoading, hasError) => {
                               if (isLoading) return <div className="p-3 bg-gray-100 rounded text-xs flex items-center"><Lock className="w-4 h-4 animate-pulse mr-2" /> Đang giải mã Audio...</div>;
                               if (hasError || !url) return <div className="p-2 bg-red-100 text-red-600 rounded text-xs">{t('encryption.decryptFailed')}</div>;
