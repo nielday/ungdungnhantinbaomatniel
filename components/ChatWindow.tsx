@@ -654,85 +654,106 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
     try {
       const token = localStorage.getItem('token');
-      const normalizedUrl = normalizeFileUrlHelper(fileUrl);
+      console.log('🖼️ Decrypting file:', message._id, 'hasUnlockedKey:', !!unlockedPrivateKey);
 
-      // 1. Fetch encrypted file buffer
-      const fileResponse = await fetch(normalizedUrl);
-      if (!fileResponse.ok) throw new Error('Failed to fetch encrypted file');
-      const encryptedBuffer = await fileResponse.arrayBuffer();
-
-      // 2. Derive key (same as text decrypt)
+      // ===== STEP 1: Check key FIRST before fetching file =====
       const amISender = message.senderId._id === currentUser?.id;
       let otherUserPublicKey: string;
 
       if (amISender) {
         const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
-        if (!otherUser?._id) return null;
-
+        if (!otherUser?._id) {
+          console.error('File decrypt: no other user found');
+          return null;
+        }
         const recipientKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
           { headers: { 'Authorization': `Bearer ${token}` } }
         );
-        if (!recipientKeyResponse.ok) return null;
+        if (!recipientKeyResponse.ok) {
+          console.error('File decrypt: failed to get recipient public key');
+          return null;
+        }
         otherUserPublicKey = (await recipientKeyResponse.json()).publicKey;
       } else {
         const senderKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
           { headers: { 'Authorization': `Bearer ${token}` } }
         );
-        if (!senderKeyResponse.ok) return null;
+        if (!senderKeyResponse.ok) {
+          console.error('File decrypt: failed to get sender public key');
+          return null;
+        }
         otherUserPublicKey = (await senderKeyResponse.json()).publicKey;
       }
 
-      const myKeysResponse = await fetch(
-        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      if (!myKeysResponse.ok) return null;
-      const myKeysData = await myKeysResponse.json();
-
-      if (!otherUserPublicKey || !myKeysData.encryptedPrivateKey) return null;
-
-      // 1. Get real Private Key 
+      // Check my private key
       let realPrivateKeyToImport = unlockedPrivateKey;
 
       if (!realPrivateKeyToImport) {
-        // If we haven't unlocked it yet, check if it's the old raw format
+        const myKeysResponse = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (!myKeysResponse.ok) {
+          console.error('File decrypt: failed to get my encryption keys');
+          return null;
+        }
+        const myKeysData = await myKeysResponse.json();
+
+        if (!myKeysData.encryptedPrivateKey) {
+          console.error('File decrypt: no encrypted private key');
+          return null;
+        }
+
         if (!myKeysData.keySalt) {
-          realPrivateKeyToImport = myKeysData.encryptedPrivateKey; // It's actually raw
+          realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
         } else {
-          // It is properly encrypted, we need password
+          console.log('🖼️ File decrypt: need password unlock');
           setShowPasswordPrompt(true);
           return null;
         }
       }
 
-      if (!realPrivateKeyToImport) {
+      if (!realPrivateKeyToImport || !otherUserPublicKey) {
+        console.error('File decrypt: missing keys');
         return null;
       }
 
+      // ===== STEP 2: Derive shared key =====
       const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
       const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
       const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
 
-      // 3. Decrypt
+      // ===== STEP 3: NOW fetch the encrypted file =====
+      const normalizedUrl = normalizeFileUrlHelper(fileUrl);
+      console.log('🖼️ Fetching encrypted file from:', normalizedUrl);
+      const fileResponse = await fetch(normalizedUrl);
+      if (!fileResponse.ok) {
+        console.error('File decrypt: failed to fetch file, status:', fileResponse.status);
+        throw new Error(`Failed to fetch encrypted file: ${fileResponse.status}`);
+      }
+      const encryptedBuffer = await fileResponse.arrayBuffer();
+      console.log('🖼️ Encrypted file size:', encryptedBuffer.byteLength, 'bytes');
+
+      // ===== STEP 4: Decrypt =====
       const decryptedBuffer = await encryption.decryptFile(
         encryptedBuffer,
         message.encryptionData.iv,
         sharedKey
       );
 
-      // 4. Create Object URL
+      // ===== STEP 5: Create Object URL =====
       let determinedMimeType = mimeType;
-      // Trả lại type mime gốc nếu có trong payload để render đúng kiểu blob
       if (message.encryptionData && (message.encryptionData as any).originalType) {
         determinedMimeType = (message.encryptionData as any).originalType;
       }
 
       const blob = new Blob([decryptedBuffer], { type: determinedMimeType || 'application/octet-stream' });
       const objectUrl = URL.createObjectURL(blob);
+      console.log('🖼️ File decrypted successfully:', message._id);
 
-      // 5. Cache
+      // ===== STEP 6: Cache =====
       setDecryptedFiles(prev => ({ ...prev, [cacheKey]: objectUrl }));
 
       return objectUrl;
