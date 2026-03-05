@@ -297,7 +297,7 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="h-screen flex bg-gray-100 dark:bg-neutral-900 overflow-hidden">
+    <div className="fixed inset-0 flex bg-gray-100 dark:bg-neutral-900 overflow-hidden">
       {/* Mobile Overlay */}
       {isMobile && showSidebar && (
         <div
@@ -472,9 +472,9 @@ export default function ChatApp() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile Header */}
-        {isMobile && (
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
+        {/* Mobile Header (Only visible if no conversation is active) */}
+        {isMobile && !activeConversation && (
           <div className="bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
@@ -484,32 +484,7 @@ export default function ChatApp() {
               >
                 <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
-              {activeConversation && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-800 dark:text-white">
-                      {activeConversation.type === 'private'
-                        ? activeConversation.participants?.find(p => p._id !== user?.id)?.fullName
-                        : activeConversation.name
-                      }
-                    </h3>
-                  </div>
-                </div>
-              )}
             </div>
-            {activeConversation && (
-              <div className="flex items-center space-x-2">
-                <button className="icon-btn">
-                  <Phone className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </button>
-                <button className="icon-btn">
-                  <Video className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </button>
-              </div>
-            )}
           </div>
         )}
 

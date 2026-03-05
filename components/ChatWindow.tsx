@@ -1340,7 +1340,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full overflow-hidden relative">
       {/* Header - Always show for access to E2EE toggle */}
       <div className="p-3 lg:p-4 border-b border-gray-200 bg-white z-10 sticky top-0">
         <div className="flex items-center justify-between">
