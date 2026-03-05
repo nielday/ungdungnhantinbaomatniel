@@ -321,6 +321,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [decryptPassword, setDecryptPassword] = useState('');
   const [decryptError, setDecryptError] = useState('');
 
+  // Reset encryption mode when conversation changes
+  React.useEffect(() => {
+    setEncryptionMode(conversation.encryptionMode || 'none');
+  }, [conversation._id, conversation.encryptionMode]);
+
   // Tự động ẩn/hiện form nhập mật khẩu theo chế độ mã hóa
   React.useEffect(() => {
     if (encryptionMode === 'e2ee' && !unlockedPrivateKey) {
