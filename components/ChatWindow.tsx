@@ -12,6 +12,11 @@ import * as encryption from '../lib/encryption';
 const normalizeFileUrlHelper = (fileUrl: string): string => {
   if (!fileUrl) return '';
 
+  // Prevent double wrapping
+  if (fileUrl.includes('/files/proxy?fileUrl=')) {
+    return fileUrl;
+  }
+
   // If it's a Backblaze B2 URL, use the presigned URL proxy
   if (fileUrl.includes('backblazeb2.com') || fileUrl.includes('backblaze.com')) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
