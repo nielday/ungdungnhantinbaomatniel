@@ -320,6 +320,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       // Validate key by trying to import it
       await encryption.importPrivateKey(rawPrivateKey);
+      console.log('✅ Private key unlocked successfully');
 
       // Success! Store the unlocked key
       setUnlockedPrivateKey(rawPrivateKey);
@@ -327,9 +328,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       setDecryptPassword('');
       setDecryptError('');
 
-      // Clear cached "failed" decrypted messages so they re-decrypt with the new key
+      // Clear cached decrypted content and re-fetch messages to force re-decrypt
       setDecryptedMessages({});
       setDecryptedFiles({});
+
+      // Force re-fetch messages to trigger re-decryption with the new key
+      setTimeout(() => {
+        fetchMessages();
+      }, 100);
     } catch (error) {
       console.error('Unlock key error:', error);
       setDecryptError('Mật khẩu không đúng hoặc khóa bị hỏng.');
@@ -536,6 +542,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
     try {
       const token = localStorage.getItem('token');
+      console.log('🔓 Decrypting message:', message._id, 'hasUnlockedKey:', !!unlockedPrivateKey);
 
       // Determine which public key to use for ECDH
       // If I am the sender: I need the RECIPIENT's public key (same as when encrypting)
