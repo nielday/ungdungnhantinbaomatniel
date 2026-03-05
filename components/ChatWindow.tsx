@@ -272,6 +272,93 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [isTogglingEncryption, setIsTogglingEncryption] = useState(false);
   const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
   const [decryptedFiles, setDecryptedFiles] = useState<Record<string, string>>({}); // Add state for decrypted files
+
+  // E2EE Password Key store
+  const [unlockedPrivateKey, setUnlockedPrivateKey] = useState<string | null>(null);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [decryptPassword, setDecryptPassword] = useState('');
+  const [decryptError, setDecryptError] = useState('');
+
+  // Hàm mở khóa Private Key bằng Password
+  const handleUnlockKeys = async () => {
+    if (!decryptPassword) return;
+    setDecryptError('');
+    try {
+      const token = localStorage.getItem('token');
+      const myKeysResponse = await fetch(
+        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!myKeysResponse.ok) {
+        setDecryptError('Không thể tải khóa mã hóa từ server.');
+        return;
+      }
+      const myKeysData = await myKeysResponse.json();
+      if (!myKeysData.encryptedPrivateKey) {
+        setDecryptError('Không tìm thấy khóa mã hóa. Vui lòng tạo khóa mới trong Cài đặt > Bảo mật.');
+        return;
+      }
+
+      let rawPrivateKey = '';
+      if (myKeysData.keySalt) {
+        try {
+          const params = JSON.parse(myKeysData.keySalt);
+          rawPrivateKey = await encryption.decryptStringWithPassword(
+            myKeysData.encryptedPrivateKey,
+            decryptPassword,
+            params.salt,
+            params.iv
+          );
+        } catch (e) {
+          setDecryptError('Mật khẩu không đúng. Vui lòng thử lại.');
+          return;
+        }
+      } else {
+        // Old format: key is raw, not encrypted with password
+        rawPrivateKey = myKeysData.encryptedPrivateKey;
+      }
+
+      // Validate key by trying to import it
+      await encryption.importPrivateKey(rawPrivateKey);
+
+      // Success! Store the unlocked key
+      setUnlockedPrivateKey(rawPrivateKey);
+      setShowPasswordPrompt(false);
+      setDecryptPassword('');
+      setDecryptError('');
+
+      // Clear cached "failed" decrypted messages so they re-decrypt with the new key
+      setDecryptedMessages({});
+      setDecryptedFiles({});
+    } catch (error) {
+      console.error('Unlock key error:', error);
+      setDecryptError('Mật khẩu không đúng hoặc khóa bị hỏng.');
+    }
+  };
+
+  // Helper: get real private key for encryption operations
+  const getRealPrivateKey = async (): Promise<string | null> => {
+    if (unlockedPrivateKey) return unlockedPrivateKey;
+
+    const token = localStorage.getItem('token');
+    const myKeysResponse = await fetch(
+      `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (!myKeysResponse.ok) return null;
+    const myKeysData = await myKeysResponse.json();
+    if (!myKeysData.encryptedPrivateKey) return null;
+
+    if (!myKeysData.keySalt) {
+      // Old format: raw key
+      return myKeysData.encryptedPrivateKey;
+    }
+
+    // New format: need password
+    setShowPasswordPrompt(true);
+    return null;
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -506,9 +593,27 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         return `🔒 ${t('encryption.decryptFailed')}`;
       }
 
+      // 1. Get real Private Key 
+      let realPrivateKeyToImport = unlockedPrivateKey;
+
+      if (!realPrivateKeyToImport) {
+        // If we haven't unlocked it yet, check if it's the old raw format
+        if (!myKeysData.keySalt) {
+          realPrivateKeyToImport = myKeysData.encryptedPrivateKey; // It's actually raw
+        } else {
+          // It is properly encrypted, we need password
+          setShowPasswordPrompt(true);
+          return `🔒 Yêu cầu mật khẩu giải mã...`; // Trả về thông báo ảo đợi User nhập pass
+        }
+      }
+
+      if (!realPrivateKeyToImport) {
+        return `🔒 Xin nhập mật khẩu giải mã (Bên dưới màn hình)`;
+      }
+
       // Import keys and derive shared secret
       const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
-      const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+      const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
       const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
 
       // Decrypt the message
@@ -581,8 +686,26 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       if (!otherUserPublicKey || !myKeysData.encryptedPrivateKey) return null;
 
+      // 1. Get real Private Key 
+      let realPrivateKeyToImport = unlockedPrivateKey;
+
+      if (!realPrivateKeyToImport) {
+        // If we haven't unlocked it yet, check if it's the old raw format
+        if (!myKeysData.keySalt) {
+          realPrivateKeyToImport = myKeysData.encryptedPrivateKey; // It's actually raw
+        } else {
+          // It is properly encrypted, we need password
+          setShowPasswordPrompt(true);
+          return null;
+        }
+      }
+
+      if (!realPrivateKeyToImport) {
+        return null;
+      }
+
       const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
-      const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+      const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
       const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
 
       // 3. Decrypt
@@ -643,9 +766,25 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 if (myKeysResponse.ok) {
                   const myKeysData = await myKeysResponse.json();
                   if (myKeysData.encryptedPrivateKey) {
+
+                    // 1. Get real Private Key 
+                    let realPrivateKeyToImport = unlockedPrivateKey;
+
+                    if (!realPrivateKeyToImport) {
+                      // If we haven't unlocked it yet, check if it's the old raw format
+                      if (!myKeysData.keySalt) {
+                        realPrivateKeyToImport = myKeysData.encryptedPrivateKey; // It's actually raw
+                      } else {
+                        setShowPasswordPrompt(true);
+                        return; // Stop sending msg until unlocked
+                      }
+                    }
+
+                    if (!realPrivateKeyToImport) return;
+
                     // Import keys and derive shared secret
                     const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                    const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                    const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
                     const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
 
                     // Encrypt the message
@@ -785,9 +924,12 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               if (myKeysResponse.ok) {
                 const myKeysData = await myKeysResponse.json();
                 if (myKeysData.encryptedPrivateKey) {
-                  // Import keys and derive shared secret
+                  // Get real private key (may need password unlock)
+                  const realKey = await getRealPrivateKey();
+                  if (!realKey) return; // Will show password prompt
+
                   const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                  const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                  const myPrivateKey = await encryption.importPrivateKey(realKey);
                   const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
 
                   // Chạy mã hóa từng file
@@ -876,8 +1018,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               if (myKeysResponse.ok) {
                 const myKeysData = await myKeysResponse.json();
                 if (myKeysData.encryptedPrivateKey) {
+                  const realKey = await getRealPrivateKey();
+                  if (!realKey) return;
+
                   const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                  const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                  const myPrivateKey = await encryption.importPrivateKey(realKey);
                   const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
 
                   for (let i = 0; i < files.length; i++) {
@@ -962,8 +1107,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               if (myKeysResponse.ok) {
                 const myKeysData = await myKeysResponse.json();
                 if (myKeysData.encryptedPrivateKey) {
+                  const realKey = await getRealPrivateKey();
+                  if (!realKey) return;
+
                   const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                  const myPrivateKey = await encryption.importPrivateKey(myKeysData.encryptedPrivateKey);
+                  const myPrivateKey = await encryption.importPrivateKey(realKey);
                   const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
 
                   const arrayBuffer = await imageBlob.arrayBuffer();
@@ -1454,6 +1602,53 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Unlock E2EE Password Prompt */}
+      {showPasswordPrompt && (
+        <div className="p-4 bg-blue-50 dark:bg-gray-800 border-t border-blue-200 dark:border-blue-900">
+          <div className="flex items-center mb-2">
+            <Lock className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              Mở khóa tin nhắn mã hóa
+            </span>
+            <button
+              onClick={() => setShowPasswordPrompt(false)}
+              className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Nhập mật khẩu tài khoản để giải mã khóa riêng tư và xem tin nhắn.
+          </p>
+          <div className="flex space-x-2">
+            <input
+              type="password"
+              value={decryptPassword}
+              onChange={(e) => {
+                setDecryptPassword(e.target.value);
+                setDecryptError('');
+              }}
+              placeholder="Nhập mật khẩu"
+              className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && decryptPassword) {
+                  handleUnlockKeys();
+                }
+              }}
+            />
+            <button
+              onClick={handleUnlockKeys}
+              disabled={!decryptPassword}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+            >
+              <Unlock className="w-4 h-4 mr-1" />
+              Mở khóa
+            </button>
+          </div>
+          {decryptError && <p className="text-xs text-red-500 mt-1">{decryptError}</p>}
+        </div>
+      )}
 
       {/* Reply Preview */}
       {replyingTo && (
