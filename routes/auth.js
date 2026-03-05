@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 const rateLimit = require('express-rate-limit');
+const UAParser = require('ua-parser-js');
 const { User } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -165,6 +166,46 @@ const sendOTPEmail = async (email, otp) => {
   }
 };
 
+// Gửi Email Cảnh báo Đăng nhập Lạ
+const sendNewLoginAlertEmail = async (email, fullName, deviceInfo, ipAddress, timeStr) => {
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': process.env.BREVO_API_KEY
+      },
+      body: JSON.stringify({
+        sender: { name: 'Messaging App Niel Security', email: process.env.BREVO_FROM_EMAIL },
+        to: [{ email: email }],
+        subject: 'Cảnh báo Bảo mật: Đăng nhập từ thiết bị lạ',
+        htmlContent: `
+          <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #fffaf0; border: 1px solid #fbd38d; border-radius: 8px; padding: 20px;">
+              <h2 style="color: #c05621; margin-top: 0;">Xin chào ${fullName},</h2>
+              <p>Chúng tôi phát hiện một lượt đăng nhập thành công vào tài khoản của bạn từ một thiết bị mới.</p>
+              
+              <div style="background-color: #fff; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Thời gian:</strong> ${timeStr}</p>
+                <p style="margin: 5px 0;"><strong>Thiết bị/Trình duyệt:</strong> ${deviceInfo}</p>
+                <p style="margin: 5px 0;"><strong>Địa chỉ IP:</strong> ${ipAddress}</p>
+              </div>
+
+              <p style="margin-bottom: 0;">Nếu là bạn, vui lòng bỏ qua email này. Nếu <strong>KHÔNG PHẢI</strong> bạn, hãy đổi mật khẩu ngay lập tức!</p>
+            </div>
+          </body>
+          </html>
+        `
+      })
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error sending alert email:', error);
+    return false;
+  }
+};
+
 // Register user
 router.post('/register', authLimiter, async (req, res) => {
   try {
@@ -275,6 +316,41 @@ router.post('/verify-otp', verifyLimiter, async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Track login device and IP
+    const parser = new UAParser(req.headers['user-agent']);
+    const browser = parser.getBrowser().name || 'Unknown Browser';
+    const os = parser.getOS().name || 'Unknown OS';
+    const deviceStr = `${browser} trên ${os}`;
+    const ipAddr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'Unknown IP';
+
+    // Kiểm tra xem IP và Thiết bị có lạ không
+    const isKnownDevice = user.loginHistory?.some(h => h.ipAddress === ipAddr && h.browser === browser);
+
+    if (!isKnownDevice) {
+      if (!user.loginHistory) user.loginHistory = [];
+      user.loginHistory.push({
+        ipAddress: ipAddr,
+        deviceInfo: req.headers['user-agent'],
+        osRelease: os,
+        browser: browser,
+        lastLogin: new Date()
+      });
+      // Giới hạn lịch sử log 10 dòng
+      if (user.loginHistory.length > 10) user.loginHistory.shift();
+      await user.save();
+
+      // Async gửi email cảnh báo luôn
+      const timeString = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      sendNewLoginAlertEmail(user.email, user.fullName, deviceStr, ipAddr, timeString);
+    } else {
+      // Cập nhật lastLogin
+      const historyIndex = user.loginHistory.findIndex(h => h.ipAddress === ipAddr && h.browser === browser);
+      if (historyIndex !== -1) {
+        user.loginHistory[historyIndex].lastLogin = new Date();
+        await user.save();
+      }
+    }
 
     res.json({
       message: 'Xác thực thành công',
@@ -434,6 +510,39 @@ router.post('/verify-login', verifyLimiter, async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Track login device and IP
+    const parser = new UAParser(req.headers['user-agent']);
+    const browser = parser.getBrowser().name || 'Unknown Browser';
+    const os = parser.getOS().name || 'Unknown OS';
+    const deviceStr = `${browser} trên ${os}`;
+    const ipAddr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'Unknown IP';
+
+    // Kiểm tra xem IP và Thiết bị có lạ không
+    const isKnownDevice = user.loginHistory?.some(h => h.ipAddress === ipAddr && h.browser === browser);
+
+    if (!isKnownDevice) {
+      if (!user.loginHistory) user.loginHistory = [];
+      user.loginHistory.push({
+        ipAddress: ipAddr,
+        deviceInfo: req.headers['user-agent'],
+        osRelease: os,
+        browser: browser,
+        lastLogin: new Date()
+      });
+      if (user.loginHistory.length > 10) user.loginHistory.shift();
+      await user.save();
+
+      const timeString = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      sendNewLoginAlertEmail(user.email, user.fullName, deviceStr, ipAddr, timeString);
+    } else {
+      // Cập nhật lastLogin
+      const historyIndex = user.loginHistory.findIndex(h => h.ipAddress === ipAddr && h.browser === browser);
+      if (historyIndex !== -1) {
+        user.loginHistory[historyIndex].lastLogin = new Date();
+        await user.save();
+      }
+    }
 
     res.json({
       message: 'Đăng nhập thành công',

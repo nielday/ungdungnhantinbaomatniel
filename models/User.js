@@ -82,6 +82,18 @@ const UserSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     }
+  }],
+
+  // Cảnh báo Đăng nhập Lạ (Device/IP Tracking)
+  loginHistory: [{
+    ipAddress: String,
+    deviceInfo: String,
+    osRelease: String,
+    browser: String,
+    lastLogin: {
+      type: Date,
+      default: Date.now
+    }
   }]
 }, {
   timestamps: true
