@@ -35,23 +35,27 @@ const normalizeFileUrlHelper = (fileUrl: string): string => {
 };
 
 // Audio Player Component
-const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string }) => {
+const AudioPlayer = React.memo(({ fileUrl, fileName }: { fileUrl: string; fileName: string }) => {
   const [duration, setDuration] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const normalizedUrl = normalizeFileUrlHelper(fileUrl);
+  const currentUrl = React.useMemo(() => {
+    if (!fileUrl) return '';
+    if (fileUrl.startsWith('blob:')) return fileUrl;
+    return normalizeFileUrlHelper(fileUrl);
+  }, [fileUrl]);
 
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
       setIsLoaded(true);
-      console.log('Audio duration loaded:', audioRef.current.duration);
+      // Removed console.log for clean code
     }
   };
 
   const handleError = () => {
-    console.error('Audio load error for:', fileName, 'URL:', normalizedUrl);
+    console.error('Audio load error for:', fileName, 'URL:', currentUrl);
     setIsLoaded(false);
   };
 
@@ -66,15 +70,15 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
         onError={handleError}
       >
         <source
-          src={normalizedUrl}
+          src={currentUrl}
           type="audio/mpeg"
         />
         <source
-          src={normalizedUrl}
+          src={currentUrl}
           type="audio/wav"
         />
         <source
-          src={normalizedUrl}
+          src={currentUrl}
           type="audio/ogg"
         />
         Your browser does not support audio.
@@ -86,7 +90,7 @@ const AudioPlayer = ({ fileUrl, fileName }: { fileUrl: string; fileName: string 
       )}
     </div>
   );
-};
+});
 
 // Encrypted Message Content Component
 interface EncryptedMessageProps {
@@ -162,15 +166,18 @@ const EncryptedFileContent: React.FC<EncryptedFileProps> = ({
   const decryptingRef = React.useRef<boolean>(false);
   const lastCacheKeyRef = React.useRef<string>('');
 
+  // Always check top level cache first directly without useEffect
+  const cacheKey = `${message._id}_${attachment.fileUrl}`;
+  const cachedUrl = decryptedFiles[cacheKey];
+
   React.useEffect(() => {
     let isMounted = true;
-    const cacheKey = `${message._id}_${attachment.fileUrl}`;
 
     if (message.isEncrypted) {
       // Check cache first
-      if (decryptedFiles[cacheKey]) {
-        if (fileUrl !== decryptedFiles[cacheKey]) {
-          setFileUrl(decryptedFiles[cacheKey]);
+      if (cachedUrl) {
+        if (fileUrl !== cachedUrl) {
+          setFileUrl(cachedUrl);
           setHasError(false);
         }
         setIsLoading(false);
