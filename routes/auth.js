@@ -12,8 +12,8 @@ const router = express.Router();
 // 1. Áp dụng Rate Limiter cho các API Auth (Chống Spam / Brute-force)
 // Giới hạn 5 requests mỗi 15 phút cho cùng 1 IP
 const otpLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 5, 
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: { message: 'Bạn đã yêu cầu quá nhiều mã OTP. Vui lòng thử lại sau 15 phút.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -215,7 +215,7 @@ router.post('/register', authLimiter, async (req, res) => {
 });
 
 // Verify OTP
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', otpLimiter, async (req, res) => {
   try {
     const { userId, otpCode } = req.body;
 
@@ -381,7 +381,7 @@ router.post('/login', authLimiter, async (req, res) => {
 });
 
 // Verify login OTP
-router.post('/verify-login', async (req, res) => {
+router.post('/verify-login', otpLimiter, async (req, res) => {
   try {
     const { userId, otpCode } = req.body;
 
