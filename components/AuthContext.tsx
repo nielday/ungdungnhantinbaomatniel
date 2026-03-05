@@ -35,41 +35,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if user is logged in
     const token = localStorage.getItem('token');
-    console.log('AuthContext - Token from localStorage:', token ? 'Present' : 'Missing');
-    
     if (token) {
       // Verify token and get user data
-      console.log('AuthContext - Verifying token...');
       fetch(`${API_BASE_URL}/users/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      .then(res => {
-        console.log('AuthContext - Profile response status:', res.status);
-        return res.json();
-      })
-      .then(data => {
-        console.log('AuthContext - Profile data:', data);
-        if (data._id) {
-          setUser({
-            id: data._id,
-            phoneNumber: data.phoneNumber,
-            email: data.email,
-            fullName: data.fullName,
-            age: data.age,
-            avatar: data.avatar,
-            isVerified: data.isVerified
-          });
-        }
-      })
-      .catch((error) => {
-        console.error('AuthContext - Profile error:', error);
-        localStorage.removeItem('token');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+        .then(res => {
+          return res.json();
+        })
+        .then(data => {
+          if (data._id) {
+            setUser({
+              id: data._id,
+              phoneNumber: data.phoneNumber,
+              email: data.email,
+              fullName: data.fullName,
+              age: data.age,
+              avatar: data.avatar,
+              isVerified: data.isVerified
+            });
+          }
+        })
+        .catch((error) => {
+          console.error('AuthContext - Profile error:', error);
+          localStorage.removeItem('token');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     } else {
       setLoading(false);
     }
@@ -168,7 +163,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = (updatedUser: User) => {
     try {
-      console.log('AuthContext - Updating user:', updatedUser);
       setUser(updatedUser);
     } catch (error) {
       console.error('AuthContext - Update user error:', error);
@@ -181,16 +175,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      verifyLogin, 
-      register, 
-      verifyRegister, 
-      resendOtp, 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      verifyLogin,
+      register,
+      verifyRegister,
+      resendOtp,
       updateUser,
-      logout, 
-      loading 
+      logout,
+      loading
     }}>
       {children}
     </AuthContext.Provider>

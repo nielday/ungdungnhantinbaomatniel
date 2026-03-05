@@ -48,10 +48,7 @@ export default function ChatApp() {
   // Handle user update with error handling
   const handleUserUpdate = (updatedUser: any) => {
     try {
-      console.log('ChatApp - Handling user update:', updatedUser);
-      console.log('ChatApp - Current user before update:', user);
       updateUser(updatedUser);
-      console.log('ChatApp - User update completed');
     } catch (error) {
       console.error('ChatApp - User update error:', error);
     }
@@ -59,7 +56,6 @@ export default function ChatApp() {
 
   // Add error boundary for rendering
   if (!user) {
-    console.log('ChatApp - No user found, showing loading');
     return (
       <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -92,7 +88,6 @@ export default function ChatApp() {
     if (!socket) return;
 
     const handleGroupInfoUpdated = (data: any) => {
-      console.log('Received group-info-updated event:', data);
       if (data.group) {
         handleGroupUpdated(data.group);
       }
@@ -169,11 +164,7 @@ export default function ChatApp() {
 
   const fetchConversations = async () => {
     try {
-      console.log('ChatApp - fetchConversations called, user:', user);
       const token = localStorage.getItem('token');
-      console.log('Fetching conversations...');
-      console.log('ChatApp - Token for conversations:', token ? 'Present' : 'Missing');
-      console.log('ChatApp - Token value:', token);
 
       if (!token) {
         console.error('ChatApp - No token found, cannot fetch conversations');
@@ -201,15 +192,11 @@ export default function ChatApp() {
         })
       ]);
 
-      console.log('Conversations response status:', conversationsResponse.status);
-      console.log('Groups response status:', groupsResponse.status);
-
       let allConversations: Conversation[] = [];
 
       // Fetch private conversations
       if (conversationsResponse.ok) {
         const conversationsData = await conversationsResponse.json();
-        console.log('Conversations data:', conversationsData);
         allConversations = [...allConversations, ...conversationsData];
       } else {
         console.error('Conversations error:', await conversationsResponse.json());
@@ -218,7 +205,6 @@ export default function ChatApp() {
       // Fetch groups
       if (groupsResponse.ok) {
         const groupsData = await groupsResponse.json();
-        console.log('Groups data:', groupsData);
         // Transform groups to conversation format
         const transformedGroups = groupsData.map((group: any) => ({
           _id: group._id,
@@ -235,7 +221,6 @@ export default function ChatApp() {
         console.error('Groups error:', await groupsResponse.json());
       }
 
-      console.log('All conversations:', allConversations);
       setConversations(allConversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -263,7 +248,6 @@ export default function ChatApp() {
   };
 
   const handleGroupUpdated = (updatedGroup: any) => {
-    console.log('ChatApp - handleGroupUpdated called with:', updatedGroup);
 
     // Transform the updated group to match Conversation format
     const transformedGroup: Conversation = {
@@ -278,24 +262,17 @@ export default function ChatApp() {
       createdBy: updatedGroup.createdBy
     };
 
-    console.log('ChatApp - Members data in transformed group:', transformedGroup.participants);
-
-    console.log('ChatApp - Transformed group:', transformedGroup);
-
     setConversations(prev => {
       const updated = prev.map(conv => {
         if (conv._id === transformedGroup._id) {
-          console.log('ChatApp - Updating conversation:', conv._id, 'with:', transformedGroup);
           return transformedGroup;
         }
         return conv;
       });
-      console.log('ChatApp - Updated conversations:', updated);
       return updated;
     });
 
     if (activeConversation?._id === transformedGroup._id) {
-      console.log('ChatApp - Updating active conversation with:', transformedGroup);
       setActiveConversation(transformedGroup);
     }
   };

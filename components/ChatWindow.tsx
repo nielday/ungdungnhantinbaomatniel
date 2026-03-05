@@ -350,7 +350,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       // Validate key by trying to import it
       await encryption.importPrivateKey(rawPrivateKey);
-      console.log('✅ Private key unlocked successfully');
 
       // Success! Store the unlocked key
       setUnlockedPrivateKey(rawPrivateKey);
@@ -740,7 +739,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (!myKeysData.keySalt) {
           realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
         } else {
-          console.log('🖼️ File decrypt: need password unlock');
           setShowPasswordPrompt(true);
           return null;
         }
@@ -758,14 +756,12 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       // ===== STEP 3: NOW fetch the encrypted file =====
       const normalizedUrl = normalizeFileUrlHelper(fileUrl);
-      console.log('🖼️ Fetching encrypted file from:', normalizedUrl);
       const fileResponse = await fetch(normalizedUrl);
       if (!fileResponse.ok) {
         console.error('File decrypt: failed to fetch file, status:', fileResponse.status);
         throw new Error(`Failed to fetch encrypted file: ${fileResponse.status}`);
       }
       const encryptedBuffer = await fileResponse.arrayBuffer();
-      console.log('🖼️ Encrypted file size:', encryptedBuffer.byteLength, 'bytes');
 
       // ===== STEP 4: Decrypt =====
       const decryptedBuffer = await encryption.decryptFile(
@@ -782,7 +778,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       const blob = new Blob([decryptedBuffer], { type: determinedMimeType || 'application/octet-stream' });
       const objectUrl = URL.createObjectURL(blob);
-      console.log('🖼️ File decrypted successfully:', message._id);
 
       // ===== STEP 6: Cache =====
       setDecryptedFiles(prev => ({ ...prev, [cacheKey]: objectUrl }));
