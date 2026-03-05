@@ -30,7 +30,9 @@ const io = socketIo(server, {
   }
 });
 
-// Middleware
+// Middleware cấu hình Trust Proxy dể Rate Limit hoạt động đúng sau lớp Nginx/Railway/Vercel
+app.set('trust proxy', 1);
+
 // Middleware cấu hình bảo mật HTTP Headers (Helmet)
 app.use(helmet({
   // Tùy chỉnh helmet để tương thích với CORS (ví dụ socket.io iframe/ngrok)

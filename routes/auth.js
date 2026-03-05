@@ -23,7 +23,18 @@ const otpLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: { message: 'Quá nhiều yêu cầu đăng nhập/đăng ký. Vui lòng thử lại sau.' }
+  message: { message: 'Quá nhiều yêu cầu đăng nhập/đăng ký. Vui lòng thử lại sau.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Giới hạn thao tác nhập OTP sai (chống brute force đoán mã)
+const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // Khóa mồm 15 phút nếu điền sai 3 lần
+  max: 5, // Mỗi IP chỉ được 5 Mạng / 15p
+  message: { message: 'Bạn đã nhập sai mã OTP quá nhiều lần. Vui lòng thử lại sau 15 phút.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 
@@ -215,7 +226,7 @@ router.post('/register', authLimiter, async (req, res) => {
 });
 
 // Verify OTP
-router.post('/verify-otp', otpLimiter, async (req, res) => {
+router.post('/verify-otp', verifyLimiter, async (req, res) => {
   try {
     const { userId, otpCode } = req.body;
 
@@ -381,7 +392,7 @@ router.post('/login', authLimiter, async (req, res) => {
 });
 
 // Verify login OTP
-router.post('/verify-login', otpLimiter, async (req, res) => {
+router.post('/verify-login', verifyLimiter, async (req, res) => {
   try {
     const { userId, otpCode } = req.body;
 
