@@ -22,7 +22,7 @@ const upload = multer({
       return cb(null, true);
     }
 
-    const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|ogg|webm|mp4|pdf|doc|docx|txt/;
+    const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|ogg|webm|mp4|m4a|pdf|doc|docx|txt/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
