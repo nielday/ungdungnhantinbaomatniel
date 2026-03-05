@@ -1340,79 +1340,88 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header - Hidden on mobile as it's handled in ChatApp */}
-      {!isMobile && (
-        <div className="p-4 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
-                {otherParticipant?.avatar ? (
-                  <img
-                    src={otherParticipant.avatar.includes('backblazeb2.com') || otherParticipant.avatar.includes('backblaze.com')
-                      ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(otherParticipant.avatar)}`
-                      : otherParticipant.avatar}
-                    alt={otherParticipant.fullName}
-                    className="w-10 h-10 rounded-full object-cover"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                ) : (
-                  <span className="text-white font-medium">
-                    {otherParticipant?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                  </span>
-                )}
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-800">
-                  {otherParticipant?.fullName}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {conversation.type === 'group'
-                    ? `${conversation.participants?.length || 0} ${t('chat.members')}`
-                    : t('chat.online')
-                  }
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {/* Encryption Toggle Button */}
+    <div className="flex flex-col h-full relative">
+      {/* Header - Always show for access to E2EE toggle */}
+      <div className="p-3 lg:p-4 border-b border-gray-200 bg-white z-10 sticky top-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 lg:space-x-3">
+            {/* Nút Quay lại (Chỉ hiện trên Mobile) */}
+            {isMobile && (
               <button
-                onClick={handleToggleEncryption}
-                disabled={isTogglingEncryption}
-                className={`p-2 rounded-lg transition-colors flex items-center space-x-1 ${encryptionMode === 'e2ee'
-                  ? 'bg-green-100 hover:bg-green-200 text-green-600'
-                  : 'hover:bg-gray-100 text-gray-500'
-                  }`}
-                title={encryptionMode === 'e2ee' ? t('encryption.e2eeOn') : t('encryption.e2eeOff')}
+                onClick={() => window.location.reload()}
+                className="p-1.5 -ml-1 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Quay lại danh sách"
               >
-                {encryptionMode === 'e2ee' ? (
-                  <Lock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
-                ) : (
-                  <Unlock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
-                )}
+                <ArrowLeft className="w-5 h-5" />
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Phone className="w-5 h-5 text-gray-600" />
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Video className="w-5 h-5 text-gray-600" />
-              </button>
-              {conversation.type === 'group' && onShowGroupManagement && (
-                <button
-                  onClick={onShowGroupManagement}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title={t('group.manageGroup')}
-                >
-                  <Users className="w-5 h-5 text-gray-600" />
-                </button>
+            )}
+
+            <div className="w-9 h-9 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+              {otherParticipant?.avatar ? (
+                <img
+                  src={otherParticipant.avatar.includes('backblazeb2.com') || otherParticipant.avatar.includes('backblaze.com')
+                    ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(otherParticipant.avatar)}`
+                    : otherParticipant.avatar}
+                  alt={otherParticipant.fullName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : (
+                <span className="text-white font-medium text-sm lg:text-base">
+                  {otherParticipant?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                </span>
               )}
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <MoreVertical className="w-5 h-5 text-gray-600" />
-              </button>
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-medium text-gray-800 text-sm lg:text-base truncate">
+                {otherParticipant?.fullName}
+              </h3>
+              <p className="text-xs text-gray-500 truncate">
+                {conversation.type === 'group'
+                  ? `${conversation.participants?.length || 0} ${t('chat.members')}`
+                  : t('chat.online')
+                }
+              </p>
             </div>
           </div>
+          <div className="flex items-center space-x-2">
+            {/* Encryption Toggle Button */}
+            <button
+              onClick={handleToggleEncryption}
+              disabled={isTogglingEncryption}
+              className={`p-2 rounded-lg transition-colors flex items-center space-x-1 ${encryptionMode === 'e2ee'
+                ? 'bg-green-100 hover:bg-green-200 text-green-600'
+                : 'hover:bg-gray-100 text-gray-500'
+                }`}
+              title={encryptionMode === 'e2ee' ? t('encryption.e2eeOn') : t('encryption.e2eeOff')}
+            >
+              {encryptionMode === 'e2ee' ? (
+                <Lock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
+              ) : (
+                <Unlock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
+              )}
+            </button>
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <Phone className="w-5 h-5 text-gray-600" />
+            </button>
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <Video className="w-5 h-5 text-gray-600" />
+            </button>
+            {conversation.type === 'group' && onShowGroupManagement && (
+              <button
+                onClick={onShowGroupManagement}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title={t('group.manageGroup')}
+              >
+                <Users className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <MoreVertical className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
