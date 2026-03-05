@@ -94,12 +94,14 @@ interface EncryptedMessageProps {
   };
   decryptedMessages: Record<string, string>;
   decryptMessageContent: (message: any) => Promise<string>;
+  decryptVersion?: number;
 }
 
 const EncryptedMessageContent: React.FC<EncryptedMessageProps> = ({
   message,
   decryptedMessages,
-  decryptMessageContent
+  decryptMessageContent,
+  decryptVersion = 0
 }) => {
   const [displayContent, setDisplayContent] = React.useState<string>(
     message.isEncrypted ? '🔒 Đang giải mã...' : message.content
@@ -126,7 +128,7 @@ const EncryptedMessageContent: React.FC<EncryptedMessageProps> = ({
     } else {
       setDisplayContent(message.content);
     }
-  }, [message._id, decryptedMessages[message._id]]);
+  }, [message._id, decryptedMessages[message._id], decryptVersion]);
 
   return <span>{displayContent}</span>;
 };
@@ -138,6 +140,7 @@ interface EncryptedFileProps {
   decryptedFiles: Record<string, string>;
   decryptFileContent: (message: Message, fileUrl: string, mimeType: string) => Promise<string | null>;
   renderComponent: (url: string, isLoading: boolean, hasError: boolean) => React.ReactNode;
+  decryptVersion?: number;
 }
 
 const EncryptedFileContent: React.FC<EncryptedFileProps> = ({
@@ -145,7 +148,8 @@ const EncryptedFileContent: React.FC<EncryptedFileProps> = ({
   attachment,
   decryptedFiles,
   decryptFileContent,
-  renderComponent
+  renderComponent,
+  decryptVersion = 0
 }) => {
   const [fileUrl, setFileUrl] = React.useState<string>('');
   const [isLoading, setIsLoading] = React.useState<boolean>(message.isEncrypted || false);
@@ -204,7 +208,7 @@ const EncryptedFileContent: React.FC<EncryptedFileProps> = ({
     }
 
     return () => { isMounted = false; };
-  }, [message._id, attachment.fileUrl, decryptedFiles[`${message._id}_${attachment.fileUrl}`]]);
+  }, [message._id, attachment.fileUrl, decryptedFiles[`${message._id}_${attachment.fileUrl}`], decryptVersion]);
 
   return <>{renderComponent(fileUrl, isLoading, hasError)}</>;
 };
@@ -297,6 +301,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [isTogglingEncryption, setIsTogglingEncryption] = useState(false);
   const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
   const [decryptedFiles, setDecryptedFiles] = useState<Record<string, string>>({}); // Add state for decrypted files
+  const [decryptVersion, setDecryptVersion] = useState(0);
 
   // E2EE Password Key store
   const [unlockedPrivateKey, setUnlockedPrivateKey] = useState<string | null>(null);
@@ -356,6 +361,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       // Clear cached decrypted content and re-fetch messages to force re-decrypt
       setDecryptedMessages({});
       setDecryptedFiles({});
+      setDecryptVersion(v => v + 1);
 
       // Force re-fetch messages to trigger re-decryption with the new key
       setTimeout(() => {
@@ -1461,6 +1467,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                         message={message}
                         decryptedMessages={decryptedMessages}
                         decryptMessageContent={decryptMessageContent}
+                        decryptVersion={decryptVersion}
                       />
                     </div>
                   )}
@@ -1475,6 +1482,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                           attachment={attachment}
                           decryptedFiles={decryptedFiles}
                           decryptFileContent={decryptFileContent}
+                          decryptVersion={decryptVersion}
                           renderComponent={(url, isLoading, hasError) => {
                             if (isLoading) return <div className="w-32 h-32 bg-gray-200 animate-pulse rounded flex items-center justify-center"><Lock className="w-6 h-6 text-gray-400" /></div>;
                             if (hasError || !url) return <div className="p-2 bg-red-100 text-red-600 rounded text-xs">{t('encryption.decryptFailed')}</div>;
