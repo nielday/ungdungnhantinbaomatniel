@@ -171,7 +171,7 @@ export default function ChatList({
       return t('chat.messageDeleted');
     }
     if (message.isEncrypted) {
-      return '🔒 ' + t('chat.encryptedMessage');
+      return '🔒 ' + t('encryption.encryptedMessage');
     }
     if (message.messageType === 'text') {
       return message.content;

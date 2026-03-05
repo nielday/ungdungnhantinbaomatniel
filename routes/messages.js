@@ -17,11 +17,16 @@ const upload = multer({
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 // 10MB default
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|mp4|pdf|doc|docx|txt/;
+    // Allow encrypted E2EE files (application/octet-stream with encrypted_ prefix)
+    if (file.mimetype === 'application/octet-stream' && file.originalname.startsWith('encrypted_')) {
+      return cb(null, true);
+    }
+
+    const allowedTypes = /jpeg|jpg|png|gif|mp3|wav|ogg|webm|mp4|pdf|doc|docx|txt/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
-    if (mimetype && extname) {
+    if (mimetype || extname) {
       return cb(null, true);
     } else {
       cb(new Error('Loại file không được hỗ trợ'));
