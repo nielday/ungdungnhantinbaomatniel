@@ -309,6 +309,15 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [decryptPassword, setDecryptPassword] = useState('');
   const [decryptError, setDecryptError] = useState('');
 
+  // Tự động ẩn/hiện form nhập mật khẩu theo chế độ mã hóa
+  React.useEffect(() => {
+    if (encryptionMode === 'e2ee' && !unlockedPrivateKey) {
+      setShowPasswordPrompt(true);
+    } else {
+      setShowPasswordPrompt(false);
+    }
+  }, [encryptionMode, unlockedPrivateKey]);
+
   // Hàm mở khóa Private Key bằng Password
   const handleUnlockKeys = async () => {
     if (!decryptPassword) return;
@@ -638,8 +647,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (!myKeysData.keySalt) {
           realPrivateKeyToImport = myKeysData.encryptedPrivateKey; // It's actually raw
         } else {
-          // It is properly encrypted, we need password
-          setShowPasswordPrompt(true);
+          // It is properly encrypted, we need password (don't auto-popup anymore to prevent looping/annoying prompt)
           return `🔒 Yêu cầu mật khẩu giải mã...`; // Trả về thông báo ảo đợi User nhập pass
         }
       }
@@ -739,7 +747,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (!myKeysData.keySalt) {
           realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
         } else {
-          setShowPasswordPrompt(true);
+          // Don't auto-popup password prompt for files either
           return null;
         }
       }
@@ -1679,8 +1687,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Unlock E2EE Password Prompt */}
-      {showPasswordPrompt && (
+      {/* Unlock E2EE Password Prompt (chỉ khi chưa mở khóa) */}
+      {showPasswordPrompt && !unlockedPrivateKey && (
         <div className="p-4 bg-blue-50 dark:bg-gray-800 border-t border-blue-200 dark:border-blue-900">
           <div className="flex items-center mb-2">
             <Lock className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
