@@ -37,16 +37,15 @@ const upload = multer({
 router.get('/', async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log('Getting groups for user:', userId);
 
     const groups = await Group.find({
       'members.user': userId,
       isActive: true
     })
-    .populate('members.user', 'fullName avatar phoneNumber')
-    .populate('createdBy', 'fullName avatar phoneNumber')
-    .populate('lastMessage')
-    .sort({ lastMessageAt: -1 });
+      .populate('members.user', 'fullName avatar phoneNumber')
+      .populate('createdBy', 'fullName avatar phoneNumber')
+      .populate('lastMessage')
+      .sort({ lastMessageAt: -1 });
 
     // Transform groups to include full member information
     const transformedGroups = groups.map(group => {
@@ -61,7 +60,6 @@ router.get('/', async (req, res) => {
       return groupObj;
     });
 
-    console.log('Found groups:', transformedGroups.length);
     res.json(transformedGroups);
   } catch (error) {
     console.error('Get groups error:', error);
@@ -140,8 +138,8 @@ router.get('/:id', async (req, res) => {
       'members.user': userId,
       isActive: true
     })
-    .populate('members.user', 'fullName avatar phoneNumber')
-    .populate('createdBy', 'fullName avatar phoneNumber');
+      .populate('members.user', 'fullName avatar phoneNumber')
+      .populate('createdBy', 'fullName avatar phoneNumber');
 
     if (!group) {
       return res.status(404).json({
@@ -205,7 +203,7 @@ router.put('/:id', async (req, res) => {
     }));
 
     res.json(groupObj);
-    
+
     // Emit socket event to notify all group members
     try {
       const io = getSocketIO();
@@ -444,7 +442,7 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
       }));
 
       res.json(groupObj);
-      
+
       // Emit socket event to notify all group members
       try {
         const io = getSocketIO();

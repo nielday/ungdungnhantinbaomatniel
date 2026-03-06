@@ -7,7 +7,6 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log('Getting conversations for user:', userId);
 
     const conversations = await Conversation.find({
       participants: userId,
@@ -17,7 +16,6 @@ router.get('/', async (req, res) => {
       .populate('lastMessage')
       .sort({ lastMessageAt: -1 });
 
-    console.log('Found conversations:', conversations.length);
     res.json(conversations);
   } catch (error) {
     console.error('Get conversations error:', error);
