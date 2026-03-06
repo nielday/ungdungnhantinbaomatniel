@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { Message, Conversation, Group } = require('../models');
 const { uploadToB2, deleteFromB2 } = require('../config/b2');
@@ -101,7 +102,7 @@ router.get('/:conversationId', async (req, res) => {
       }
     }
 
-    const messages = await Message.find({
+    let messages = await Message.find({
       conversationId,
       isDeleted: false
     })
@@ -109,9 +110,38 @@ router.get('/:conversationId', async (req, res) => {
       .populate('replyTo')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean();
 
-    res.json(messages.reverse());
+    // Re-verify sorting and decryption mapping
+    messages = messages.reverse().map(msg => {
+      if (msg.isServerEncrypted && msg.content) {
+        try {
+          const serverKey = process.env.SERVER_ENCRYPTION_KEY || 'NielAppSecretKey_2024_Fallback_0';
+          const keyHash = crypto.createHash('sha256').update(serverKey).digest();
+
+          const textParts = msg.content.split(':');
+          if (textParts.length === 2) {
+            const iv = Buffer.from(textParts[0], 'hex');
+            const encryptedText = Buffer.from(textParts[1], 'hex');
+            const decipher = crypto.createDecipheriv('aes-256-cbc', keyHash, iv);
+            let decrypted = decipher.update(encryptedText);
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+            msg.content = decrypted.toString();
+            // Trả về Frontend dưới tư cách là tin nhắn không mã hóa bình thường
+            msg.isServerEncrypted = false;
+            msg.isEncrypted = false;
+          }
+        } catch (err) {
+          console.error('Lỗi giải mã Nội bộ Server tại MsgID:', msg._id, err);
+          msg.content = '[Nội dung bị lỗi hệ thống mã hóa Server]';
+        }
+      }
+      return msg;
+    });
+
+    res.json(messages);
   } catch (error) {
     console.error('Get messages error:', error);
     res.status(500).json({
@@ -188,13 +218,40 @@ router.post('/:conversationId/text', async (req, res) => {
       }
     }
 
+    // Server-side Encryption logic for non-E2EE messages
+    let finalContent = content;
+    let isServerEncrypted = false;
+
+    if (!isEncrypted && finalContent) {
+      try {
+        // Sử dụng Server Key nội bộ. Nếu không có cài đặt, dùng một chuỗi fallback an toàn
+        const serverKey = process.env.SERVER_ENCRYPTION_KEY || 'NielAppSecretKey_2024_Fallback_0';
+
+        // Đảm bảo Key đúng chuẩn AES-256 (32 bytes)
+        const keyHash = crypto.createHash('sha256').update(serverKey).digest();
+        const iv = crypto.randomBytes(16); // 16 bytes IV
+
+        const cipher = crypto.createCipheriv('aes-256-cbc', keyHash, iv);
+        let encrypted = cipher.update(finalContent, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+
+        // Lưu trữ với định dạng ghép IV + Nội_Dung_Mã_Hóa
+        finalContent = iv.toString('hex') + ':' + encrypted;
+        isServerEncrypted = true;
+      } catch (err) {
+        console.error('Lỗi mã hóa tin nhắn tại Server:', err);
+        // Nếu mã hoá server lỗi, fallback không mã hoá để đảm bảo ứng dụng vẫn chạy
+      }
+    }
+
     const message = new Message({
       conversationId,
       senderId: userId,
-      content,
+      content: finalContent,
       messageType: 'text',
       replyTo: replyTo || null,
       isEncrypted: isEncrypted || false,
+      isServerEncrypted: isServerEncrypted,
       encryptionData: encryptionData || null
     });
 

@@ -80,6 +80,10 @@ const MessageSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isServerEncrypted: {
+    type: Boolean,
+    default: false
+  },
   encryptionData: {
     type: mongoose.Schema.Types.Mixed,
     default: null
