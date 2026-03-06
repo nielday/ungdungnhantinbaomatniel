@@ -115,17 +115,15 @@ export default function GroupManagementModal({
 
     try {
       setSearchLoading(true);
-      const token = localStorage.getItem('token');
       console.log('GroupManagementModal - Searching users with query:', searchQuery);
-      console.log('GroupManagementModal - Token:', token ? 'Present' : 'Missing');
 
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?q=${encodeURIComponent(searchQuery)}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include'
         }
       );
 
@@ -154,15 +152,14 @@ export default function GroupManagementModal({
   const handleAddMember = async (userId: string) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/members`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({ memberId: userId })
         }
       );
@@ -192,14 +189,11 @@ export default function GroupManagementModal({
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/members/${userId}`,
         {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         }
       );
 
@@ -221,15 +215,14 @@ export default function GroupManagementModal({
   const handleUpdateGroup = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}`,
         {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({
             name: groupName.trim(),
             description: groupDescription.trim()
@@ -259,7 +252,6 @@ export default function GroupManagementModal({
   const handleAvatarUpload = async (file: File) => {
     try {
       setIsUploadingAvatar(true);
-      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('avatar', file);
 
@@ -267,9 +259,7 @@ export default function GroupManagementModal({
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/avatar`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
+          credentials: 'include',
           body: formData
         }
       );

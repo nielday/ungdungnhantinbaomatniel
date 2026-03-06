@@ -2,8 +2,14 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const authenticateToken = async (req, res, next) => {
+  // Lấy token từ header Authorization (cách cũ) HOẶC từ HttpOnly cookie (cách mới)
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // Nếu không có token ở header, kiểm tra trong cookie
+  if (!token && req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
 
   if (!token) {
     return res.status(401).json({ message: 'Access token required' });

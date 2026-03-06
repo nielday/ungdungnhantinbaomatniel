@@ -33,41 +33,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Verify token and get user data
-      fetch(`${API_BASE_URL}/users/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+    // Check if user is logged in by calling /auth/me (will automatically send HttpOnly cookie)
+    fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Not logged in');
+        return res.json();
+      })
+      .then(data => {
+        if (data.user) {
+          setUser(data.user);
         }
       })
-        .then(res => {
-          return res.json();
-        })
-        .then(data => {
-          if (data._id) {
-            setUser({
-              id: data._id,
-              phoneNumber: data.phoneNumber,
-              email: data.email,
-              fullName: data.fullName,
-              age: data.age,
-              avatar: data.avatar,
-              isVerified: data.isVerified
-            });
-          }
-        })
-        .catch((error) => {
-          console.error('AuthContext - Profile error:', error);
-          localStorage.removeItem('token');
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
+      .catch((error) => {
+        console.log('AuthContext - User not logged in or session expired');
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const login = async (phoneNumber: string) => {
@@ -76,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ phoneNumber }),
     });
 
@@ -95,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ userId, otpCode }),
     });
 
@@ -104,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    localStorage.setItem('token', data.token);
     setUser(data.user);
   };
 
@@ -114,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ phoneNumber, email, fullName, age }),
     });
 
@@ -133,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ userId, otpCode }),
     });
 
@@ -142,7 +131,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    localStorage.setItem('token', data.token);
     setUser(data.user);
   };
 
@@ -152,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ userId }),
     });
 
@@ -169,9 +158,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (

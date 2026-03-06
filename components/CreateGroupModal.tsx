@@ -44,17 +44,15 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
 
     try {
       setSearchLoading(true);
-      const token = localStorage.getItem('token');
       console.log('CreateGroupModal - Searching users with query:', searchQuery);
-      console.log('CreateGroupModal - Token:', token ? 'Present' : 'Missing');
 
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?q=${encodeURIComponent(searchQuery)}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include'
         }
       );
 
@@ -109,15 +107,14 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(
         'https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups',
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({
             name: groupName.trim(),
             description: groupDescription.trim(),

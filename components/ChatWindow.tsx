@@ -340,10 +340,9 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     if (!decryptPassword) return;
     setDecryptError('');
     try {
-      const token = localStorage.getItem('token');
       const myKeysResponse = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { credentials: 'include' }
       );
       if (!myKeysResponse.ok) {
         setDecryptError('Không thể tải khóa mã hóa từ server.');
@@ -402,10 +401,9 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const getRealPrivateKey = async (): Promise<string | null> => {
     if (unlockedPrivateKey) return unlockedPrivateKey;
 
-    const token = localStorage.getItem('token');
     const myKeysResponse = await fetch(
       `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-      { headers: { 'Authorization': `Bearer ${token}` } }
+      { credentials: 'include' }
     );
     if (!myKeysResponse.ok) return null;
     const myKeysData = await myKeysResponse.json();
@@ -457,6 +455,22 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+
+  // Clear typing indicator
+  const clearTypingIndicator = () => {
+    if (socket && currentUser?.id) {
+      socket.emit('typing', {
+        conversationId: conversation._id,
+        userId: currentUser.id,
+        isTyping: false
+      });
+    }
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  };
 
   // Clear typing indicator when conversation changes
   useEffect(() => {
@@ -511,13 +525,10 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   const fetchMessages = async () => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}`,
         {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         }
       );
 
@@ -535,7 +546,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const handleToggleEncryption = async () => {
     setIsTogglingEncryption(true);
     try {
-      const token = localStorage.getItem('token');
       const newMode = encryptionMode === 'e2ee' ? 'none' : 'e2ee';
 
       // If enabling encryption, check if other user has a key
@@ -544,7 +554,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (otherUser?._id) {
           const keyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
+            { credentials: 'include' }
           );
 
           if (keyResponse.ok) {
@@ -563,9 +573,9 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({ encryptionMode: newMode })
         }
       );
@@ -597,7 +607,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     }
 
     try {
-      const token = localStorage.getItem('token');
       console.log('🔓 Decrypting message:', message._id, 'hasUnlockedKey:', !!unlockedPrivateKey);
 
       // Determine which public key to use for ECDH
@@ -616,7 +625,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
         const recipientKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          { credentials: 'include' }
         );
 
         if (!recipientKeyResponse.ok) {
@@ -629,7 +638,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         // I received this message - need sender's public key
         const senderKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          { credentials: 'include' }
         );
 
         if (!senderKeyResponse.ok) {
@@ -643,7 +652,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       // Get my private key
       const myKeysResponse = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { credentials: 'include' }
       );
 
       if (!myKeysResponse.ok) {
@@ -708,7 +717,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     }
 
     try {
-      const token = localStorage.getItem('token');
       console.log('🖼️ Decrypting file:', message._id, 'hasUnlockedKey:', !!unlockedPrivateKey);
 
       // ===== STEP 1: Check key FIRST before fetching file =====
@@ -723,7 +731,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         }
         const recipientKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          { credentials: 'include' }
         );
         if (!recipientKeyResponse.ok) {
           console.error('File decrypt: failed to get recipient public key');
@@ -733,7 +741,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       } else {
         const senderKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          { credentials: 'include' }
         );
         if (!senderKeyResponse.ok) {
           console.error('File decrypt: failed to get sender public key');
@@ -748,7 +756,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (!realPrivateKeyToImport) {
         const myKeysResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          { credentials: 'include' }
         );
         if (!myKeysResponse.ok) {
           console.error('File decrypt: failed to get my encryption keys');
@@ -818,7 +826,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     if (!content.trim() && !attachments?.length) return;
 
     try {
-      const token = localStorage.getItem('token');
       let messageContent = content;
       let encryptionData = null;
 
@@ -830,7 +837,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           if (otherUser?._id) {
             const keyResponse = await fetch(
               `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-              { headers: { 'Authorization': `Bearer ${token}` } }
+              { credentials: 'include' }
             );
 
             if (keyResponse.ok) {
@@ -839,7 +846,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 // Get my private key
                 const myKeysResponse = await fetch(
                   `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-                  { headers: { 'Authorization': `Bearer ${token}` } }
+                  { credentials: 'include' }
                 );
 
                 if (myKeysResponse.ok) {
@@ -899,9 +906,9 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({
             content: messageContent,
             replyTo: replyingTo?._id,
@@ -928,20 +935,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     sendMessage(newMessage);
   };
 
-  // Clear typing indicator
-  const clearTypingIndicator = () => {
-    if (socket && currentUser?.id) {
-      socket.emit('typing', {
-        conversationId: conversation._id,
-        userId: currentUser.id,
-        isTyping: false
-      });
-    }
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-  };
+
 
   // Handle typing indicator with debounce
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -977,7 +971,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   const handleFileUpload = async (files: FileList) => {
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
 
       let encryptionData = null;
@@ -989,7 +982,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (otherUser?._id) {
           const keyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
+            { credentials: 'include' }
           );
 
           if (keyResponse.ok) {
@@ -997,7 +990,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             if (keyData.publicKey) {
               const myKeysResponse = await fetch(
                 `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-                { headers: { 'Authorization': `Bearer ${token}` } }
+                { credentials: 'include' }
               );
 
               if (myKeysResponse.ok) {
@@ -1054,9 +1047,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
+          credentials: 'include',
           body: formData
         }
       );
@@ -1073,7 +1064,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   const handleAudioUpload = async (files: FileList) => {
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
 
       let encryptionData = null;
@@ -1083,7 +1073,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (otherUser?._id) {
           const keyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
+            { credentials: 'include' }
           );
 
           if (keyResponse.ok) {
@@ -1091,7 +1081,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             if (keyData.publicKey) {
               const myKeysResponse = await fetch(
                 `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-                { headers: { 'Authorization': `Bearer ${token}` } }
+                { credentials: 'include' }
               );
 
               if (myKeysResponse.ok) {
@@ -1142,9 +1132,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
+          credentials: 'include',
           body: formData
         }
       );
@@ -1162,7 +1150,6 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   // Handle camera capture
   const handleCameraCapture = async (imageBlob: Blob) => {
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
 
       let encryptionData = null;
@@ -1172,7 +1159,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (otherUser?._id) {
           const keyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
+            { credentials: 'include' }
           );
 
           if (keyResponse.ok) {
@@ -1180,7 +1167,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             if (keyData.publicKey) {
               const myKeysResponse = await fetch(
                 `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-                { headers: { 'Authorization': `Bearer ${token}` } }
+                { credentials: 'include' }
               );
 
               if (myKeysResponse.ok) {
@@ -1224,9 +1211,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
+          credentials: 'include',
           body: formData
         }
       );
@@ -1248,15 +1233,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${messageId}`,
         {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include'
         }
       );
 

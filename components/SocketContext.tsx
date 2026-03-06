@@ -21,9 +21,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user && !socket) {
       const newSocket = io(SOCKET_URL, {
-        auth: {
-          token: localStorage.getItem('token')
-        },
+        withCredentials: true,
         transports: ['websocket', 'polling'],
         timeout: 20000,
         forceNew: true

@@ -164,30 +164,24 @@ export default function ChatApp() {
 
   const fetchConversations = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        console.error('ChatApp - No token found, cannot fetch conversations');
-        setLoading(false);
-        return;
-      }
+      // No longer need token from localStorage for fetch requests
 
       // Fetch both private conversations and groups
       const [conversationsResponse, groupsResponse] = await Promise.all([
         fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           cache: 'no-cache'
         }),
         fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           cache: 'no-cache'
         })
       ]);

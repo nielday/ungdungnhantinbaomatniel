@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const { connectDB } = require('./models');
@@ -38,7 +39,17 @@ app.use(helmet({
   // Tùy chỉnh helmet để tương thích với CORS (ví dụ socket.io iframe/ngrok)
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(cors());
+
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://ung-dung-nhan-tin-niel.vercel.app",
+    "https://ung-dung-nhan-tin-niel-qtd1fbt58-phongs-projects-24ded8ab.vercel.app",
+    "https://ung-dung-nhan-tin-niel-5pqtt8twt-phongs-projects-24ded8ab.vercel.app"
+  ],
+  credentials: true
+}));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -187,7 +198,24 @@ app.get('/api/cleanup', async (req, res) => {
 // Socket.io connection handling
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.auth.token;
+    // Lấy token từ HTTP-Only Cookie truyền qua handshake
+    let token = null;
+
+    // Parses cookies from the socket handshake string
+    if (socket.handshake.headers.cookie) {
+      const cookieStr = socket.handshake.headers.cookie;
+      const cookies = cookieStr.split(';').reduce((acc, currentCookie) => {
+        const [name, value] = currentCookie.trim().split('=');
+        acc[name] = value;
+        return acc;
+      }, {});
+      token = cookies['token'];
+    }
+
+    // Fallback cho local testing nếu có
+    if (!token && socket.handshake.auth && socket.handshake.auth.token) {
+      token = socket.handshake.auth.token;
+    }
 
     if (!token) {
       return next(new Error('Authentication error'));

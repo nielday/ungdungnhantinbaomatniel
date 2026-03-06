@@ -317,6 +317,14 @@ router.post('/verify-otp', verifyLimiter, async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Set HttpOnly Cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     // Track login device and IP
     const parser = new UAParser(req.headers['user-agent']);
     const browser = parser.getBrowser().name || 'Unknown Browser';
@@ -359,7 +367,6 @@ router.post('/verify-otp', verifyLimiter, async (req, res) => {
 
     res.json({
       message: 'Xác thực thành công',
-      token,
       user: {
         id: user._id,
         phoneNumber: user.phoneNumber,
@@ -516,6 +523,14 @@ router.post('/verify-login', verifyLimiter, async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Set HttpOnly Cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     // Track login device and IP
     const parser = new UAParser(req.headers['user-agent']);
     const browser = parser.getBrowser().name || 'Unknown Browser';
@@ -556,7 +571,6 @@ router.post('/verify-login', verifyLimiter, async (req, res) => {
 
     res.json({
       message: 'Đăng nhập thành công',
-      token,
       user: {
         id: user._id,
         phoneNumber: user.phoneNumber,
@@ -748,6 +762,35 @@ router.delete('/trusted-devices/:deviceId', authenticateToken, async (req, res) 
     console.error('Delete trusted device error:', error);
     res.status(500).json({ message: 'Lỗi server' });
   }
+});
+
+// Logout (Clear Cookie)
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
+  res.json({ message: 'Đã đăng xuất' });
+});
+
+// Get Current User Info
+router.get('/me', authenticateToken, (req, res) => {
+  const user = req.user;
+  res.json({
+    user: {
+      id: user._id,
+      phoneNumber: user.phoneNumber,
+      email: user.email,
+      fullName: user.fullName,
+      age: user.age,
+      avatar: user.avatar,
+      isVerified: user.isVerified,
+      encryptedPrivateKey: user.encryptedPrivateKey,
+      publicKey: user.publicKey,
+      keySalt: user.keySalt
+    }
+  });
 });
 
 module.exports = { router, sendOTPEmail };
