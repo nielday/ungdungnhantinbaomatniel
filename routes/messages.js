@@ -276,11 +276,19 @@ router.post('/:conversationId/text', async (req, res) => {
 
     // Emit to Socket.io for real-time delivery
     const { io } = require('../server');
-    if (io) {
-      io.to(`conversation-${conversationId}`).emit('new-message', message);
+    const messageResponse = message.toObject();
+
+    // Khôi phục nội dung Text sạch cho Frontend dùng ngay (không cần reload F5 mới dịch được)
+    if (isServerEncrypted) {
+      messageResponse.content = content;
+      messageResponse.isServerEncrypted = false;
     }
 
-    res.status(201).json(message);
+    if (io) {
+      io.to(`conversation-${conversationId}`).emit('new-message', messageResponse);
+    }
+
+    res.status(201).json(messageResponse);
   } catch (error) {
     console.error('Send text message error:', error);
     res.status(500).json({
