@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { X, Search, User, Phone, Mail, Plus } from 'lucide-react';
+import { normalizeFileUrlHelper } from '../lib/fileUtils';
 
 interface User {
   _id: string;
@@ -153,7 +154,7 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
                       <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                         {user.avatar ? (
                           <img
-                            src={user.avatar}
+                            src={normalizeFileUrlHelper(user.avatar)}
                             alt={user.fullName}
                             className="w-10 h-10 rounded-full object-cover"
                           />

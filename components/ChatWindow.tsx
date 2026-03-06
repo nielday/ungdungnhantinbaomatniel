@@ -8,31 +8,7 @@ import SimpleEmojiPicker from './SimpleEmojiPicker';
 import CameraCapture from './CameraCapture';
 import * as encryption from '../lib/encryption';
 
-// Helper function to normalize file URLs (used by AudioPlayer)
-const normalizeFileUrlHelper = (fileUrl: string): string => {
-  if (!fileUrl) return '';
-
-  // Prevent double wrapping
-  if (fileUrl.includes('/files/proxy?fileUrl=')) {
-    return fileUrl;
-  }
-
-  // If it's a Backblaze B2 URL, use the presigned URL proxy
-  if (fileUrl.includes('backblazeb2.com') || fileUrl.includes('backblaze.com')) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
-    return `${apiUrl}/files/proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
-  }
-
-  if (fileUrl.startsWith('http')) {
-    if (fileUrl.includes('railway.app/uploads/')) {
-      const uploadsPath = fileUrl.split('/uploads/')[1];
-      return `/uploads/${uploadsPath}`;
-    }
-    return fileUrl;
-  }
-
-  return fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
-};
+import { normalizeFileUrlHelper } from '../lib/fileUtils';
 
 // Audio Player Component
 const AudioPlayer = React.memo(({ fileUrl, fileName }: { fileUrl: string; fileName: string }) => {
@@ -1348,9 +1324,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             <div className="w-9 h-9 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
               {otherParticipant?.avatar ? (
                 <img
-                  src={otherParticipant.avatar.includes('backblazeb2.com') || otherParticipant.avatar.includes('backblaze.com')
-                    ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(otherParticipant.avatar)}`
-                    : otherParticipant.avatar}
+                  src={normalizeFileUrlHelper(otherParticipant.avatar)}
                   alt={otherParticipant.fullName}
                   className="w-full h-full object-cover"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -1432,7 +1406,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
                 <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                   {message.senderId.avatar ? (
                     <img
-                      src={message.senderId.avatar}
+                      src={normalizeFileUrlHelper(message.senderId.avatar)}
                       alt={message.senderId.fullName}
                       className="w-8 h-8 rounded-full object-cover"
                       onError={(e) => {

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
 import { useTranslations } from 'next-intl';
+import { normalizeFileUrlHelper } from '../lib/fileUtils';
 import { motion } from 'framer-motion';
 import {
   MessageCircle,
@@ -357,11 +358,9 @@ export default function ChatApp() {
           <div className="p-4 border-b border-gray-200 dark:border-neutral-700">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center overflow-hidden">
-                {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://') || user.avatar.startsWith('/')) ? (
                   <img
-                    src={user.avatar.includes('backblazeb2.com') || user.avatar.includes('backblaze.com')
-                      ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(user.avatar)}`
-                      : user.avatar}
+                    src={normalizeFileUrlHelper(user.avatar)}
                     alt={user.fullName}
                     className="w-10 h-10 rounded-full object-cover"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -412,11 +411,9 @@ export default function ChatApp() {
                 className="flex flex-col items-center py-2 px-4"
               >
                 <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center">
-                  {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) ? (
+                  {user?.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://') || user.avatar.startsWith('/')) ? (
                     <img
-                      src={user.avatar.includes('backblazeb2.com') || user.avatar.includes('backblaze.com')
-                        ? `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/files/proxy?fileUrl=${encodeURIComponent(user.avatar)}`
-                        : user.avatar}
+                      src={normalizeFileUrlHelper(user.avatar)}
                       alt={user.fullName}
                       className="w-7 h-7 rounded-full object-cover"
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}

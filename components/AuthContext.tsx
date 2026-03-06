@@ -33,6 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Explicitly clean up old token from localStorage to avoid confusion
+    try {
+      localStorage.removeItem('token');
+    } catch (error) {
+      console.error('Failed to remove old token from local storage', error);
+    }
+
     // Check if user is logged in by calling /auth/me (will automatically send HttpOnly cookie)
     fetch(`${API_BASE_URL}/auth/me`, {
       method: 'GET',

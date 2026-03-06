@@ -13,6 +13,7 @@ import {
   FileText,
   X
 } from 'lucide-react';
+import { normalizeFileUrlHelper } from '../lib/fileUtils';
 
 interface Conversation {
   _id: string;
@@ -343,7 +344,7 @@ export default function ChatList({
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
                       {getConversationAvatar(conversation) ? (
                         <img
-                          src={getConversationAvatar(conversation)}
+                          src={normalizeFileUrlHelper(getConversationAvatar(conversation))}
                           alt={getConversationName(conversation)}
                           className="w-12 h-12 rounded-full object-cover"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
