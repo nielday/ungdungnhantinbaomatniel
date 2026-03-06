@@ -24,6 +24,7 @@ const nextConfig = {
       script-src 'self' 'unsafe-eval' 'unsafe-inline';
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       img-src 'self' blob: data: https://*.backblazeb2.com https://*.googleusercontent.com https://*.facebook.com https://*.licdn.com https://ungdungnhantinbaomatniel-production.up.railway.app;
+      media-src 'self' blob: data: https://*.backblazeb2.com https://ungdungnhantinbaomatniel-production.up.railway.app;
       font-src 'self' data: https://fonts.gstatic.com;
       object-src 'none';
       base-uri 'self';
