@@ -322,7 +322,12 @@ router.post('/verify-otp', verifyLimiter, async (req, res) => {
     const browser = parser.getBrowser().name || 'Unknown Browser';
     const os = parser.getOS().name || 'Unknown OS';
     const deviceStr = `${browser} trên ${os}`;
-    const ipAddr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'Unknown IP';
+
+    // Lấy IP Client thật (nếu qua nhiều Proxy sẽ có dấu phẩy)
+    let rawIp = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'Unknown IP';
+    // Đảm bảo ép kiểu string và tách IP
+    if (Array.isArray(rawIp)) rawIp = rawIp[0];
+    const ipAddr = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : 'Unknown IP';
 
     // Kiểm tra xem IP và Thiết bị có lạ không
     const isKnownDevice = user.loginHistory?.some(h => h.ipAddress === ipAddr && h.browser === browser);
@@ -516,7 +521,12 @@ router.post('/verify-login', verifyLimiter, async (req, res) => {
     const browser = parser.getBrowser().name || 'Unknown Browser';
     const os = parser.getOS().name || 'Unknown OS';
     const deviceStr = `${browser} trên ${os}`;
-    const ipAddr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'Unknown IP';
+
+    // Lấy IP Client thật (nếu qua nhiều Proxy sẽ có dấu phẩy)
+    let rawIp = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || 'Unknown IP';
+    // Đảm bảo ép kiểu string và tách IP
+    if (Array.isArray(rawIp)) rawIp = rawIp[0];
+    const ipAddr = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : 'Unknown IP';
 
     // Kiểm tra xem IP và Thiết bị có lạ không
     const isKnownDevice = user.loginHistory?.some(h => h.ipAddress === ipAddr && h.browser === browser);
