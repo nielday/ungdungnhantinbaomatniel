@@ -25,15 +25,15 @@ Dự án được phân tách thành 2 máy chủ độc lập Frontend và Back
 ```text
 ├── app/                    # Next.js App Router (Layout, Page, i18n locales)
 ├── components/             # Các Component lõi giao diện chức năng Chat
-│   ├── AuthContext.tsx     # Bảo bọc phiên truyền tải Token
-│   ├── SocketContext.tsx   # Bảo bọc phiên Websocket Auth WSS
+│   ├── AuthContext.tsx     # Quản lý phiên đăng nhập bằng HttpOnly Cookie (không dùng localStorage)
+│   ├── SocketContext.tsx   # Bảo bọc phiên Websocket Auth WSS (withCredentials)
 │   ├── ChatApp.tsx         # Giao diện Trang chủ App
 │   ├── ChatWindow.tsx      # Lõi nhắn tin (Nơi chứa logic thuật toán giải mã file/text E2EE)
 │   ├── AuthPage.tsx        # Trang đăng ký / đăng nhập
 │   └── ...
 ├── lib/
-│   ├── cryptoUtils.ts      # (CORE) Vi điều khiển các thuật toán Băm và Sinh Khóa Mật Mã 
-│   └── secureStorage.ts    # Module khóa Localstorage giữ Private Key an toàn
+│   ├── encryption.ts       # (CORE) Vi điều khiển các thuật toán Băm và Sinh Khóa Mật Mã E2EE
+│   └── fileUtils.ts        # Helper chuẩn hóa URL file/ảnh qua Backend Proxy (Backblaze B2)
 ├── next.config.js          # Chứa cấu hình bảo mật Content Security Policy (CSP) siêu cấp
 └── vercel.json             # Deploy cấu hình Vercel
 ```
@@ -42,7 +42,7 @@ Dự án được phân tách thành 2 máy chủ độc lập Frontend và Back
 ```text
 ├── server.js             # Express Server chính yếu, khởi động Socket.io
 ├── middleware/ 
-│   ├── auth.js           # Bộ lọc đánh giá Token JWT
+│   ├── auth.js           # Bộ lọc xác thực JWT (đọc từ HttpOnly Cookie hoặc Header)
 │   └── rateLimiter.js    # Cảnh sát chống chặn XSS, Spam OTP Brute-force
 ├── models/               # Bộ điều khiển Mongoose NoSQL 
 │   ├── User.js           # Chứa lược đồ Khóa Công khai (Public Key)
@@ -73,6 +73,12 @@ Dự án được phân tách thành 2 máy chủ độc lập Frontend và Back
 - Lệnh cấm tự động loại bỏ mọi `iframe` nhúng lạ, cấm Load mọi file ảnh hoặc đoạn Script ngoài vòng Proxy cho phép. 
 - API chặn Rate Limit, chỉ cho 1 IP đánh nhầm mật khẩu X lần / 1 tiếng. 
 - Bcrypt Hash toàn bộ OTP lẫn Master Password nội bộ DB.
+
+### 5. 🍪 Phiên Xác thực HttpOnly Cookie (Chống đánh cắp Token XSS)
+- **Loại bỏ hoàn toàn `localStorage`** để lưu trữ JWT Token xác thực. Token giờ được server gắn vào **HttpOnly Cookie** — JavaScript phía client không thể đọc được (`document.cookie` trả về rỗng cho token).
+- Cookie được cấu hình `Secure`, `SameSite=None` cho phép hoạt động an toàn trên kiến trúc Cross-Origin (Vercel ↔ Railway).
+- Backend tự động đọc token từ cookie thông qua `cookie-parser`, frontend chỉ cần gắn `credentials: 'include'` vào mọi request.
+- Khi người dùng mở ứng dụng, hệ thống tự động dọn sạch mọi token rác cũ còn sót lại trong `localStorage` từ phiên bản trước.
 
 ---
 
@@ -135,12 +141,13 @@ Mở trình duyệt: `http://localhost:3000`
 - [x] Triển khai bảo mật file ảnh (Media File Content)
 - [x] Socket Messaging Real-time
 - [x] Cấu hình CSP + CORS Header Defense
-- [ ] Áp dụng `HttpOnly Cookie` quản lý thay thế Token Storage Session nhạy cảm.
+- [x] Áp dụng `HttpOnly Cookie` quản lý thay thế Token Storage Session nhạy cảm.
+- [x] Chuẩn hóa URL file/ảnh qua Backend Proxy (chống lộ URL Backblaze B2 trực tiếp).
 - [ ] Tích hợp bảo mật Signal Protocol Double Ratchet (Perfect Forward Secrecy).
 - [ ] E2EE Group Chat (Giải bài toán vòng chia khóa phân tán 1-Many).
 - [ ] Tích hợp Audio Call / Video Call (WebRTC Peer-to-Peer Không chạm máy chủ).
 
 ---
 **Nhà Lập Trình Dự Án & Kiến Trúc Sư:** Đào Đức Phong (2025 - 2026)  
-**Phiên bản hiện tại:** 2.0.0 (The E2EE Cloud Security Core)  
+**Phiên bản hiện tại:** 2.1.0 (HttpOnly Cookie & Proxy Security Hardening)  
 **Khóa tài liệu Mở (License):** MIT License (Xem tệp LICENSE)
