@@ -9,6 +9,17 @@ const { uploadToB2, deleteFromB2 } = require('../config/b2');
 
 const router = express.Router();
 
+// Helper: Multer mặc định dùng Latin-1 cho tên file (theo chuẩn multipart).
+// Tên file tiếng Việt (UTF-8) bị decode sai thành ký tự rác.
+// Hàm này chuyển ngược Latin-1 -> UTF-8 để khôi phục tên file gốc.
+const fixUtf8Filename = (name) => {
+  try {
+    return Buffer.from(name, 'latin1').toString('utf8');
+  } catch {
+    return name;
+  }
+};
+
 // Configure multer for file uploads (memory storage for B2)
 const storage = multer.memoryStorage(); // Store in memory instead of disk
 
@@ -351,16 +362,18 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     const attachments = [];
     for (const file of req.files) {
       try {
+        const safeFileName = fixUtf8Filename(file.originalname);
+
         // Upload to B2
         const fileUrl = await uploadToB2(
           file.buffer,
-          file.originalname,
+          safeFileName,
           file.mimetype,
           'messages'
         );
 
         attachments.push({
-          fileName: file.originalname,
+          fileName: safeFileName,
           fileUrl: fileUrl, // B2 public URL
           fileSize: file.size,
           mimeType: file.mimetype

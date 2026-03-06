@@ -7,6 +7,15 @@ const { uploadToB2, deleteFromB2 } = require('../config/b2');
 
 const router = express.Router();
 
+// Helper: Fix Vietnamese filename encoding (multer Latin-1 -> UTF-8)
+const fixUtf8Filename = (name) => {
+  try {
+    return Buffer.from(name, 'latin1').toString('utf8');
+  } catch {
+    return name;
+  }
+};
+
 // Get socket.io instance
 const getSocketIO = () => {
   return require('../server').io;
@@ -418,7 +427,7 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
     try {
       const avatarUrl = await uploadToB2(
         req.file.buffer,
-        req.file.originalname,
+        fixUtf8Filename(req.file.originalname),
         req.file.mimetype,
         'group-avatars'
       );
