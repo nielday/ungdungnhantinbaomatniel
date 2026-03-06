@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from './LanguageSwitcher';
 import * as encryption from '../lib/encryption';
-import JSZip from 'jszip';
+import { BlobWriter, BlobReader, TextReader, ZipWriter, ZipReader } from '@zip.js/zip.js';
 import { saveAs } from 'file-saver';
 
 interface SettingsModalProps {
@@ -545,8 +545,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         throw new Error('Backup integrity check failed. Please try again.');
       }
 
-      // 3. Create ZIP file
-      const zip = new JSZip();
+      // 3. Create password-protected ZIP file (AES-256 encryption)
+      const zipBlobWriter = new BlobWriter('application/zip');
+      const zipWriter = new ZipWriter(zipBlobWriter, { password: backupPassword });
 
       // Add secure key file
       const keyFileContent = JSON.stringify({
@@ -566,27 +567,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         }
       }, null, 2);
 
-      zip.file('niel-messenger-key.json', keyFileContent);
+      await zipWriter.add('niel-messenger-key.json', new TextReader(keyFileContent));
 
       // Add Readme
-      zip.file('README.txt', `NIEL MESSENGER BACKUP
+      await zipWriter.add('README.txt', new TextReader(`NIEL MESSENGER BACKUP
 =====================
 Created: ${new Date().toLocaleString()}
 Fingerprint: ${keyFingerprint}
 
 This backup contains your End-to-End Encryption keys.
-The file 'niel-messenger-key.json' is encrypted with your password.
+The ZIP file is protected with AES-256 encryption.
+The file 'niel-messenger-key.json' is also encrypted with your password.
 DO NOT SHARE THIS FILE OR YOUR PASSWORD.
 
 To restore:
 1. Go to Settings > Security
 2. Click 'Import Key'
-3. Open 'niel-messenger-key.json'
+3. Open this ZIP file
 4. Enter your backup password
-`);
+`));
 
       // 4. Generate and download
-      const blob = await zip.generateAsync({ type: 'blob' });
+      const blob = await zipWriter.close();
       saveAs(blob, `niel-backup-${new Date().toISOString().slice(0, 10)}.zip`);
 
       // Reset and close
@@ -617,11 +619,14 @@ To restore:
 
       // 1. Read File
       if (restoreFile.name.endsWith('.zip')) {
-        const zip = await JSZip.loadAsync(restoreFile);
-        const keyFile = zip.file('niel-messenger-key.json');
-        if (!keyFile) throw new Error('Invalid backup file: key json not found');
-        const content = await keyFile.async('string');
+        const zipReader = new ZipReader(new BlobReader(restoreFile), { password: restorePassword });
+        const entries = await zipReader.getEntries();
+        const keyEntry = entries.find((e) => e.filename === 'niel-messenger-key.json' && !e.directory);
+        if (!keyEntry) throw new Error('Invalid backup file: key json not found');
+        const blob = await (keyEntry as any).getData(new BlobWriter()) as Blob;
+        const content = await blob.text();
         keyData = JSON.parse(content);
+        await zipReader.close();
       } else if (restoreFile.name.endsWith('.json')) {
         const content = await restoreFile.text();
         keyData = JSON.parse(content);
