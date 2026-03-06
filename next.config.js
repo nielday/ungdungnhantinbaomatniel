@@ -26,6 +26,7 @@ const nextConfig = {
       img-src 'self' blob: data: https://*.backblazeb2.com https://*.googleusercontent.com https://*.facebook.com https://*.licdn.com https://ungdungnhantinbaomatniel-production.up.railway.app;
       media-src 'self' blob: data: https://*.backblazeb2.com https://ungdungnhantinbaomatniel-production.up.railway.app;
       font-src 'self' data: https://fonts.gstatic.com;
+      worker-src 'self' blob:;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
