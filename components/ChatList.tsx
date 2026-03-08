@@ -81,7 +81,7 @@ const SwipeableConversationItem = ({
     setIsSwiping(false);
     // Nếu kéo sang trái một lực đủ lớn, và thả ra, chốt menu mở ra
     if (info.offset.x < -80) {
-      setXOffset(-180); // Mở Menu ra (Đủ 3 nút x 60px)
+      setXOffset(conversation.type === 'private' ? -180 : -120); // Mở Menu ra (Đủ 3 nút x 60px cho private)
     } else if (info.offset.x > 50) {
       setXOffset(0); // Đóng menu nếu kéo lại
     }
