@@ -55,6 +55,11 @@ const GroupSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  encryptionMode: {
+    type: String,
+    enum: ['none', 'e2ee'],
+    default: 'none'
+  },
   settings: {
     allowMemberInvite: {
       type: Boolean,

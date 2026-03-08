@@ -567,4 +567,48 @@ router.use((error, req, res, next) => {
   next(error);
 });
 
+// Toggle encryption mode for group
+router.put('/:id/encryption-mode', async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user._id;
+    const { encryptionMode } = req.body;
+
+    if (!['none', 'e2ee'].includes(encryptionMode)) {
+      return res.status(400).json({ message: 'Chế độ mã hóa không hợp lệ' });
+    }
+
+    const group = await Group.findOne({
+      _id: groupId,
+      'members.user': userId,
+      isActive: true
+    });
+
+    if (!group) {
+      return res.status(404).json({ message: 'Nhóm không tồn tại hoặc bạn không có quyền' });
+    }
+
+    group.encryptionMode = encryptionMode;
+    await group.save();
+
+    // Emit socket event to notify all group members
+    try {
+      const io = getSocketIO();
+      if (io) {
+        io.to(`conversation-${groupId}`).emit('group-encryption-toggled', {
+          conversationId: groupId,
+          encryptionMode
+        });
+      }
+    } catch (socketError) {
+      console.error('Socket emit error:', socketError);
+    }
+
+    res.json({ encryptionMode: group.encryptionMode });
+  } catch (error) {
+    console.error('Toggle encryption error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 module.exports = router;

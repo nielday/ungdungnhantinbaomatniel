@@ -544,8 +544,12 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         }
       }
 
+      const apiEndpoint = conversation.type === 'group'
+        ? `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/encryption-mode`
+        : `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}/encryption-mode`;
+
       const response = await fetch(
-        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}/encryption-mode`,
+        apiEndpoint,
         {
           method: 'PUT',
           headers: {
