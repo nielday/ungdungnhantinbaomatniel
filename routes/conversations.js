@@ -163,6 +163,36 @@ router.put('/:id/archive', async (req, res) => {
   }
 });
 
+// Unarchive conversation
+router.put('/:id/unarchive', async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+    }
+
+    if (conversation.archivedBy) {
+      const index = conversation.archivedBy.findIndex(id => id.toString() === userId.toString());
+      if (index !== -1) {
+        conversation.archivedBy.splice(index, 1);
+        await conversation.save();
+      }
+    }
+
+    res.json({ message: 'Đã hủy lưu trữ', isArchived: false });
+  } catch (error) {
+    console.error('Unarchive conversation error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 // Get conversation by ID
 router.get('/:id', async (req, res) => {
   try {

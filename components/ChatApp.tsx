@@ -307,18 +307,41 @@ export default function ChatApp() {
         credentials: 'include'
       });
       if (response.ok) {
-        // Remove from list immediately
-        setConversations(prev => prev.filter(c => c._id !== conversationId));
+        // Update state to archived
+        setConversations(prev => prev.map(c =>
+          c._id === conversationId ? { ...c, isArchived: true } : c
+        ));
         if (activeConversation?._id === conversationId) {
           setActiveConversation(null);
         }
-        toast.success(t('chat.conversationArchived') || 'Đã lưu trữ cuộc trò chuyện');
+        toast.success(t('chat.conversationArchived') || 'Đã đưa vào Lưu trữ');
       } else {
         toast.error('Không thể lưu trữ');
       }
     } catch (err) {
       console.error(err);
       toast.error('Lỗi kết nối khi lưu trữ');
+    }
+  };
+
+  const handleUnarchiveConversation = async (conversationId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/conversations/${conversationId}/unarchive`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        // Update state to unarchived
+        setConversations(prev => prev.map(c =>
+          c._id === conversationId ? { ...c, isArchived: false } : c
+        ));
+        toast.success(t('chat.conversationUnarchived') || 'Đã bỏ Lưu trữ');
+      } else {
+        toast.error('Không thể bỏ lưu trữ');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi kết nối khi bỏ lưu trữ');
     }
   };
 
@@ -433,7 +456,7 @@ export default function ChatApp() {
         )}
 
         {/* Chat List */}
-        <div className={`flex-1 overflow-hidden ${isMobile ? 'pb-20' : ''}`}>
+        <div className={`flex-1 overflow-hidden flex flex-col ${isMobile ? 'pb-20' : ''}`}>
           <ChatList
             conversations={conversations}
             activeConversation={activeConversation}
@@ -442,6 +465,7 @@ export default function ChatApp() {
             onNewConversation={handleNewConversation}
             onDeleteConversation={handleDeleteConversation}
             onArchiveConversation={handleArchiveConversation}
+            onUnarchiveConversation={handleUnarchiveConversation}
             onBlockUser={handleBlockUser}
           />
         </div>

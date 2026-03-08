@@ -27,6 +27,7 @@ interface Conversation {
   lastMessage?: any;
   lastMessageAt?: string;
   createdBy: any;
+  isArchived?: boolean;
 }
 
 interface MessageSearchResult {
@@ -53,6 +54,7 @@ interface ChatListProps {
   onSelectMessage?: (conversationId: string, messageId: string) => void;
   onDeleteConversation?: (conversationId: string) => void;
   onArchiveConversation?: (conversationId: string) => void;
+  onUnarchiveConversation?: (conversationId: string) => void;
   onBlockUser?: (userId: string) => void;
 }
 
@@ -68,6 +70,7 @@ const SwipeableConversationItem = ({
   getLastMessagePreview,
   onDelete,
   onArchive,
+  onUnarchive,
   onBlock
 }: any) => {
   const t = useTranslations();
@@ -110,14 +113,24 @@ const SwipeableConversationItem = ({
           </button>
         )}
 
-        {/* Nút Lưu trữ (Màu Tím/Xanh) */}
-        <button
-          onClick={(e) => { e.stopPropagation(); closeMenu(); onArchive && onArchive(conversation._id); }}
-          className="h-full w-[60px] flex flex-col items-center justify-center bg-indigo-500 text-white"
-        >
-          <Archive className="w-5 h-5 mb-1" />
-          <span className="text-[10px]">Lưu</span>
-        </button>
+        {/* Nút Phục hồi (Chỉ hiện khi đang ở Lưu trữ, thay cho Lưu) */}
+        {conversation.isArchived ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); closeMenu(); onUnarchive && onUnarchive(conversation._id); }}
+            className="h-full w-[60px] flex flex-col items-center justify-center bg-blue-500 text-white"
+          >
+            <Archive className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">Hủy Lưu</span>
+          </button>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); closeMenu(); onArchive && onArchive(conversation._id); }}
+            className="h-full w-[60px] flex flex-col items-center justify-center bg-indigo-500 text-white"
+          >
+            <Archive className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">Lưu</span>
+          </button>
+        )}
 
         {/* Nút Xóa (Màu Đỏ) */}
         <button
@@ -204,9 +217,11 @@ export default function ChatList({
   onSelectMessage,
   onDeleteConversation,
   onArchiveConversation,
+  onUnarchiveConversation,
   onBlockUser
 }: ChatListProps) {
   const t = useTranslations();
+  const [activeTab, setActiveTab] = useState<'all' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [messageResults, setMessageResults] = useState<MessageSearchResult[]>([]);
   const [isSearchingMessages, setIsSearchingMessages] = useState(false);
@@ -246,6 +261,11 @@ export default function ChatList({
   }, [searchQuery]);
 
   const filteredConversations = conversations.filter(conversation => {
+    // 1. Filter by Tab (Archived/All)
+    if (activeTab === 'all' && conversation.isArchived) return false;
+    if (activeTab === 'archived' && !conversation.isArchived) return false;
+
+    // 2. Filter by Search Query
     if (!searchQuery) return true;
 
     const searchLower = searchQuery.toLowerCase();
@@ -420,6 +440,28 @@ export default function ChatList({
             </button>
           )}
         </div>
+
+        {/* Sub-tabs for All / Archived */}
+        <div className="flex border-b border-gray-200 dark:border-neutral-700 mt-2">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'all'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+          >
+            Tất cả
+          </button>
+          <button
+            onClick={() => setActiveTab('archived')}
+            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'archived'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+          >
+            Đã lưu trữ
+          </button>
+        </div>
       </div>
 
       {/* Message Search Results */}
@@ -489,6 +531,7 @@ export default function ChatList({
                 getLastMessagePreview={getLastMessagePreview}
                 onDelete={onDeleteConversation}
                 onArchive={onArchiveConversation}
+                onUnarchive={onUnarchiveConversation}
                 onBlock={onBlockUser}
               />
             ))}
