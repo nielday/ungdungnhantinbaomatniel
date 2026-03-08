@@ -14,7 +14,8 @@ import {
   X,
   Archive,
   Trash2,
-  Ban
+  Ban,
+  MoreHorizontal
 } from 'lucide-react';
 import { normalizeFileUrlHelper } from '../lib/fileUtils';
 
@@ -76,22 +77,28 @@ const SwipeableConversationItem = ({
   const t = useTranslations();
   const [isSwiping, setIsSwiping] = useState(false);
   const [xOffset, setXOffset] = useState(0);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   const handleDragEnd = (event: any, info: any) => {
     setIsSwiping(false);
     // Nếu kéo sang trái một lực đủ lớn, và thả ra, chốt menu mở ra
-    if (info.offset.x < -80) {
-      setXOffset(conversation.type === 'private' ? -180 : -120); // Mở Menu ra (Đủ 3 nút x 60px cho private)
-    } else if (info.offset.x > 50) {
+    if (info.offset.x < -60) {
+      setXOffset(-120); // Mở Menu ra (Chỉ 2 nút x 60px)
+    } else if (info.offset.x > 30) {
       setXOffset(0); // Đóng menu nếu kéo lại
+      setShowMoreOptions(false);
     }
   };
 
   const handleDrag = (event: any, info: any) => {
     setIsSwiping(true);
+    if (showMoreOptions) setShowMoreOptions(false);
   };
 
-  const closeMenu = () => setXOffset(0);
+  const closeMenu = () => {
+    setXOffset(0);
+    setShowMoreOptions(false);
+  };
 
   // Identify other participant for Blocking
   const otherParticipant = conversation.type === 'private'
@@ -102,40 +109,55 @@ const SwipeableConversationItem = ({
     <div className="relative overflow-hidden w-full group">
       {/* Background Actions Layer (nằm dưới thẻ trò chuyện) */}
       <div className="absolute right-0 top-0 bottom-0 flex h-full items-center justify-end bg-gray-100 dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-800">
-        {/* Nút Chặn (Màu xám đen/cam) - Chỉ ở Private Chat */}
-        {conversation.type === 'private' && (
-          <button
-            onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id, conversation._id); }}
-            className="h-full w-[60px] flex flex-col items-center justify-center bg-gray-500 text-white"
-          >
-            <Ban className="w-5 h-5 mb-1" />
-            <span className="text-[10px]">Chặn</span>
-          </button>
-        )}
 
-        {/* Nút Phục hồi (Chỉ hiện khi đang ở Lưu trữ, thay cho Lưu) */}
-        {conversation.isArchived ? (
+        {/* Nút Khác (Màu xám) */}
+        <div className="relative h-full">
           <button
-            onClick={(e) => { e.stopPropagation(); closeMenu(); onUnarchive && onUnarchive(conversation._id); }}
-            className="h-full w-[60px] flex flex-col items-center justify-center bg-blue-500 text-white"
+            onClick={(e) => { e.stopPropagation(); setShowMoreOptions(!showMoreOptions); }}
+            className="h-full w-[60px] flex flex-col items-center justify-center bg-gray-400 dark:bg-gray-600 text-white transition-colors hover:bg-gray-500"
           >
-            <Archive className="w-5 h-5 mb-1" />
-            <span className="text-[10px]">Hủy Lưu</span>
+            <MoreHorizontal className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">Khác</span>
           </button>
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); closeMenu(); onArchive && onArchive(conversation._id); }}
-            className="h-full w-[60px] flex flex-col items-center justify-center bg-indigo-500 text-white"
-          >
-            <Archive className="w-5 h-5 mb-1" />
-            <span className="text-[10px]">Lưu</span>
-          </button>
-        )}
+
+          {/* Sub menu xổ ra khi ấn nút Khác */}
+          {showMoreOptions && (
+            <div className="absolute z-50 right-0 top-full mt-1 w-48 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-gray-200 dark:border-neutral-700 overflow-hidden transform origin-top-right">
+              {conversation.isArchived ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeMenu(); onUnarchive && onUnarchive(conversation._id); }}
+                  className="w-full flex items-center px-4 py-3 text-sm text-blue-600 hover:bg-gray-50 dark:hover:bg-neutral-700"
+                >
+                  <Archive className="w-4 h-4 mr-3" />
+                  Hủy Lưu trữ
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeMenu(); onArchive && onArchive(conversation._id); }}
+                  className="w-full flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-700"
+                >
+                  <Archive className="w-4 h-4 mr-3 text-gray-500" />
+                  Lưu trữ
+                </button>
+              )}
+
+              {conversation.type === 'private' && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id, conversation._id); }}
+                  className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border-t border-gray-100 dark:border-neutral-700"
+                >
+                  <Ban className="w-4 h-4 mr-3" />
+                  Chặn
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Nút Xóa (Màu Đỏ) */}
         <button
           onClick={(e) => { e.stopPropagation(); closeMenu(); onDelete && onDelete(conversation._id); }}
-          className="h-full w-[60px] flex flex-col items-center justify-center bg-red-500 text-white"
+          className="h-full w-[60px] flex flex-col items-center justify-center bg-red-500 hover:bg-red-600 text-white transition-colors"
         >
           <Trash2 className="w-5 h-5 mb-1" />
           <span className="text-[10px]">Xóa</span>
@@ -145,7 +167,7 @@ const SwipeableConversationItem = ({
       {/* Foreground Chat Item Layer (Cái hiển thị lên trên) */}
       <motion.div
         drag="x"
-        dragConstraints={{ left: conversation.type === 'private' ? -180 : -120, right: 0 }}
+        dragConstraints={{ left: -120, right: 0 }}
         dragElastic={0.1}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
