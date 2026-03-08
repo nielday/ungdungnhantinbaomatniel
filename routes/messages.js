@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const { Message, Conversation, Group } = require('../models');
+const { Message, Conversation, Group, User } = require('../models');
 const { uploadToB2, deleteFromB2 } = require('../config/b2');
 
 const router = express.Router();
