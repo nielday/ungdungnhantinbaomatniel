@@ -262,15 +262,48 @@ io.on('connection', (socket) => {
     console.log(`User left conversation ${conversationId}`);
   });
 
-  socket.on('send-message', (data) => {
-    socket.to(`conversation-${data.conversationId}`).emit('new-message', data.message);
+  socket.on('send-message', async (data) => {
+    try {
+      const { Conversation, User } = require('./models');
+      const conversation = await Conversation.findById(data.conversationId);
+      if (conversation && conversation.type === 'private') {
+        const senderId = socket.userId || (data.message && data.message.senderId ? data.message.senderId._id || data.message.senderId : null);
+        if (senderId) {
+          const otherParticipantId = conversation.participants.find(p => p.toString() !== senderId.toString());
+          if (otherParticipantId) {
+            const otherUser = await User.findById(otherParticipantId);
+            if (otherUser && otherUser.blockedUsers && otherUser.blockedUsers.includes(senderId)) {
+              return; // Không broadcast
+            }
+          }
+        }
+      }
+      socket.to(`conversation-${data.conversationId}`).emit('new-message', data.message);
+    } catch (err) {
+      console.error('Socket send-message check block error:', err);
+    }
   });
 
-  socket.on('typing', (data) => {
-    socket.to(`conversation-${data.conversationId}`).emit('user-typing', {
-      userId: data.userId,
-      isTyping: data.isTyping
-    });
+  socket.on('typing', async (data) => {
+    try {
+      const { Conversation, User } = require('./models');
+      const conversation = await Conversation.findById(data.conversationId);
+      if (conversation && conversation.type === 'private') {
+        const otherParticipantId = conversation.participants.find(p => p.toString() !== data.userId.toString());
+        if (otherParticipantId) {
+          const otherUser = await User.findById(otherParticipantId);
+          if (otherUser && otherUser.blockedUsers && otherUser.blockedUsers.includes(data.userId)) {
+            return; // Không broadcast typing
+          }
+        }
+      }
+      socket.to(`conversation-${data.conversationId}`).emit('user-typing', {
+        userId: data.userId,
+        isTyping: data.isTyping
+      });
+    } catch (err) {
+      console.error('Socket typing check block error:', err);
+    }
   });
 
   // Group management events

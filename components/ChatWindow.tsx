@@ -279,6 +279,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFilePicker, setShowFilePicker] = useState(false);
   const [showCameraCapture, setShowCameraCapture] = useState(false);
@@ -512,6 +513,16 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
+
+        // Kiểm tra block status 1 chiều (mình block người ta)
+        if (conversation.type === 'private' && currentUser?.blockedUsers) {
+          const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser.id);
+          if (otherUser && currentUser.blockedUsers.includes(otherUser._id)) {
+            setIsBlocked(true);
+          } else {
+            setIsBlocked(false);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -2027,7 +2038,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       )}
 
       {/* Reply Preview */}
-      {replyingTo && (
+      {replyingTo && !isBlocked && (
         <div className="p-3 bg-gray-100 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -2048,108 +2059,116 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       )}
 
       {/* Input */}
-      <div className={`${isMobile ? 'p-3' : 'p-4'} bg-white border-t border-gray-200`}>
-        <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => setShowFilePicker(!showFilePicker)}
-            className={`${isMobile ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-lg transition-colors`}
-          >
-            <Paperclip className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
-          </button>
+      {isBlocked ? (
+        <div className="p-4 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Bạn không thể trả lời lại cuộc trò chuyện này.
+          </p>
+        </div>
+      ) : (
+        <div className={`${isMobile ? 'p-3' : 'p-4'} bg-white border-t border-gray-200`}>
+          <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => setShowFilePicker(!showFilePicker)}
+              className={`${isMobile ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-lg transition-colors`}
+            >
+              <Paperclip className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
+            </button>
 
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={handleTyping}
-              onBlur={handleInputBlur}
-              placeholder={t('chat.typePlaceholder')}
-              className={`w-full ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'} border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-            />
-            {showFilePicker && (
-              <div className={`absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg ${isMobile ? 'p-2' : 'p-2'}`}>
-                <div className={`flex ${isMobile ? 'flex-col space-y-1' : 'space-x-2'}`}>
-                  <button
-                    type="button"
-                    onClick={() => setShowCameraCapture(true)}
-                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
-                  >
-                    <Camera className="w-4 h-4" />
-                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Camera</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
-                  >
-                    <Image className="w-4 h-4" />
-                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>{t('chatList.image')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
-                  >
-                    <File className="w-4 h-4" />
-                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>File</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => audioInputRef.current?.click()}
-                    className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
-                  >
-                    <Mic className="w-4 h-4" />
-                    <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Audio</span>
-                  </button>
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={handleTyping}
+                onBlur={handleInputBlur}
+                placeholder={t('chat.typePlaceholder')}
+                className={`w-full ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-2'} border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              />
+              {showFilePicker && (
+                <div className={`absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg ${isMobile ? 'p-2' : 'p-2'}`}>
+                  <div className={`flex ${isMobile ? 'flex-col space-y-1' : 'space-x-2'}`}>
+                    <button
+                      type="button"
+                      onClick={() => setShowCameraCapture(true)}
+                      className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Camera</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
+                    >
+                      <Image className="w-4 h-4" />
+                      <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>{t('chatList.image')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
+                    >
+                      <File className="w-4 h-4" />
+                      <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>File</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => audioInputRef.current?.click()}
+                      className={`flex items-center ${isMobile ? 'space-x-2 px-2 py-1.5' : 'space-x-2 px-3 py-2'} hover:bg-gray-100 rounded`}
+                    >
+                      <Mic className="w-4 h-4" />
+                      <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Audio</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className={`${isMobile ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-lg transition-colors`}
-          >
-            <Smile className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className={`${isMobile ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-lg transition-colors`}
+            >
+              <Smile className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-600`} />
+            </button>
 
-          <button
-            type="submit"
-            disabled={!newMessage.trim()}
-            className={`${isMobile ? 'p-1.5' : 'p-2'} bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
-          >
-            <Send className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={!newMessage.trim()}
+              className={`${isMobile ? 'p-1.5' : 'p-2'} bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
+            >
+              <Send className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+            </button>
+          </form>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx,.txt"
-          onChange={(e) => {
-            if (e.target.files) {
-              handleFileUpload(e.target.files);
-              setShowFilePicker(false);
-            }
-          }}
-          className="hidden"
-        />
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.txt"
+            onChange={(e) => {
+              if (e.target.files) {
+                handleFileUpload(e.target.files);
+                setShowFilePicker(false);
+              }
+            }}
+            className="hidden"
+          />
 
-        <input
-          ref={audioInputRef}
-          type="file"
-          accept="audio/*"
-          onChange={(e) => {
-            if (e.target.files) {
-              handleAudioUpload(e.target.files);
-            }
-          }}
-          className="hidden"
-        />
-      </div>
+          <input
+            ref={audioInputRef}
+            type="file"
+            accept="audio/*"
+            onChange={(e) => {
+              if (e.target.files) {
+                handleAudioUpload(e.target.files);
+              }
+            }}
+            className="hidden"
+          />
+        </div>
+      )}
 
       {/* Emoji Picker */}
       <SimpleEmojiPicker

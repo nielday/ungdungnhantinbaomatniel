@@ -239,6 +239,17 @@ router.post('/:conversationId/text', async (req, res) => {
           message: 'Cuộc trò chuyện không tồn tại hoặc bạn không có quyền truy cập'
         });
       }
+    } else {
+      // PRIVATE CHAT: Kiểm tra xem người gửi có bị người nhận block không
+      const recipientId = conversation.participants.find(p => p.toString() !== userId.toString());
+      if (recipientId) {
+        const recipient = await User.findById(recipientId);
+        if (recipient && recipient.blockedUsers && recipient.blockedUsers.includes(userId)) {
+          return res.status(403).json({
+            message: 'Bạn không thể gửi tin nhắn cho người dùng này'
+          });
+        }
+      }
     }
 
     // Server-side Encryption logic for non-E2EE messages
@@ -364,6 +375,17 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
         return res.status(404).json({
           message: 'Cuộc trò chuyện không tồn tại'
         });
+      }
+    } else {
+      // PRIVATE CHAT: Kiểm tra xem người gửi có bị người nhận block không
+      const recipientId = conversation.participants.find(p => p.toString() !== userId.toString());
+      if (recipientId) {
+        const recipient = await User.findById(recipientId);
+        if (recipient && recipient.blockedUsers && recipient.blockedUsers.includes(userId)) {
+          return res.status(403).json({
+            message: 'Bạn không thể gửi file cho người dùng này'
+          });
+        }
       }
     }
 

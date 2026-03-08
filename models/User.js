@@ -93,7 +93,13 @@ const UserSchema = new mongoose.Schema({
     lastLogin: {
       type: Date,
       default: Date.now
-    }
+    }, // Added comma here
+  }],
+
+  // Danh sách Người Bị Chặn
+  blockedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }]
 }, {
   timestamps: true

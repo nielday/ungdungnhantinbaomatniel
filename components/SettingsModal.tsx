@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Bell, Palette, Shield, Globe, Save, Moon, Sun, Camera, Lock, Smartphone, Key, Trash2, RefreshCw } from 'lucide-react';
+import { X, User, Bell, Palette, Shield, Globe, Save, Moon, Sun, Camera, Lock, Smartphone, Key, Trash2, RefreshCw, Ban } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import { normalizeFileUrlHelper } from '../lib/fileUtils';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -73,6 +74,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [pendingAction, setPendingAction] = useState<'generate' | 'import' | 'restore' | 'delete' | 'backup' | null>(null);
   const [tempKeyData, setTempKeyData] = useState<any>(null); // To hold data while waiting for password
 
+  // Blocked Users State
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+  const [isLoadingBlockedUsers, setIsLoadingBlockedUsers] = useState(false);
+
   const currentDeviceId = typeof window !== 'undefined' ? encryption.getDeviceId() : '';
 
   // Load settings from localStorage
@@ -107,7 +112,43 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     if (activeTab === 'security' && user) {
       loadEncryptionData();
     }
+    if (activeTab === 'privacy' && user) {
+      loadBlockedUsers();
+    }
   }, [activeTab, user]);
+
+  const loadBlockedUsers = async () => {
+    setIsLoadingBlockedUsers(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const response = await fetch(`${apiUrl}/users/blocked`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBlockedUsers(data);
+      }
+    } catch (err) {
+      console.error('Error loading blocked users:', err);
+    } finally {
+      setIsLoadingBlockedUsers(false);
+    }
+  };
+
+  const handleUnblockUser = async (userId: string) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const response = await fetch(`${apiUrl}/users/unblock/${userId}`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        setBlockedUsers(prev => prev.filter(u => u._id !== userId));
+      }
+    } catch (err) {
+      console.error('Error unblocking user:', err);
+    }
+  };
 
   const loadEncryptionData = async () => {
     if (!user) return;
@@ -1433,8 +1474,47 @@ To restore:
                     {/* Privacy Tab */}
                     {activeTab === 'privacy' && (
                       <div>
-                        <h3 className="text-xl font-semibold mb-4 dark:text-white">{t('settings.privacySecurity')}</h3>
+                        <h3 className="text-xl font-semibold mb-4 dark:text-white">Quyền riêng tư</h3>
                         <div className="space-y-4">
+                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <h4 className="font-medium mb-3 dark:text-white flex items-center">
+                              <Ban className="w-5 h-5 mr-2 text-red-500" />
+                              Danh sách chặn
+                            </h4>
+
+                            {isLoadingBlockedUsers ? (
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('common.loading')}</p>
+                            ) : blockedUsers.length > 0 ? (
+                              <div className="space-y-2">
+                                {blockedUsers.map((blockedUser) => (
+                                  <div key={blockedUser._id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+                                        {blockedUser.avatar ? (
+                                          <img src={normalizeFileUrlHelper(blockedUser.avatar)} alt={blockedUser.fullName} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <User className="w-5 h-5 text-white" />
+                                        )}
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-gray-800 dark:text-white text-sm">{blockedUser.fullName}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{blockedUser.phoneNumber}</p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleUnblockUser(blockedUser._id)}
+                                      className="px-3 py-1 text-xs font-medium bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-white rounded-full transition-colors"
+                                    >
+                                      Bỏ chặn
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">Bạn chưa chặn ai.</p>
+                            )}
+                          </div>
+
                           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <h4 className="font-medium mb-2 dark:text-white">{t('settings.dataPrivacy')}</h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">

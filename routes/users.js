@@ -212,6 +212,79 @@ router.get('/phone/:phoneNumber', async (req, res) => {
   }
 });
 
+// ============================================
+// BLOCK USER MANAGEMENT
+// ============================================
+
+// Block a user
+router.put('/block/:id', async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const targetId = req.params.id;
+
+    if (userId.toString() === targetId) {
+      return res.status(400).json({ message: 'Bạn không thể tự chặn chính mình' });
+    }
+
+    const user = await User.findById(userId);
+    const targetUser = await User.findById(targetId);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    // Add to blocked array if not already blocked
+    if (!user.blockedUsers) user.blockedUsers = [];
+
+    if (!user.blockedUsers.includes(targetId)) {
+      user.blockedUsers.push(targetId);
+      await user.save();
+    }
+
+    res.json({ message: 'Đã chặn người dùng', success: true });
+  } catch (error) {
+    console.error('Block user error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Unblock a user
+router.put('/unblock/:id', async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const targetId = req.params.id;
+
+    const user = await User.findById(userId);
+
+    if (user.blockedUsers) {
+      user.blockedUsers = user.blockedUsers.filter(id => id.toString() !== targetId);
+      await user.save();
+    }
+
+    res.json({ message: 'Đã bỏ chặn người dùng', success: true });
+  } catch (error) {
+    console.error('Unblock user error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Get blocked users list
+router.get('/blocked', async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).populate(
+      'blockedUsers',
+      'fullName avatar phoneNumber'
+    );
+
+    res.json(user.blockedUsers || []);
+  } catch (error) {
+    console.error('Get blocked users error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
 // Send verification OTP for account verification
 router.post('/send-verification-otp', async (req, res) => {
   try {

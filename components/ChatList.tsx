@@ -55,7 +55,7 @@ interface ChatListProps {
   onDeleteConversation?: (conversationId: string) => void;
   onArchiveConversation?: (conversationId: string) => void;
   onUnarchiveConversation?: (conversationId: string) => void;
-  onBlockUser?: (userId: string) => void;
+  onBlockUser?: (userId: string, conversationId: string) => void;
 }
 
 // Sub-component cho từng hàng hội thoại có thể Swipe
@@ -105,7 +105,7 @@ const SwipeableConversationItem = ({
         {/* Nút Chặn (Màu xám đen/cam) - Chỉ ở Private Chat */}
         {conversation.type === 'private' && (
           <button
-            onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id); }}
+            onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id, conversation._id); }}
             className="h-full w-[60px] flex flex-col items-center justify-center bg-gray-500 text-white"
           >
             <Ban className="w-5 h-5 mb-1" />

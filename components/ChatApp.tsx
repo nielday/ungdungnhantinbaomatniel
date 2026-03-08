@@ -345,9 +345,29 @@ export default function ChatApp() {
     }
   };
 
-  const handleBlockUser = async (userId: string) => {
-    // Hiện chỉ là placeholder
-    toast('Tính năng chặn đang được phát triển', { icon: 'ℹ️' });
+  const handleBlockUser = async (userId: string, conversationId: string) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const response = await fetch(`${apiUrl}/users/block/${userId}`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        toast.success(t('chat.userBlocked') || 'Đã chặn người dùng. Chuyển vào Kho lưu trữ.');
+
+        // Ngay lập tức gọi lệnh Archive bằng hàm có sẵn để gom chat vào Tab Lưu Trữ
+        if (conversationId) {
+          handleArchiveConversation(conversationId);
+        }
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Không thể chặn');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi kết nối khi gọi api chặn');
+    }
   };
 
   const handleSelectConversation = (conversation: Conversation) => {
