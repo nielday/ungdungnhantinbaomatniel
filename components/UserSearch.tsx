@@ -84,7 +84,8 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
 
       if (response.ok) {
         const conversation = await response.json();
-        onNewConversation(conversation);
+        // Gán type: 'private' vì DB không lưu trường này
+        onNewConversation({ ...conversation, type: 'private' });
       }
     } catch (error) {
       console.error('Error creating conversation:', error);

@@ -193,7 +193,12 @@ export default function ChatApp() {
       // Fetch private conversations
       if (conversationsResponse.ok) {
         const conversationsData = await conversationsResponse.json();
-        allConversations = [...allConversations, ...conversationsData];
+        // Gán type: 'private' cho tất cả conversations 1-1 (DB không lưu trường type)
+        const privateConversations = conversationsData.map((conv: any) => ({
+          ...conv,
+          type: 'private' as const
+        }));
+        allConversations = [...allConversations, ...privateConversations];
       } else {
         console.error('Conversations error:', await conversationsResponse.json());
       }
