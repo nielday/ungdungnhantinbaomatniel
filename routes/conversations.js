@@ -10,13 +10,21 @@ router.get('/', async (req, res) => {
 
     const conversations = await Conversation.find({
       participants: userId,
-      isActive: true
+      isActive: true,
+      'deletedBy.user': { $ne: userId } // Bỏ qua hội thoại đã xóa cục bộ
     })
       .populate('participants', 'fullName avatar phoneNumber')
       .populate('lastMessage')
       .sort({ lastMessageAt: -1 });
 
-    res.json(conversations);
+    // Filter out archived conversations if needed (Optional: can send flag)
+    const activeConversations = conversations.map(conv => {
+      const convObj = conv.toObject();
+      convObj.isArchived = convObj.archivedBy && convObj.archivedBy.some(id => id.toString() === userId.toString());
+      return convObj;
+    });
+
+    res.json(activeConversations);
   } catch (error) {
     console.error('Get conversations error:', error);
     res.status(500).json({
@@ -74,6 +82,86 @@ router.post('/private', async (req, res) => {
 
 // Group conversations are now handled by /api/groups
 // This endpoint is deprecated - use /api/groups instead
+
+// ============================================
+// CONVERSATION MANAGEMENT (SWIPE ACTIONS)
+// ============================================
+
+// Soft delete conversation (Local delete for user)
+router.put('/:id/delete', async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+    }
+
+    // Check if user already deleted
+    const alreadyDeleted = conversation.deletedBy && conversation.deletedBy.some(
+      item => item.user.toString() === userId.toString()
+    );
+
+    if (!alreadyDeleted) {
+      if (!conversation.deletedBy) conversation.deletedBy = [];
+      conversation.deletedBy.push({ user: userId, deletedAt: new Date() });
+      await conversation.save();
+    }
+
+    res.json({ message: 'Đã xóa cuộc trò chuyện', success: true });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Archive conversation
+router.put('/:id/archive', async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const userId = req.user._id;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Cuộc trò chuyện không tồn tại' });
+    }
+
+    const { action } = req.body; // 'archive' or 'unarchive'
+
+    if (!conversation.archivedBy) conversation.archivedBy = [];
+
+    const index = conversation.archivedBy.findIndex(id => id.toString() === userId.toString());
+
+    if (action === 'archive' && index === -1) {
+      conversation.archivedBy.push(userId);
+    } else if (action === 'unarchive' && index !== -1) {
+      conversation.archivedBy.splice(index, 1);
+    } // else toggle if no action specified
+    else if (!action) {
+      if (index === -1) conversation.archivedBy.push(userId);
+      else conversation.archivedBy.splice(index, 1);
+    }
+
+    await conversation.save();
+
+    res.json({
+      message: 'Đã cập nhật trạng thái lưu trữ',
+      isArchived: conversation.archivedBy.some(id => id.toString() === userId.toString())
+    });
+  } catch (error) {
+    console.error('Archive conversation error:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
 
 // Get conversation by ID
 router.get('/:id', async (req, res) => {

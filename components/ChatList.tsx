@@ -11,7 +11,10 @@ import {
   Phone,
   Mail,
   FileText,
-  X
+  X,
+  Archive,
+  Trash2,
+  Ban
 } from 'lucide-react';
 import { normalizeFileUrlHelper } from '../lib/fileUtils';
 
@@ -48,7 +51,149 @@ interface ChatListProps {
   onSelectConversation: (conversation: Conversation) => void;
   onNewConversation: (conversation: Conversation) => void;
   onSelectMessage?: (conversationId: string, messageId: string) => void;
+  onDeleteConversation?: (conversationId: string) => void;
+  onArchiveConversation?: (conversationId: string) => void;
+  onBlockUser?: (userId: string) => void;
 }
+
+// Sub-component cho từng hàng hội thoại có thể Swipe
+const SwipeableConversationItem = ({
+  conversation,
+  activeConversation,
+  currentUserId,
+  onSelectConversation,
+  getConversationAvatar,
+  getConversationName,
+  formatTime,
+  getLastMessagePreview,
+  onDelete,
+  onArchive,
+  onBlock
+}: any) => {
+  const t = useTranslations();
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [xOffset, setXOffset] = useState(0);
+
+  const handleDragEnd = (event: any, info: any) => {
+    setIsSwiping(false);
+    // Nếu kéo sang trái một lực đủ lớn, và thả ra, chốt menu mở ra
+    if (info.offset.x < -80) {
+      setXOffset(-180); // Mở Menu ra (Đủ 3 nút x 60px)
+    } else if (info.offset.x > 50) {
+      setXOffset(0); // Đóng menu nếu kéo lại
+    }
+  };
+
+  const handleDrag = (event: any, info: any) => {
+    setIsSwiping(true);
+  };
+
+  const closeMenu = () => setXOffset(0);
+
+  // Identify other participant for Blocking
+  const otherParticipant = conversation.type === 'private'
+    ? conversation.participants?.find((p: any) => p._id !== currentUserId)
+    : null;
+
+  return (
+    <div className="relative overflow-hidden w-full group">
+      {/* Background Actions Layer (nằm dưới thẻ trò chuyện) */}
+      <div className="absolute right-0 top-0 bottom-0 flex h-full items-center justify-end bg-gray-100 dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-800">
+        {/* Nút Chặn (Màu xám đen/cam) - Chỉ ở Private Chat */}
+        {conversation.type === 'private' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id); }}
+            className="h-full w-[60px] flex flex-col items-center justify-center bg-gray-500 text-white"
+          >
+            <Ban className="w-5 h-5 mb-1" />
+            <span className="text-[10px]">Chặn</span>
+          </button>
+        )}
+
+        {/* Nút Lưu trữ (Màu Tím/Xanh) */}
+        <button
+          onClick={(e) => { e.stopPropagation(); closeMenu(); onArchive && onArchive(conversation._id); }}
+          className="h-full w-[60px] flex flex-col items-center justify-center bg-indigo-500 text-white"
+        >
+          <Archive className="w-5 h-5 mb-1" />
+          <span className="text-[10px]">Lưu</span>
+        </button>
+
+        {/* Nút Xóa (Màu Đỏ) */}
+        <button
+          onClick={(e) => { e.stopPropagation(); closeMenu(); onDelete && onDelete(conversation._id); }}
+          className="h-full w-[60px] flex flex-col items-center justify-center bg-red-500 text-white"
+        >
+          <Trash2 className="w-5 h-5 mb-1" />
+          <span className="text-[10px]">Xóa</span>
+        </button>
+      </div>
+
+      {/* Foreground Chat Item Layer (Cái hiển thị lên trên) */}
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: conversation.type === 'private' ? -180 : -120, right: 0 }}
+        dragElastic={0.1}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+        animate={{ x: xOffset }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        onClick={() => {
+          if (xOffset !== 0) closeMenu(); // Nếu đang mở hành động thì nhấn vào chỉ đóng lại
+          else if (!isSwiping) onSelectConversation(conversation); // Nếu đang bình thường thì mở box chat
+        }}
+        className={`relative z-10 w-full p-4 cursor-pointer transition-colors bg-white hover:bg-gray-50 dark:bg-neutral-900 dark:hover:bg-neutral-800 border-b border-gray-100 dark:border-neutral-800 ${activeConversation?._id === conversation._id ? 'bg-blue-50 dark:bg-blue-900/30 border-r-2 border-blue-500' : ''
+          }`}
+      >
+        <div className="flex items-center space-x-3 pointer-events-none">
+          {/* Avatar */}
+          <div className="relative">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+              {getConversationAvatar(conversation) ? (
+                <img
+                  src={normalizeFileUrlHelper(getConversationAvatar(conversation))}
+                  alt={getConversationName(conversation)}
+                  className="w-12 h-12 rounded-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : conversation.type === 'group' ? (
+                <Users className="w-6 h-6 text-white" />
+              ) : (
+                <MessageCircle className="w-6 h-6 text-white" />
+              )}
+            </div>
+            {conversation.type === 'group' && (
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-neutral-900"></div>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-sm font-medium text-gray-800 dark:text-white truncate">
+                {getConversationName(conversation)}
+              </h3>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {formatTime(conversation.lastMessageAt)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                {getLastMessagePreview(conversation)}
+              </p>
+              {conversation.type === 'group' && (
+                <span className="flex items-center text-xs text-gray-400 ml-2">
+                  <Users className="w-3 h-3 mr-1" />
+                  {conversation.participants?.length || 0}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 export default function ChatList({
   conversations,
@@ -56,7 +201,10 @@ export default function ChatList({
   currentUserId,
   onSelectConversation,
   onNewConversation,
-  onSelectMessage
+  onSelectMessage,
+  onDeleteConversation,
+  onArchiveConversation,
+  onBlockUser
 }: ChatListProps) {
   const t = useTranslations();
   const [searchQuery, setSearchQuery] = useState('');
@@ -329,61 +477,20 @@ export default function ChatList({
         ) : (
           <div className="space-y-1">
             {filteredConversations.map((conversation, index) => (
-              <motion.div
+              <SwipeableConversationItem
                 key={conversation._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => onSelectConversation(conversation)}
-                className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-neutral-800 ${activeConversation?._id === conversation._id ? 'bg-blue-50 dark:bg-blue-900/30 border-r-2 border-blue-500' : ''
-                  }`}
-              >
-                <div className="flex items-center space-x-3">
-                  {/* Avatar */}
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
-                      {getConversationAvatar(conversation) ? (
-                        <img
-                          src={normalizeFileUrlHelper(getConversationAvatar(conversation))}
-                          alt={getConversationName(conversation)}
-                          className="w-12 h-12 rounded-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      ) : conversation.type === 'group' ? (
-                        <Users className="w-6 h-6 text-white" />
-                      ) : (
-                        <MessageCircle className="w-6 h-6 text-white" />
-                      )}
-                    </div>
-                    {conversation.type === 'group' && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-neutral-900"></div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm font-medium text-gray-800 dark:text-white truncate">
-                        {getConversationName(conversation)}
-                      </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatTime(conversation.lastMessageAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                        {getLastMessagePreview(conversation)}
-                      </p>
-                      {conversation.type === 'group' && (
-                        <span className="flex items-center text-xs text-gray-400 ml-2">
-                          <Users className="w-3 h-3 mr-1" />
-                          {conversation.participants?.length || 0}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+                conversation={conversation}
+                activeConversation={activeConversation}
+                currentUserId={currentUserId}
+                onSelectConversation={onSelectConversation}
+                getConversationAvatar={getConversationAvatar}
+                getConversationName={getConversationName}
+                formatTime={formatTime}
+                getLastMessagePreview={getLastMessagePreview}
+                onDelete={onDeleteConversation}
+                onArchive={onArchiveConversation}
+                onBlock={onBlockUser}
+              />
             ))}
           </div>
         )}

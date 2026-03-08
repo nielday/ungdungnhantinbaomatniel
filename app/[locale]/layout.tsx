@@ -4,6 +4,7 @@ import '../globals.css'
 import { AuthProvider } from '@/components/AuthContext'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
+import { Toaster } from 'react-hot-toast'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,6 +28,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             {children}
+            <Toaster position="bottom-center" />
           </AuthProvider>
         </NextIntlClientProvider>
       </body>

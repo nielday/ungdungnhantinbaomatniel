@@ -113,10 +113,22 @@ router.get('/:conversationId', async (req, res) => {
       }
     }
 
-    let messages = await Message.find({
+    // Implement Local Soft Delete - filter out messages before deletedAt
+    let messageQuery = {
       conversationId,
       isDeleted: false
-    })
+    };
+
+    if (conversation && conversation.deletedBy) {
+      const userDeleteRecord = conversation.deletedBy.find(
+        record => record.user && record.user.toString() === userId.toString()
+      );
+      if (userDeleteRecord && userDeleteRecord.deletedAt) {
+        messageQuery.createdAt = { $gt: userDeleteRecord.deletedAt };
+      }
+    }
+
+    let messages = await Message.find(messageQuery)
       .populate('senderId', 'fullName avatar')
       .populate('replyTo')
       .sort({ createdAt: -1 })
@@ -274,6 +286,9 @@ router.post('/:conversationId/text', async (req, res) => {
     if (conversation) {
       conversation.lastMessage = message._id;
       conversation.lastMessageAt = new Date();
+      // Phục sinh hội thoại: Xóa status Ẩn/Lưu trữ nếu có tin nhắn mới
+      conversation.deletedBy = [];
+      conversation.archivedBy = [];
       await conversation.save();
     } else {
       // Update group last message
@@ -424,6 +439,9 @@ router.post('/:conversationId/file', upload.array('files', 5), async (req, res) 
     if (conversation) {
       conversation.lastMessage = message._id;
       conversation.lastMessageAt = new Date();
+      // Phục sinh hội thoại: Xóa status Ẩn/Lưu trữ nếu có tin nhắn File mới
+      conversation.deletedBy = [];
+      conversation.archivedBy = [];
       await conversation.save();
     } else {
       // Update group last message

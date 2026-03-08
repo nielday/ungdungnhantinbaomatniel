@@ -18,9 +18,9 @@ import {
   User,
   Menu,
   ArrowLeft,
-  X,
   Video
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
 import UserSearch from './UserSearch';
@@ -275,6 +275,58 @@ export default function ChatApp() {
     }
   };
 
+  // ----- SWIPE ACTIONS HANDLERS ----- //
+  const handleDeleteConversation = async (conversationId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/conversations/${conversationId}/delete`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        // Remove from list
+        setConversations(prev => prev.filter(c => c._id !== conversationId));
+        if (activeConversation?._id === conversationId) {
+          setActiveConversation(null);
+        }
+        toast.success(t('chat.conversationDeleted') || 'Đã xóa cuộc trò chuyện');
+      } else {
+        toast.error('Không thể xóa cuộc trò chuyện');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi kết nối khi xóa cuộc trò chuyện');
+    }
+  };
+
+  const handleArchiveConversation = async (conversationId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/conversations/${conversationId}/archive`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'archive' }),
+        credentials: 'include'
+      });
+      if (response.ok) {
+        // Remove from list immediately
+        setConversations(prev => prev.filter(c => c._id !== conversationId));
+        if (activeConversation?._id === conversationId) {
+          setActiveConversation(null);
+        }
+        toast.success(t('chat.conversationArchived') || 'Đã lưu trữ cuộc trò chuyện');
+      } else {
+        toast.error('Không thể lưu trữ');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi kết nối khi lưu trữ');
+    }
+  };
+
+  const handleBlockUser = async (userId: string) => {
+    // Hiện chỉ là placeholder
+    toast('Tính năng chặn đang được phát triển', { icon: 'ℹ️' });
+  };
+
   const handleSelectConversation = (conversation: Conversation) => {
     setActiveConversation(conversation);
     // Hide sidebar on mobile when conversation is selected
@@ -388,6 +440,9 @@ export default function ChatApp() {
             currentUserId={user?.id || ''}
             onSelectConversation={handleSelectConversation}
             onNewConversation={handleNewConversation}
+            onDeleteConversation={handleDeleteConversation}
+            onArchiveConversation={handleArchiveConversation}
+            onBlockUser={handleBlockUser}
           />
         </div>
 

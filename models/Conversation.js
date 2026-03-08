@@ -25,7 +25,25 @@ const ConversationSchema = new mongoose.Schema({
     type: String,
     enum: ['none', 'e2ee'],
     default: 'none'
-  }
+  },
+
+  // Soft delete for local history clearing
+  deletedBy: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    deletedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+
+  // Archived chats
+  archivedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, {
   timestamps: true
 });
