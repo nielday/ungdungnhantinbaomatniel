@@ -588,6 +588,10 @@ router.put('/:id/encryption-mode', async (req, res) => {
       return res.status(404).json({ message: 'Nhóm không tồn tại hoặc bạn không có quyền' });
     }
 
+    if (!group.isAdmin(userId)) {
+      return res.status(403).json({ message: 'Chỉ Quản trị viên nhóm mới được phép Bật/Tắt mã hoá đầu cuối' });
+    }
+
     group.encryptionMode = encryptionMode;
     await group.save();
 

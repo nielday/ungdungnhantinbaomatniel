@@ -262,7 +262,8 @@ interface Conversation {
   avatar?: string; // Changed from groupAvatar
   lastMessage?: any;
   lastMessageAt?: string;
-  createdBy: any;
+  createdBy?: string;
+  admins?: string[];
   encryptionMode?: 'none' | 'e2ee'; // E2EE support
 }
 
@@ -1627,21 +1628,47 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           </div>
           <div className="flex items-center space-x-2">
             {/* Encryption Toggle Button */}
-            <button
-              onClick={handleToggleEncryption}
-              disabled={isTogglingEncryption}
-              className={`p-2 rounded-lg transition-colors flex items-center space-x-1 ${encryptionMode === 'e2ee'
-                ? 'bg-green-100 hover:bg-green-200 text-green-600'
-                : 'hover:bg-gray-100 text-gray-500'
-                }`}
-              title={encryptionMode === 'e2ee' ? t('encryption.e2eeOn') : t('encryption.e2eeOff')}
-            >
-              {encryptionMode === 'e2ee' ? (
-                <Lock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
-              ) : (
-                <Unlock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
-              )}
-            </button>
+            {(() => {
+              const isAdminOrCreator = conversation.type === 'private' ||
+                (conversation.type === 'group' && (
+                  conversation.createdBy === currentUser?.id ||
+                  conversation.admins?.includes(currentUser?.id)
+                ));
+
+              if (!isAdminOrCreator) {
+                // Return a non-clickable indicator for regular group members
+                return (
+                  <div
+                    className={`p-2 rounded-lg flex items-center space-x-1 ${encryptionMode === 'e2ee'
+                      ? 'bg-green-50 text-green-500'
+                      : 'text-gray-400'
+                      }`}
+                    title={encryptionMode === 'e2ee' ? 'Mã hóa đầu cuối Nhóm đang Bật' : 'Mã hóa đầu cuối Nhóm đang Tắt'}
+                  >
+                    {encryptionMode === 'e2ee' ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                  </div>
+                );
+              }
+
+              // Return clickable toggle for Admins, Creator, and Private Chats
+              return (
+                <button
+                  onClick={handleToggleEncryption}
+                  disabled={isTogglingEncryption}
+                  className={`p-2 rounded-lg transition-colors flex items-center space-x-1 ${encryptionMode === 'e2ee'
+                    ? 'bg-green-100 hover:bg-green-200 text-green-600'
+                    : 'hover:bg-gray-100 text-gray-500'
+                    }`}
+                  title={encryptionMode === 'e2ee' ? t('encryption.e2eeOn') : t('encryption.e2eeOff')}
+                >
+                  {encryptionMode === 'e2ee' ? (
+                    <Lock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
+                  ) : (
+                    <Unlock className={`w-5 h-5 ${isTogglingEncryption ? 'animate-pulse' : ''}`} />
+                  )}
+                </button>
+              );
+            })()}
             <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <Phone className="w-5 h-5 text-gray-600" />
             </button>
