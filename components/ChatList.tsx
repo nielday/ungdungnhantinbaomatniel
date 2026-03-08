@@ -122,8 +122,9 @@ const SwipeableConversationItem = ({
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showMoreOptions]);
 
-  // Identify other participant for Blocking
-  const otherParticipant = conversation.type === 'private'
+  // Identify other participant for Blocking (Private chat hoặc Group 2 người)
+  const isPrivateOrDualGroup = conversation.type === 'private' || (conversation.type === 'group' && conversation.participants?.length === 2);
+  const otherParticipant = isPrivateOrDualGroup
     ? conversation.participants?.find((p: any) => p._id !== currentUserId)
     : null;
 
@@ -181,7 +182,7 @@ const SwipeableConversationItem = ({
             </button>
           )}
 
-          {conversation.type === 'private' && (
+          {isPrivateOrDualGroup && (
             <button
               onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id, conversation._id); }}
               className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border-t border-gray-100 dark:border-neutral-700 transition-colors"
