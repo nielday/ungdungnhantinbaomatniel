@@ -480,6 +480,81 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
   }
 });
 
+// Upload Sender Keys for group members (E2EE Group Chat)
+router.post('/:id/sender-keys', async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user._id;
+    const { keys } = req.body; // keys expected as array of { receiverId, encryptedKey, iv }
+
+    if (!keys || !Array.isArray(keys) || keys.length === 0) {
+      return res.status(400).json({ message: 'Danh sách keys không hợp lệ' });
+    }
+
+    const group = await Group.findOne({
+      _id: groupId,
+      'members.user': userId,
+      isActive: true
+    });
+
+    if (!group) {
+      return res.status(404).json({ message: 'Nhóm không tồn tại hoặc bạn không ở trong nhóm này' });
+    }
+
+    // Xóa tất cả các Sender Keys cũ mà user này đã từng gửi đi trong nhóm (Rotation)
+    group.senderKeys = group.senderKeys.filter(key => key.senderId.toString() !== userId.toString());
+
+    // Thêm các key mới vào
+    keys.forEach(keyObj => {
+      // Chỉ lưu khóa cho người nhận thực sự ở trong nhóm
+      const isMemberValid = group.members.some(m => m.user.toString() === keyObj.receiverId.toString());
+      if (isMemberValid) {
+        group.senderKeys.push({
+          senderId: userId,
+          receiverId: keyObj.receiverId,
+          encryptedKey: keyObj.encryptedKey,
+          iv: keyObj.iv
+        });
+      }
+    });
+
+    await group.save();
+
+    res.json({ message: 'Đã cập nhật Sender Keys thành công' });
+  } catch (error) {
+    console.error('Upload Sender Keys error:', error);
+    res.status(500).json({ message: 'Lỗi upload Sender Keys' });
+  }
+});
+
+// Lấy danh sách Sender Keys mà các thành viên khác đã gửi cho mình (E2EE Group Chat)
+router.get('/:id/sender-keys', async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user._id; // Mình là receiver
+
+    const group = await Group.findOne({
+      _id: groupId,
+      'members.user': userId,
+      isActive: true
+    });
+
+    if (!group) {
+      return res.status(404).json({ message: 'Nhóm không tồn tại hoặc bạn không ở trong nhóm này' });
+    }
+
+    // Trích xuất những senderKeys mà receiverId == chính mình
+    const myReceivedKeys = group.senderKeys.filter(
+      key => key.receiverId.toString() === userId.toString()
+    );
+
+    res.json(myReceivedKeys);
+  } catch (error) {
+    console.error('Fetch Sender Keys error:', error);
+    res.status(500).json({ message: 'Lỗi tải về Sender Keys' });
+  }
+});
+
 // Error handling middleware for multer
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {

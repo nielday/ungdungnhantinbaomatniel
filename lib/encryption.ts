@@ -460,3 +460,83 @@ export async function decryptFile(
         encryptedData
     );
 }
+
+// ==========================================
+// GROUP CHAT SENDER KEYS PROTOCOL
+// ==========================================
+
+// 1. Tạo một Sender Key ngẫu nhiên (AES-256) cho Group
+export async function generateSenderKey(): Promise<CryptoKey> {
+    return await crypto.subtle.generateKey(
+        {
+            name: 'AES-GCM',
+            length: 256
+        },
+        true, // Cần extractable để export ra mã hóa gửi cho người khác
+        ['encrypt', 'decrypt']
+    );
+}
+
+// 2. Export Sender Key (AES) thành chuỗi Base64
+export async function exportSenderKey(senderKey: CryptoKey): Promise<string> {
+    const exported = await crypto.subtle.exportKey('raw', senderKey);
+    return arrayBufferToBase64(exported);
+}
+
+// 3. Import Sender Key từ chuỗi Base64
+export async function importSenderKey(senderKeyBase64: string): Promise<CryptoKey> {
+    const keyData = base64ToArrayBuffer(senderKeyBase64);
+    return await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        {
+            name: 'AES-GCM'
+        },
+        true,
+        ['encrypt', 'decrypt']
+    );
+}
+
+// 4. Mã hoá SenderKey bằng SharedKey của người nhận (ECDH) để gửi qua mạng an toàn
+export async function encryptSenderKeyForUser(
+    senderKeyBase64: string,
+    sharedKey: CryptoKey
+): Promise<{ encryptedKey: string; iv: string }> {
+    const iv = generateIV();
+    const encodedKey = new TextEncoder().encode(senderKeyBase64);
+
+    const encryptedData = await crypto.subtle.encrypt(
+        {
+            name: 'AES-GCM',
+            iv: iv as BufferSource
+        },
+        sharedKey,
+        encodedKey
+    );
+
+    return {
+        encryptedKey: arrayBufferToBase64(encryptedData),
+        iv: arrayBufferToBase64(iv)
+    };
+}
+
+// 5. Box / Mở khoá SenderKey từ tin nhắn mạng bằng SharedKey (ECDH)
+export async function decryptSenderKeyFromUser(
+    encryptedSenderKeyBase64: string,
+    ivBase64: string,
+    sharedKey: CryptoKey
+): Promise<string> {
+    const ciphertextBuffer = base64ToArrayBuffer(encryptedSenderKeyBase64);
+    const ivBuffer = base64ToArrayBuffer(ivBase64);
+
+    const decryptedData = await crypto.subtle.decrypt(
+        {
+            name: 'AES-GCM',
+            iv: ivBuffer
+        },
+        sharedKey,
+        ciphertextBuffer
+    );
+
+    return new TextDecoder().decode(decryptedData);
+}

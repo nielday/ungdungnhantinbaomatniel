@@ -68,7 +68,31 @@ const GroupSchema = new mongoose.Schema({
       type: Number,
       default: 100
     }
-  }
+  },
+  senderKeys: [{
+    senderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    receiverId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    encryptedKey: {
+      type: String,
+      required: true
+    },
+    iv: {
+      type: String,
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });
@@ -80,23 +104,23 @@ GroupSchema.index({ lastMessageAt: -1 });
 GroupSchema.index({ name: 'text', description: 'text' });
 
 // Virtual for member count
-GroupSchema.virtual('memberCount').get(function() {
+GroupSchema.virtual('memberCount').get(function () {
   return this.members.length;
 });
 
 // Method to check if user is admin
-GroupSchema.methods.isAdmin = function(userId) {
-  return this.createdBy.toString() === userId.toString() || 
-         this.admins.some(admin => admin.toString() === userId.toString());
+GroupSchema.methods.isAdmin = function (userId) {
+  return this.createdBy.toString() === userId.toString() ||
+    this.admins.some(admin => admin.toString() === userId.toString());
 };
 
 // Method to check if user is member
-GroupSchema.methods.isMember = function(userId) {
+GroupSchema.methods.isMember = function (userId) {
   return this.members.some(member => member.user.toString() === userId.toString());
 };
 
 // Method to add member
-GroupSchema.methods.addMember = function(userId, role = 'member') {
+GroupSchema.methods.addMember = function (userId, role = 'member') {
   if (!this.isMember(userId)) {
     this.members.push({
       user: userId,
@@ -106,15 +130,15 @@ GroupSchema.methods.addMember = function(userId, role = 'member') {
 };
 
 // Method to remove member
-GroupSchema.methods.removeMember = function(userId) {
-  this.members = this.members.filter(member => 
+GroupSchema.methods.removeMember = function (userId) {
+  this.members = this.members.filter(member =>
     member.user.toString() !== userId.toString()
   );
 };
 
 // Method to promote to admin
-GroupSchema.methods.promoteToAdmin = function(userId) {
-  const member = this.members.find(member => 
+GroupSchema.methods.promoteToAdmin = function (userId) {
+  const member = this.members.find(member =>
     member.user.toString() === userId.toString()
   );
   if (member) {
@@ -126,11 +150,11 @@ GroupSchema.methods.promoteToAdmin = function(userId) {
 };
 
 // Method to demote from admin
-GroupSchema.methods.demoteFromAdmin = function(userId) {
-  this.admins = this.admins.filter(admin => 
+GroupSchema.methods.demoteFromAdmin = function (userId) {
+  this.admins = this.admins.filter(admin =>
     admin.toString() !== userId.toString()
   );
-  const member = this.members.find(member => 
+  const member = this.members.find(member =>
     member.user.toString() === userId.toString()
   );
   if (member) {

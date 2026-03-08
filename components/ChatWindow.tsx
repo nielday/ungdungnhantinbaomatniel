@@ -524,9 +524,9 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     try {
       const newMode = encryptionMode === 'e2ee' ? 'none' : 'e2ee';
 
-      // If enabling encryption, check if other user has a key
+      // If enabling encryption, check if other user has a key (Only for Private chat)
       if (newMode === 'e2ee' && conversation.type === 'private') {
-        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+        const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
         if (otherUser?._id) {
           const keyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
@@ -585,90 +585,128 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     try {
       console.log('🔓 Decrypting message:', message._id, 'hasUnlockedKey:', !!unlockedPrivateKey);
 
-      // Determine which public key to use for ECDH
-      // If I am the sender: I need the RECIPIENT's public key (same as when encrypting)
-      // If I am the recipient: I need the SENDER's public key
-      const amISender = message.senderId._id === currentUser?.id;
+      // ===== KIẾN TRÚC MỚI: RẼ NHÁNH XỬ LÝ THEO LOẠI CONVERSATION =====
+      let decrypted = '';
 
-      let otherUserPublicKey: string;
+      if (conversation.type === 'group') {
+        // LUỒNG 1: SENDER KEYS PROTOCOL (GROUP CHAT)
 
-      if (amISender) {
-        // I sent this message - need to get recipient's public key
-        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
-        if (!otherUser?._id) {
-          return `🔒 ${t('encryption.decryptFailed')}`;
-        }
-
-        const recipientKeyResponse = await fetch(
-          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+        // 1. Lấy private key của chính mình
+        const myKeysResponse = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
           { credentials: 'include' }
         );
+        if (!myKeysResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
 
-        if (!recipientKeyResponse.ok) {
-          return `🔒 ${t('encryption.decryptFailed')}`;
+        const myKeysData = await myKeysResponse.json();
+        let realPrivateKeyToImport = unlockedPrivateKey;
+
+        if (!realPrivateKeyToImport) {
+          if (!myKeysData.keySalt) {
+            realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
+          } else {
+            return `🔒 Yêu cầu mật khẩu giải mã...`;
+          }
+        }
+        if (!realPrivateKeyToImport) return `🔒 Xin nhập mật khẩu giải mã (Bên dưới màn hình)`;
+
+        const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
+
+        // 2. Kéo danh sách Sender Keys mà group này đang có
+        const senderKeysRes = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`,
+          { credentials: 'include' }
+        );
+        if (!senderKeysRes.ok) return `🔒 Không tìm thấy Sender Key của người gửi`;
+        const myReceivedKeys = await senderKeysRes.json();
+
+        // 3. Tìm Sender Key của người gửi tin nhắn này
+        const senderKeyObj = myReceivedKeys.find((k: any) => k.senderId === message.senderId._id);
+        if (!senderKeyObj) {
+          return `🔒 Thiếu Sender Key từ ${message.senderId.fullName}`;
         }
 
-        const recipientKeyData = await recipientKeyResponse.json();
-        otherUserPublicKey = recipientKeyData.publicKey;
-      } else {
-        // I received this message - need sender's public key
+        // 4. Lấy Public Key của ngườI gửi để làm ECDH (Mở khóa cái SenderKey)
         const senderKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
           { credentials: 'include' }
         );
-
-        if (!senderKeyResponse.ok) {
-          return `🔒 ${t('encryption.decryptFailed')}`;
-        }
-
+        if (!senderKeyResponse.ok) return `🔒 Lỗi tra cứu Public Key`;
         const senderKeyData = await senderKeyResponse.json();
-        otherUserPublicKey = senderKeyData.publicKey;
-      }
 
-      // Get my private key
-      const myKeysResponse = await fetch(
-        `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-        { credentials: 'include' }
-      );
+        const senderPublicKey = await encryption.importPublicKey(senderKeyData.publicKey);
+        const sharedKeyToUnlockSenderKey = await encryption.deriveSharedKey(myPrivateKey, senderPublicKey);
 
-      if (!myKeysResponse.ok) {
-        return `🔒 ${t('encryption.decryptFailed')}`;
-      }
+        // 5. Mổ khóa Sender Key bằng Shared ECDH
+        const rawSenderKeyBase64 = await encryption.decryptSenderKeyFromUser(
+          senderKeyObj.encryptedKey,
+          senderKeyObj.iv,
+          sharedKeyToUnlockSenderKey
+        );
+        const activeSenderKey = await encryption.importSenderKey(rawSenderKeyBase64);
 
-      const myKeysData = await myKeysResponse.json();
+        // 6. Dùng Sender Key (AES) giải mã tin nhắn Group
+        decrypted = await encryption.decryptMessage(
+          message.content,
+          message.encryptionData.iv,
+          activeSenderKey
+        );
 
-      if (!otherUserPublicKey || !myKeysData.encryptedPrivateKey) {
-        return `🔒 ${t('encryption.decryptFailed')}`;
-      }
+      } else {
+        // LUỒNG 2: ECDH POINT-TO-POINT (PRIVATE CHAT - GIỮ NGUYÊN CODE CŨ)
+        const amISender = message.senderId._id === currentUser?.id;
+        let otherUserPublicKey: string;
 
-      // 1. Get real Private Key 
-      let realPrivateKeyToImport = unlockedPrivateKey;
+        if (amISender) {
+          const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+          if (!otherUser?._id) return `🔒 ${t('encryption.decryptFailed')}`;
 
-      if (!realPrivateKeyToImport) {
-        // If we haven't unlocked it yet, check if it's the old raw format
-        if (!myKeysData.keySalt) {
-          realPrivateKeyToImport = myKeysData.encryptedPrivateKey; // It's actually raw
+          const recipientKeyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+            { credentials: 'include' }
+          );
+          if (!recipientKeyResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
+          const recipientKeyData = await recipientKeyResponse.json();
+          otherUserPublicKey = recipientKeyData.publicKey;
         } else {
-          // It is properly encrypted, we need password (don't auto-popup anymore to prevent looping/annoying prompt)
-          return `🔒 Yêu cầu mật khẩu giải mã...`; // Trả về thông báo ảo đợi User nhập pass
+          const senderKeyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
+            { credentials: 'include' }
+          );
+          if (!senderKeyResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
+          const senderKeyData = await senderKeyResponse.json();
+          otherUserPublicKey = senderKeyData.publicKey;
         }
+
+        const myKeysResponse = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+          { credentials: 'include' }
+        );
+        if (!myKeysResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
+        const myKeysData = await myKeysResponse.json();
+
+        if (!otherUserPublicKey || !myKeysData.encryptedPrivateKey) return `🔒 ${t('encryption.decryptFailed')}`;
+
+        let realPrivateKeyToImport = unlockedPrivateKey;
+        if (!realPrivateKeyToImport) {
+          if (!myKeysData.keySalt) {
+            realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
+          } else {
+            return `🔒 Yêu cầu mật khẩu giải mã...`;
+          }
+        }
+        if (!realPrivateKeyToImport) return `🔒 Xin nhập mật khẩu giải mã (Bên dưới màn hình)`;
+
+        const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
+        const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
+        const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
+
+        decrypted = await encryption.decryptMessage(
+          message.content,
+          message.encryptionData.iv,
+          sharedKey
+        );
       }
-
-      if (!realPrivateKeyToImport) {
-        return `🔒 Xin nhập mật khẩu giải mã (Bên dưới màn hình)`;
-      }
-
-      // Import keys and derive shared secret
-      const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
-      const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
-      const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
-
-      // Decrypt the message
-      const decrypted = await encryption.decryptMessage(
-        message.content,
-        message.encryptionData.iv,
-        sharedKey
-      );
 
       // Cache the decrypted content
       setDecryptedMessages(prev => ({ ...prev, [message._id]: decrypted }));
@@ -699,84 +737,124 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       const amISender = message.senderId._id === currentUser?.id;
       let otherUserPublicKey: string;
 
-      if (amISender) {
-        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
-        if (!otherUser?._id) {
-          console.error('File decrypt: no other user found');
-          return null;
+      // ===== KIẾN TRÚC MỚI: RẼ NHÁNH XỬ LÝ THEO LOẠI CONVERSATION =====
+      let sharedKeyToDecryptFile: CryptoKey; // Cho Private Chat
+      let activeSenderKeyToDecryptFile: CryptoKey; // Cho Group Chat
+
+      if (conversation.type === 'group') {
+        // Lấy private key của mình
+        let realPrivateKeyToImport = unlockedPrivateKey;
+        if (!realPrivateKeyToImport) {
+          const myKeysResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+            { credentials: 'include' }
+          );
+          if (!myKeysResponse.ok) return null;
+          const myKeysData = await myKeysResponse.json();
+          if (!myKeysData.encryptedPrivateKey) return null;
+
+          if (!myKeysData.keySalt) {
+            realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
+          } else {
+            return null;
+          }
         }
-        const recipientKeyResponse = await fetch(
-          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+        if (!realPrivateKeyToImport) return null;
+
+        const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
+
+        // Lấy danh sách Sender Keys mà group này đang có
+        const senderKeysRes = await fetch(
+          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`,
           { credentials: 'include' }
         );
-        if (!recipientKeyResponse.ok) {
-          console.error('File decrypt: failed to get recipient public key');
-          return null;
-        }
-        otherUserPublicKey = (await recipientKeyResponse.json()).publicKey;
-      } else {
+        if (!senderKeysRes.ok) return null;
+        const myReceivedKeys = await senderKeysRes.json();
+
+        // Tìm Sender Key của người gửi file
+        const senderKeyObj = myReceivedKeys.find((k: any) => k.senderId === message.senderId._id);
+        if (!senderKeyObj) return null;
+
+        // Lấy Public Key của ngườI gửi để làm ECDH
         const senderKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
           { credentials: 'include' }
         );
-        if (!senderKeyResponse.ok) {
-          console.error('File decrypt: failed to get sender public key');
-          return null;
-        }
-        otherUserPublicKey = (await senderKeyResponse.json()).publicKey;
-      }
+        if (!senderKeyResponse.ok) return null;
+        const senderKeyData = await senderKeyResponse.json();
 
-      // Check my private key
-      let realPrivateKeyToImport = unlockedPrivateKey;
+        const senderPublicKey = await encryption.importPublicKey(senderKeyData.publicKey);
+        const sharedKeyToUnlockSenderKey = await encryption.deriveSharedKey(myPrivateKey, senderPublicKey);
 
-      if (!realPrivateKeyToImport) {
-        const myKeysResponse = await fetch(
-          `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-          { credentials: 'include' }
+        // Mổ khóa Sender Key
+        const rawSenderKeyBase64 = await encryption.decryptSenderKeyFromUser(
+          senderKeyObj.encryptedKey,
+          senderKeyObj.iv,
+          sharedKeyToUnlockSenderKey
         );
-        if (!myKeysResponse.ok) {
-          console.error('File decrypt: failed to get my encryption keys');
-          return null;
-        }
-        const myKeysData = await myKeysResponse.json();
 
-        if (!myKeysData.encryptedPrivateKey) {
-          console.error('File decrypt: no encrypted private key');
-          return null;
-        }
+        // Gán khóa giải mã là SenderKey 
+        activeSenderKeyToDecryptFile = await encryption.importSenderKey(rawSenderKeyBase64);
 
-        if (!myKeysData.keySalt) {
-          realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
+      } else {
+        // Luồng Point-to-Point ECDH
+        const amISender = message.senderId._id === currentUser?.id;
+        let otherUserPublicKey: string;
+
+        if (amISender) {
+          const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+          if (!otherUser?._id) return null;
+          const recipientKeyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+            { credentials: 'include' }
+          );
+          if (!recipientKeyResponse.ok) return null;
+          otherUserPublicKey = (await recipientKeyResponse.json()).publicKey;
         } else {
-          // Don't auto-popup password prompt for files either
-          return null;
+          const senderKeyResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
+            { credentials: 'include' }
+          );
+          if (!senderKeyResponse.ok) return null;
+          otherUserPublicKey = (await senderKeyResponse.json()).publicKey;
         }
+
+        let realPrivateKeyToImport = unlockedPrivateKey;
+        if (!realPrivateKeyToImport) {
+          const myKeysResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+            { credentials: 'include' }
+          );
+          if (!myKeysResponse.ok) return null;
+          const myKeysData = await myKeysResponse.json();
+          if (!myKeysData.encryptedPrivateKey) return null;
+          if (!myKeysData.keySalt) realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
+          else return null;
+        }
+
+        if (!realPrivateKeyToImport || !otherUserPublicKey) return null;
+
+        const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
+        const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
+
+        // Gán khóa giải mã là SharedKey ECHD Point-to-Point
+        sharedKeyToDecryptFile = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
       }
 
-      if (!realPrivateKeyToImport || !otherUserPublicKey) {
-        console.error('File decrypt: missing keys');
-        return null;
-      }
-
-      // ===== STEP 2: Derive shared key =====
-      const otherPublicKey = await encryption.importPublicKey(otherUserPublicKey);
-      const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
-      const sharedKey = await encryption.deriveSharedKey(myPrivateKey, otherPublicKey);
-
-      // ===== STEP 3: NOW fetch the encrypted file =====
+      // ===== FETCH THE ENCRYPTED FILE =====
       const normalizedUrl = normalizeFileUrlHelper(fileUrl);
       const fileResponse = await fetch(normalizedUrl);
-      if (!fileResponse.ok) {
-        console.error('File decrypt: failed to fetch file, status:', fileResponse.status);
-        throw new Error(`Failed to fetch encrypted file: ${fileResponse.status}`);
-      }
+      if (!fileResponse.ok) throw new Error(`Failed to fetch encrypted file: ${fileResponse.status}`);
       const encryptedBuffer = await fileResponse.arrayBuffer();
 
-      // ===== STEP 4: Decrypt =====
+      // ===== DECRYPT =====
+      // Chọn Key nào để decrypt thì tùy nhánh if else ở trên
+      const decryptKeyUsed = conversation.type === 'group' ? activeSenderKeyToDecryptFile! : sharedKeyToDecryptFile!;
+
       const decryptedBuffer = await encryption.decryptFile(
         encryptedBuffer,
         message.encryptionData.iv,
-        sharedKey
+        decryptKeyUsed
       );
 
       // ===== STEP 5: Create Object URL =====
@@ -808,67 +886,112 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       // If E2EE is enabled, encrypt the message
       if (encryptionMode === 'e2ee' && messageType === 'text') {
         try {
-          // Get recipient's public key
-          const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
-          if (otherUser?._id) {
+          // Lấy khóa cá nhân của mình
+          const myKeysResponse = await fetch(
+            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+            { credentials: 'include' }
+          );
+
+          if (!myKeysResponse.ok) {
+            alert(t('encryption.noKey'));
+            return;
+          }
+          const myKeysData = await myKeysResponse.json();
+          let realPrivateKeyToImport = unlockedPrivateKey;
+
+          if (!realPrivateKeyToImport) {
+            if (!myKeysData.keySalt) {
+              realPrivateKeyToImport = myKeysData.encryptedPrivateKey;
+            } else {
+              setShowPasswordPrompt(true);
+              return;
+            }
+          }
+          if (!realPrivateKeyToImport) return;
+
+          const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
+
+          // RẼ NHÁNH: XỬ LÝ E2EE DỰA VÀO LOẠI CONVERSATION
+          if (conversation.type === 'group') {
+            // SENDER KEYS PROTOCOL
+
+            // Bước A: Kiểm tra xem mình đã phân phối Sender Key cho nhóm chưa?
+            // Tại đây tạm thời tối giản (thay vì fetch get sender-keys để check dài dòng), ta sinh luôn Sender Key và mã hóa đẩy mỗi lần gửi hoặc dùng LocalStorage cache SenderKey
+            // Tuy nhiên đúng chuẩn là Sinh 1 lần và kiểm tra:
+            let activeSenderKey: CryptoKey;
+            let senderKeyBase64 = localStorage.getItem(`senderKey_${conversation._id}`);
+
+            if (!senderKeyBase64) {
+              // Tạo mới Sender Key (AES)
+              activeSenderKey = await encryption.generateSenderKey();
+              senderKeyBase64 = await encryption.exportSenderKey(activeSenderKey);
+              localStorage.setItem(`senderKey_${conversation._id}`, senderKeyBase64);
+
+              // Phân phối Sender Key cho từng thành viên bằng ECDH
+              const groupMembers = conversation.participants || [];
+              const distributionPayload = [];
+
+              for (const member of groupMembers) {
+                if (member._id === currentUser?.id) continue; // Không tự khóa cho mình (hoặc có tùy thiết kế, Niel app bỏ qua)
+
+                const keyResponse = await fetch(
+                  `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
+                  { credentials: 'include' }
+                );
+                if (keyResponse.ok) {
+                  const keyData = await keyResponse.json();
+                  if (keyData.publicKey) {
+                    const memberPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                    const sharedKey = await encryption.deriveSharedKey(myPrivateKey, memberPublicKey);
+
+                    const { encryptedKey, iv } = await encryption.encryptSenderKeyForUser(senderKeyBase64, sharedKey);
+                    distributionPayload.push({
+                      receiverId: member._id,
+                      encryptedKey,
+                      iv
+                    });
+                  }
+                }
+              }
+
+              // Gửi chìa khóa phân phối lên Server
+              if (distributionPayload.length > 0) {
+                await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ keys: distributionPayload })
+                });
+              }
+            } else {
+              activeSenderKey = await encryption.importSenderKey(senderKeyBase64);
+            }
+
+            // Bước B: Mã hóa văn bản gửi đi duy nhất bằng Sender Key
+            const encrypted = await encryption.encryptMessage(content, activeSenderKey);
+            messageContent = encrypted.ciphertext;
+            encryptionData = { iv: encrypted.iv, algorithm: 'AES-256-GCM-SenderKey' };
+
+          } else {
+            // PRIVATE CHAT ECDH
+            const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+            if (!otherUser?._id) return alert(t('encryption.recipientNoKeyDesc'));
+
             const keyResponse = await fetch(
               `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
               { credentials: 'include' }
             );
 
-            if (keyResponse.ok) {
-              const keyData = await keyResponse.json();
-              if (keyData.publicKey) {
-                // Get my private key
-                const myKeysResponse = await fetch(
-                  `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-                  { credentials: 'include' }
-                );
+            if (!keyResponse.ok) return alert(t('encryption.otherNoKey'));
+            const keyData = await keyResponse.json();
+            if (!keyData.publicKey) return alert(t('encryption.otherNoKey'));
 
-                if (myKeysResponse.ok) {
-                  const myKeysData = await myKeysResponse.json();
-                  if (myKeysData.encryptedPrivateKey) {
+            const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+            const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
 
-                    // 1. Get real Private Key 
-                    let realPrivateKeyToImport = unlockedPrivateKey;
-
-                    if (!realPrivateKeyToImport) {
-                      // If we haven't unlocked it yet, check if it's the old raw format
-                      if (!myKeysData.keySalt) {
-                        realPrivateKeyToImport = myKeysData.encryptedPrivateKey; // It's actually raw
-                      } else {
-                        setShowPasswordPrompt(true);
-                        return; // Stop sending msg until unlocked
-                      }
-                    }
-
-                    if (!realPrivateKeyToImport) return;
-
-                    // Import keys and derive shared secret
-                    const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                    const myPrivateKey = await encryption.importPrivateKey(realPrivateKeyToImport);
-                    const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
-
-                    // Encrypt the message
-                    const encrypted = await encryption.encryptMessage(content, sharedKey);
-                    messageContent = encrypted.ciphertext;
-                    encryptionData = { iv: encrypted.iv, algorithm: 'AES-256-GCM' };
-                  } else {
-                    alert(t('encryption.noKey'));
-                    return;
-                  }
-                } else {
-                  alert(t('encryption.noKey'));
-                  return;
-                }
-              } else {
-                alert(t('encryption.otherNoKey'));
-                return;
-              }
-            } else {
-              alert(t('encryption.otherNoKey'));
-              return;
-            }
+            const encrypted = await encryption.encryptMessage(content, sharedKey);
+            messageContent = encrypted.ciphertext;
+            encryptionData = { iv: encrypted.iv, algorithm: 'AES-256-GCM' };
           }
         } catch (encError) {
           console.error('Encryption error:', encError);
@@ -954,56 +1077,109 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       // Determine if we should encrypt
       if (encryptionMode === 'e2ee') {
-        const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
-        if (otherUser?._id) {
-          const keyResponse = await fetch(
-            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { credentials: 'include' }
-          );
+        let realKey = unlockedPrivateKey;
+        if (!realKey) {
+          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { credentials: 'include' });
+          if (myKeysResponse.ok) {
+            const myKeysData = await myKeysResponse.json();
+            if (myKeysData.encryptedPrivateKey && !myKeysData.keySalt) realKey = myKeysData.encryptedPrivateKey;
+            else { setShowPasswordPrompt(true); return; }
+          } else return;
+        }
+        if (!realKey) return;
 
-          if (keyResponse.ok) {
-            const keyData = await keyResponse.json();
-            if (keyData.publicKey) {
-              const myKeysResponse = await fetch(
-                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+        const myPrivateKey = await encryption.importPrivateKey(realKey);
+
+        if (conversation.type === 'group') {
+          // GROUP CHAT SENDER KEYS FILE UPLOAD
+          let activeSenderKey: CryptoKey;
+          let senderKeyBase64 = localStorage.getItem(`senderKey_${conversation._id}`);
+
+          if (!senderKeyBase64) {
+            // Create & Distribute
+            activeSenderKey = await encryption.generateSenderKey();
+            senderKeyBase64 = await encryption.exportSenderKey(activeSenderKey);
+            localStorage.setItem(`senderKey_${conversation._id}`, senderKeyBase64);
+
+            const groupMembers = conversation.participants || [];
+            const distributionPayload = [];
+
+            for (const member of groupMembers) {
+              if (member._id === currentUser?.id) continue;
+
+              const keyResponse = await fetch(
+                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
                 { credentials: 'include' }
               );
+              if (keyResponse.ok) {
+                const keyData = await keyResponse.json();
+                if (keyData.publicKey) {
+                  const memberPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, memberPublicKey);
 
-              if (myKeysResponse.ok) {
-                const myKeysData = await myKeysResponse.json();
-                if (myKeysData.encryptedPrivateKey) {
-                  // Get real private key (may need password unlock)
-                  const realKey = await getRealPrivateKey();
-                  if (!realKey) return; // Will show password prompt
-
-                  const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                  const myPrivateKey = await encryption.importPrivateKey(realKey);
-                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
-
-                  // Chạy mã hóa từng file
-                  for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const arrayBuffer = await file.arrayBuffer();
-                    const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
-
-                    // Generate a blob out of the encrypted ArrayBuffer
-                    const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
-                    formData.append('files', encryptedBlob, `encrypted_${file.name}`);
-
-                    // Keep track of IV - since API only supports one encryptionData object currently per message 
-                    // we assume 1 file = 1 message for now in the simplest approach.
-                    if (!encryptionData) {
-                      encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: file.name, originalType: file.type };
-                    }
-                  }
-                } else {
-                  alert(t('encryption.noKey'));
-                  return;
+                  const { encryptedKey, iv } = await encryption.encryptSenderKeyForUser(senderKeyBase64, sharedKey);
+                  distributionPayload.push({ receiverId: member._id, encryptedKey, iv });
                 }
               }
+            }
+
+            if (distributionPayload.length > 0) {
+              await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ keys: distributionPayload })
+              });
+            }
+          } else {
+            activeSenderKey = await encryption.importSenderKey(senderKeyBase64);
+          }
+
+          // Encrypt Files with SenderKey
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const arrayBuffer = await file.arrayBuffer();
+            const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, activeSenderKey);
+
+            const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+            formData.append('files', encryptedBlob, `encrypted_${file.name}`);
+
+            if (!encryptionData) {
+              encryptionData = { iv, algorithm: 'AES-256-GCM-SenderKey', originalName: file.name, originalType: file.type };
+            }
+          }
+        } else {
+          // PRIVATE CHAT FILE UPLOAD (ECDH)
+          const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
+          if (otherUser?._id) {
+            const keyResponse = await fetch(
+              `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+              { credentials: 'include' }
+            );
+
+            if (keyResponse.ok) {
+              const keyData = await keyResponse.json();
+              if (keyData.publicKey) {
+                const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
+
+                for (let i = 0; i < files.length; i++) {
+                  const file = files[i];
+                  const arrayBuffer = await file.arrayBuffer();
+                  const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
+
+                  const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+                  formData.append('files', encryptedBlob, `encrypted_${file.name}`);
+
+                  if (!encryptionData) {
+                    encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: file.name, originalType: file.type };
+                  }
+                }
+              } else {
+                return alert(t('encryption.otherNoKey'));
+              }
             } else {
-              alert(t('encryption.otherNoKey'));
-              return;
+              return alert(t('encryption.otherNoKey'));
             }
           }
         }
@@ -1045,52 +1221,103 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       let encryptionData = null;
 
       if (encryptionMode === 'e2ee') {
-        const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
-        if (otherUser?._id) {
-          const keyResponse = await fetch(
-            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { credentials: 'include' }
-          );
+        let realKey = unlockedPrivateKey;
+        if (!realKey) {
+          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { credentials: 'include' });
+          if (myKeysResponse.ok) {
+            const myKeysData = await myKeysResponse.json();
+            if (myKeysData.encryptedPrivateKey && !myKeysData.keySalt) realKey = myKeysData.encryptedPrivateKey;
+            else { setShowPasswordPrompt(true); return; }
+          } else return;
+        }
+        if (!realKey) return;
+        const myPrivateKey = await encryption.importPrivateKey(realKey);
 
-          if (keyResponse.ok) {
-            const keyData = await keyResponse.json();
-            if (keyData.publicKey) {
-              const myKeysResponse = await fetch(
-                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+        if (conversation.type === 'group') {
+          // GROUP CHAT SENDER KEYS AUDIO UPLOAD
+          let activeSenderKey: CryptoKey;
+          let senderKeyBase64 = localStorage.getItem(`senderKey_${conversation._id}`);
+
+          if (!senderKeyBase64) {
+            activeSenderKey = await encryption.generateSenderKey();
+            senderKeyBase64 = await encryption.exportSenderKey(activeSenderKey);
+            localStorage.setItem(`senderKey_${conversation._id}`, senderKeyBase64);
+
+            const groupMembers = conversation.participants || [];
+            const distributionPayload = [];
+
+            for (const member of groupMembers) {
+              if (member._id === currentUser?.id) continue;
+
+              const keyResponse = await fetch(
+                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
                 { credentials: 'include' }
               );
+              if (keyResponse.ok) {
+                const keyData = await keyResponse.json();
+                if (keyData.publicKey) {
+                  const memberPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, memberPublicKey);
 
-              if (myKeysResponse.ok) {
-                const myKeysData = await myKeysResponse.json();
-                if (myKeysData.encryptedPrivateKey) {
-                  const realKey = await getRealPrivateKey();
-                  if (!realKey) return;
-
-                  const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                  const myPrivateKey = await encryption.importPrivateKey(realKey);
-                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
-
-                  for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const arrayBuffer = await file.arrayBuffer();
-                    const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
-
-                    const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
-                    formData.append('files', encryptedBlob, `encrypted_${file.name}`);
-
-                    if (!encryptionData) {
-                      encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: file.name, originalType: file.type };
-                    }
-                  }
-                } else {
-                  alert(t('encryption.noKey'));
-                  return;
+                  const { encryptedKey, iv } = await encryption.encryptSenderKeyForUser(senderKeyBase64, sharedKey);
+                  distributionPayload.push({ receiverId: member._id, encryptedKey, iv });
                 }
               }
-            } else {
-              alert(t('encryption.otherNoKey'));
-              return;
             }
+
+            if (distributionPayload.length > 0) {
+              await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ keys: distributionPayload })
+              });
+            }
+          } else {
+            activeSenderKey = await encryption.importSenderKey(senderKeyBase64);
+          }
+
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const arrayBuffer = await file.arrayBuffer();
+            const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, activeSenderKey);
+
+            const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+            formData.append('files', encryptedBlob, `encrypted_${file.name}`);
+
+            if (!encryptionData) {
+              encryptionData = { iv, algorithm: 'AES-256-GCM-SenderKey', originalName: file.name, originalType: file.type };
+            }
+          }
+        } else {
+          // PRIVATE CHAT AUDIO UPLOAD (ECDH)
+          const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
+          if (otherUser?._id) {
+            const keyResponse = await fetch(
+              `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+              { credentials: 'include' }
+            );
+
+            if (keyResponse.ok) {
+              const keyData = await keyResponse.json();
+              if (keyData.publicKey) {
+                const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
+
+                for (let i = 0; i < files.length; i++) {
+                  const file = files[i];
+                  const arrayBuffer = await file.arrayBuffer();
+                  const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
+
+                  const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+                  formData.append('files', encryptedBlob, `encrypted_${file.name}`);
+
+                  if (!encryptionData) {
+                    encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: file.name, originalType: file.type };
+                  }
+                }
+              } else { return alert(t('encryption.otherNoKey')); }
+            } else { return alert(t('encryption.otherNoKey')); }
           }
         }
       }
@@ -1131,47 +1358,94 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       let encryptionData = null;
 
       if (encryptionMode === 'e2ee') {
-        const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
-        if (otherUser?._id) {
-          const keyResponse = await fetch(
-            `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { credentials: 'include' }
-          );
+        let realKey = unlockedPrivateKey;
+        if (!realKey) {
+          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { credentials: 'include' });
+          if (myKeysResponse.ok) {
+            const myKeysData = await myKeysResponse.json();
+            if (myKeysData.encryptedPrivateKey && !myKeysData.keySalt) realKey = myKeysData.encryptedPrivateKey;
+            else { setShowPasswordPrompt(true); return; }
+          } else return;
+        }
+        if (!realKey) return;
+        const myPrivateKey = await encryption.importPrivateKey(realKey);
 
-          if (keyResponse.ok) {
-            const keyData = await keyResponse.json();
-            if (keyData.publicKey) {
-              const myKeysResponse = await fetch(
-                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
+        if (conversation.type === 'group') {
+          // GROUP CHAT SENDER KEYS CAMERA UPLOAD
+          let activeSenderKey: CryptoKey;
+          let senderKeyBase64 = localStorage.getItem(`senderKey_${conversation._id}`);
+
+          if (!senderKeyBase64) {
+            activeSenderKey = await encryption.generateSenderKey();
+            senderKeyBase64 = await encryption.exportSenderKey(activeSenderKey);
+            localStorage.setItem(`senderKey_${conversation._id}`, senderKeyBase64);
+
+            const groupMembers = conversation.participants || [];
+            const distributionPayload = [];
+
+            for (const member of groupMembers) {
+              if (member._id === currentUser?.id) continue;
+
+              const keyResponse = await fetch(
+                `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
                 { credentials: 'include' }
               );
+              if (keyResponse.ok) {
+                const keyData = await keyResponse.json();
+                if (keyData.publicKey) {
+                  const memberPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, memberPublicKey);
 
-              if (myKeysResponse.ok) {
-                const myKeysData = await myKeysResponse.json();
-                if (myKeysData.encryptedPrivateKey) {
-                  const realKey = await getRealPrivateKey();
-                  if (!realKey) return;
-
-                  const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
-                  const myPrivateKey = await encryption.importPrivateKey(realKey);
-                  const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
-
-                  const arrayBuffer = await imageBlob.arrayBuffer();
-                  const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
-
-                  const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
-                  formData.append('files', encryptedBlob, 'encrypted_camera-capture.jpg');
-
-                  encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: 'camera-capture.jpg', originalType: imageBlob.type };
-                } else {
-                  alert(t('encryption.noKey'));
-                  return;
+                  const { encryptedKey, iv } = await encryption.encryptSenderKeyForUser(senderKeyBase64, sharedKey);
+                  distributionPayload.push({ receiverId: member._id, encryptedKey, iv });
                 }
               }
-            } else {
-              alert(t('encryption.otherNoKey'));
-              return;
             }
+
+            if (distributionPayload.length > 0) {
+              await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ keys: distributionPayload })
+              });
+            }
+          } else {
+            activeSenderKey = await encryption.importSenderKey(senderKeyBase64);
+          }
+
+          const arrayBuffer = await imageBlob.arrayBuffer();
+          const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, activeSenderKey);
+
+          const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+          formData.append('files', encryptedBlob, 'encrypted_camera-capture.jpg');
+
+          encryptionData = { iv, algorithm: 'AES-256-GCM-SenderKey', originalName: 'camera-capture.jpg', originalType: imageBlob.type };
+
+        } else {
+          // PRIVATE CHAT CAMERA UPLOAD (ECDH)
+          const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
+          if (otherUser?._id) {
+            const keyResponse = await fetch(
+              `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
+              { credentials: 'include' }
+            );
+
+            if (keyResponse.ok) {
+              const keyData = await keyResponse.json();
+              if (keyData.publicKey) {
+                const recipientPublicKey = await encryption.importPublicKey(keyData.publicKey);
+                const sharedKey = await encryption.deriveSharedKey(myPrivateKey, recipientPublicKey);
+
+                const arrayBuffer = await imageBlob.arrayBuffer();
+                const { encryptedData, iv } = await encryption.encryptFile(arrayBuffer, sharedKey);
+
+                const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+                formData.append('files', encryptedBlob, 'encrypted_camera-capture.jpg');
+
+                encryptionData = { iv, algorithm: 'AES-256-GCM', originalName: 'camera-capture.jpg', originalType: imageBlob.type };
+              } else { return alert(t('encryption.otherNoKey')); }
+            } else { return alert(t('encryption.otherNoKey')); }
           }
         }
       }
