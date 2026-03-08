@@ -75,7 +75,9 @@
         "deleteMessage": "Xóa tin nhắn",
         "deleteConfirm": "Bạn có chắc muốn xóa tin nhắn này?",
         "deleteFailed": "Không thể xóa tin nhắn",
-        "deleteError": "Có lỗi xảy ra khi xóa tin nhắn"
+        "deleteError": "Có lỗi xảy ra khi xóa tin nhắn",
+        "userBlocked": "Đã chặn người dùng thành công",
+        "conversationArchived": "Cuộc trò chuyện đã được lưu trữ"
     },
     "chatList": {
         "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",

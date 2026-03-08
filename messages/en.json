@@ -75,7 +75,9 @@
         "deleteMessage": "Delete message",
         "deleteConfirm": "Are you sure you want to delete this message?",
         "deleteFailed": "Unable to delete message",
-        "deleteError": "An error occurred while deleting the message"
+        "deleteError": "An error occurred while deleting the message",
+        "userBlocked": "User has been blocked successfully",
+        "conversationArchived": "Conversation has been archived"
     },
     "chatList": {
         "searchPlaceholder": "Search conversations...",

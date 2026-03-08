@@ -1039,6 +1039,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         setNewMessage('');
         setReplyingTo(null);
         onUpdateConversations();
+      } else if (response.status === 403) {
+        alert('Bạn đã bị chặn bởi người dùng này và không thể gửi tin nhắn.');
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -1224,6 +1226,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         const newMsg = await response.json();
         // Don't add message here - Socket.io will handle it
         onUpdateConversations();
+      } else if (response.status === 403) {
+        alert('Bạn đã bị chặn bởi người dùng này và không thể gửi file.');
       }
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -1360,6 +1364,8 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         const newMsg = await response.json();
         // Don't add message here - Socket.io will handle it
         onUpdateConversations();
+      } else if (response.status === 403) {
+        alert('Bạn đã bị chặn bởi người dùng này và không thể gửi audio.');
       }
     } catch (error) {
       console.error('Error uploading audio:', error);
