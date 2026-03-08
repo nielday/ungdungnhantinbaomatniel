@@ -273,7 +273,7 @@ export default function ChatList({
     if (conversation.type === 'group') {
       return conversation.name?.toLowerCase().includes(searchLower);
     } else {
-      const otherParticipant = conversation.participants?.find(p => p._id !== activeConversation?.participants?.[0]?._id);
+      const otherParticipant = conversation.participants?.find((p: any) => p._id !== currentUserId);
       return otherParticipant?.fullName?.toLowerCase().includes(searchLower) ||
         otherParticipant?.phoneNumber?.includes(searchQuery);
     }

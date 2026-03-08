@@ -628,16 +628,45 @@ router.get('/search/all', async (req, res) => {
       return res.json([]);
     }
 
-    // Search messages (only non-encrypted messages can be searched)
-    const messages = await Message.find({
-      conversationId: { $in: conversationIds },
-      content: { $regex: q.trim(), $options: 'i' },
-      isDeleted: false,
-      isEncrypted: { $ne: true } // Only search non-encrypted messages
-    })
-      .populate('senderId', 'fullName avatar')
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+    // Search messages using aggregation to filter by populated sender fullName
+    const limitNum = parseInt(limit);
+    const messagesAgg = await Message.aggregate([
+      {
+        $match: {
+          conversationId: { $in: conversationIds },
+          isDeleted: false,
+          isEncrypted: { $ne: true }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'senderId',
+          foreignField: '_id',
+          as: 'sender'
+        }
+      },
+      {
+        $unwind: '$sender'
+      },
+      {
+        $match: {
+          $or: [
+            { content: { $regex: q.trim(), $options: 'i' } },
+            { 'sender.fullName': { $regex: q.trim(), $options: 'i' } }
+          ]
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      { $limit: limitNum }
+    ]);
+
+    // Restore mongoose document format for the rest of the flow
+    const messages = messagesAgg.map(m => {
+      const doc = new Message(m);
+      doc.senderId = m.sender;
+      return doc;
+    });
 
     // Fetch conversation/group info for each message
     const messagesWithConversationInfo = await Promise.all(
