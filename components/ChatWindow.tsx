@@ -1629,10 +1629,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           <div className="flex items-center space-x-2">
             {/* Encryption Toggle Button */}
             {(() => {
+              const createdById = typeof conversation.createdBy === 'object' && conversation.createdBy !== null ? (conversation.createdBy as any)._id : conversation.createdBy;
+              const adminIds = conversation.admins?.map((a: any) => typeof a === 'object' && a !== null ? a._id : a) || [];
+
               const isAdminOrCreator = conversation.type === 'private' ||
-                (conversation.type === 'group' && (
-                  conversation.createdBy === currentUser?.id ||
-                  conversation.admins?.includes(currentUser?.id)
+                (conversation.type === 'group' && currentUser?.id && (
+                  createdById === currentUser.id ||
+                  adminIds.includes(currentUser.id)
                 ));
 
               if (!isAdminOrCreator) {

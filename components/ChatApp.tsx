@@ -39,6 +39,7 @@ interface Conversation {
   lastMessage?: any;
   lastMessageAt?: string;
   createdBy: any;
+  admins?: any[];
 }
 
 export default function ChatApp() {
@@ -209,7 +210,8 @@ export default function ChatApp() {
           avatar: group.avatar, // Group avatar for display
           lastMessage: null,
           lastMessageAt: group.updatedAt,
-          createdBy: group.createdBy
+          createdBy: group.createdBy,
+          admins: group.admins
         }));
         allConversations = [...allConversations, ...transformedGroups];
       } else {
@@ -254,7 +256,8 @@ export default function ChatApp() {
       avatar: updatedGroup.avatar,
       lastMessage: null,
       lastMessageAt: updatedGroup.updatedAt,
-      createdBy: updatedGroup.createdBy
+      createdBy: updatedGroup.createdBy,
+      admins: updatedGroup.admins
     };
 
     setConversations(prev => {
