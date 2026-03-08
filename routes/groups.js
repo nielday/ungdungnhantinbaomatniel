@@ -42,6 +42,28 @@ const upload = multer({
   }
 });
 
+// Helper to format group response and filter out deleted users
+const formatGroupResponse = (group) => {
+  const groupObj = group.toObject ? group.toObject() : group;
+
+  groupObj.members = (groupObj.members || [])
+    .filter(member => member.user != null)
+    .map(member => ({
+      ...member,
+      fullName: member.user.fullName || 'Người dùng không xác định',
+      phoneNumber: member.user.phoneNumber || '',
+      avatar: member.user.avatar || null,
+      _id: member.user._id || member.user
+    }));
+
+  if (!groupObj.createdBy) {
+    // Prevent UI crash if creator was deleted
+    groupObj.createdBy = { _id: null, fullName: 'Người dùng đã xóa', avatar: null };
+  }
+
+  return groupObj;
+};
+
 // Get all groups for a user
 router.get('/', async (req, res) => {
   try {
@@ -57,17 +79,7 @@ router.get('/', async (req, res) => {
       .sort({ lastMessageAt: -1 });
 
     // Transform groups to include full member information
-    const transformedGroups = groups.map(group => {
-      const groupObj = group.toObject();
-      groupObj.members = groupObj.members.map(member => ({
-        ...member,
-        fullName: member.user?.fullName || 'Unknown',
-        phoneNumber: member.user?.phoneNumber || '',
-        avatar: member.user?.avatar || null,
-        _id: member.user?._id || member.user
-      }));
-      return groupObj;
-    });
+    const transformedGroups = groups.map(group => formatGroupResponse(group));
 
     res.json(transformedGroups);
   } catch (error) {
@@ -157,14 +169,7 @@ router.get('/:id', async (req, res) => {
     }
 
     // Transform group to include full member information
-    const groupObj = group.toObject();
-    groupObj.members = groupObj.members.map(member => ({
-      ...member,
-      fullName: member.user?.fullName || 'Unknown',
-      phoneNumber: member.user?.phoneNumber || '',
-      avatar: member.user?.avatar || null,
-      _id: member.user?._id || member.user
-    }));
+    const groupObj = formatGroupResponse(group);
 
     res.json(groupObj);
   } catch (error) {
@@ -202,14 +207,7 @@ router.put('/:id', async (req, res) => {
     await group.populate('createdBy', 'fullName avatar phoneNumber');
 
     // Transform group to include full member information
-    const groupObj = group.toObject();
-    groupObj.members = groupObj.members.map(member => ({
-      ...member,
-      fullName: member.user?.fullName || 'Unknown',
-      phoneNumber: member.user?.phoneNumber || '',
-      avatar: member.user?.avatar || null,
-      _id: member.user?._id || member.user
-    }));
+    const groupObj = formatGroupResponse(group);
 
     res.json(groupObj);
 
@@ -281,14 +279,7 @@ router.post('/:id/members', async (req, res) => {
     await group.populate('createdBy', 'fullName avatar phoneNumber');
 
     // Transform group to include full member information
-    const groupObj = group.toObject();
-    groupObj.members = groupObj.members.map(member => ({
-      ...member,
-      fullName: member.user?.fullName || 'Unknown',
-      phoneNumber: member.user?.phoneNumber || '',
-      avatar: member.user?.avatar || null,
-      _id: member.user?._id || member.user
-    }));
+    const groupObj = formatGroupResponse(group);
 
     res.json(groupObj);
   } catch (error) {
@@ -331,14 +322,7 @@ router.delete('/:id/members/:memberId', async (req, res) => {
     await group.populate('createdBy', 'fullName avatar phoneNumber');
 
     // Transform group to include full member information
-    const groupObj = group.toObject();
-    groupObj.members = groupObj.members.map(member => ({
-      ...member,
-      fullName: member.user?.fullName || 'Unknown',
-      phoneNumber: member.user?.phoneNumber || '',
-      avatar: member.user?.avatar || null,
-      _id: member.user?._id || member.user
-    }));
+    const groupObj = formatGroupResponse(group);
 
     res.json(groupObj);
   } catch (error) {
@@ -441,14 +425,7 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
       await group.populate('createdBy', 'fullName avatar phoneNumber');
 
       // Transform group to include full member information
-      const groupObj = group.toObject();
-      groupObj.members = groupObj.members.map(member => ({
-        ...member,
-        fullName: member.user?.fullName || 'Unknown',
-        phoneNumber: member.user?.phoneNumber || '',
-        avatar: member.user?.avatar || null,
-        _id: member.user?._id || member.user
-      }));
+      const groupObj = formatGroupResponse(group);
 
       res.json(groupObj);
 
