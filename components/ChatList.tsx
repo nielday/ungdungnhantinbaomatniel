@@ -77,7 +77,7 @@ const SwipeableConversationItem = ({
   const t = useTranslations();
   const [isSwiping, setIsSwiping] = useState(false);
   const [xOffset, setXOffset] = useState(0);
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState<{ top: number, right: number } | null>(null);
 
   const handleDragEnd = (event: any, info: any) => {
     setIsSwiping(false);
@@ -86,19 +86,41 @@ const SwipeableConversationItem = ({
       setXOffset(-120); // Mở Menu ra (Chỉ 2 nút x 60px)
     } else if (info.offset.x > 30) {
       setXOffset(0); // Đóng menu nếu kéo lại
-      setShowMoreOptions(false);
+      setShowMoreOptions(null);
     }
   };
 
   const handleDrag = (event: any, info: any) => {
     setIsSwiping(true);
-    if (showMoreOptions) setShowMoreOptions(false);
+    if (showMoreOptions) setShowMoreOptions(null);
   };
 
   const closeMenu = () => {
     setXOffset(0);
-    setShowMoreOptions(false);
+    setShowMoreOptions(null);
   };
+
+  const handleMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (showMoreOptions) {
+      setShowMoreOptions(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setShowMoreOptions({
+      top: rect.bottom + 5, // Hiện ngay bên dưới nút "Khác"
+      right: window.innerWidth - rect.right // Bám mép phải của nút
+    });
+  };
+
+  // Click ra ngoài để đóng Popup
+  useEffect(() => {
+    const handleClickOutside = () => setShowMoreOptions(null);
+    if (showMoreOptions) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMoreOptions]);
 
   // Identify other participant for Blocking
   const otherParticipant = conversation.type === 'private'
@@ -113,45 +135,12 @@ const SwipeableConversationItem = ({
         {/* Nút Khác (Màu xám) */}
         <div className="relative h-full">
           <button
-            onClick={(e) => { e.stopPropagation(); setShowMoreOptions(!showMoreOptions); }}
+            onClick={handleMoreClick}
             className="h-full w-[60px] flex flex-col items-center justify-center bg-gray-400 dark:bg-gray-600 text-white transition-colors hover:bg-gray-500"
           >
             <MoreHorizontal className="w-5 h-5 mb-1" />
             <span className="text-[10px]">Khác</span>
           </button>
-
-          {/* Sub menu xổ ra khi ấn nút Khác */}
-          {showMoreOptions && (
-            <div className="absolute z-50 right-0 top-full mt-1 w-48 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-gray-200 dark:border-neutral-700 overflow-hidden transform origin-top-right">
-              {conversation.isArchived ? (
-                <button
-                  onClick={(e) => { e.stopPropagation(); closeMenu(); onUnarchive && onUnarchive(conversation._id); }}
-                  className="w-full flex items-center px-4 py-3 text-sm text-blue-600 hover:bg-gray-50 dark:hover:bg-neutral-700"
-                >
-                  <Archive className="w-4 h-4 mr-3" />
-                  Hủy Lưu trữ
-                </button>
-              ) : (
-                <button
-                  onClick={(e) => { e.stopPropagation(); closeMenu(); onArchive && onArchive(conversation._id); }}
-                  className="w-full flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-700"
-                >
-                  <Archive className="w-4 h-4 mr-3 text-gray-500" />
-                  Lưu trữ
-                </button>
-              )}
-
-              {conversation.type === 'private' && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id, conversation._id); }}
-                  className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border-t border-gray-100 dark:border-neutral-700"
-                >
-                  <Ban className="w-4 h-4 mr-3" />
-                  Chặn
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Nút Xóa (Màu Đỏ) */}
@@ -163,6 +152,46 @@ const SwipeableConversationItem = ({
           <span className="text-[10px]">Xóa</span>
         </button>
       </div>
+
+      {/* Sub menu xổ ra khi ấn nút Khác (Chuyển sang render Fixed Layer để thoát overflow-hidden thẻ cha) */}
+      {showMoreOptions && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed z-[99999] w-48 bg-white dark:bg-neutral-800 rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-gray-200 dark:border-neutral-700 overflow-hidden"
+          style={{
+            top: `${showMoreOptions.top}px`,
+            right: `${showMoreOptions.right}px`
+          }}
+        >
+          {conversation.isArchived ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); closeMenu(); onUnarchive && onUnarchive(conversation._id); }}
+              className="w-full flex items-center px-4 py-3 text-sm text-blue-600 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors"
+            >
+              <Archive className="w-4 h-4 mr-3" />
+              Hủy Lưu trữ
+            </button>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); closeMenu(); onArchive && onArchive(conversation._id); }}
+              className="w-full flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors"
+            >
+              <Archive className="w-4 h-4 mr-3 text-gray-500" />
+              Lưu trữ
+            </button>
+          )}
+
+          {conversation.type === 'private' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); closeMenu(); onBlock && onBlock(otherParticipant?._id, conversation._id); }}
+              className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border-t border-gray-100 dark:border-neutral-700 transition-colors"
+            >
+              <Ban className="w-4 h-4 mr-3" />
+              Chặn
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Foreground Chat Item Layer (Cái hiển thị lên trên) */}
       <motion.div
