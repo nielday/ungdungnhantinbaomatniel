@@ -100,7 +100,13 @@ const UserSchema = new mongoose.Schema({
   blockedUsers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+
+  // Token cho phiên đăng nhập hiện tại (1 máy duy nhất)
+  currentSessionToken: {
+    type: String,
+    default: null
+  }
 }, {
   timestamps: true
 });

@@ -233,6 +233,11 @@ io.use(async (socket, next) => {
       return next(new Error('User not found'));
     }
 
+    // Single Active Device Policy Check for Socket.io
+    if (!decoded.sessionId || !user.currentSessionToken || user.currentSessionToken !== decoded.sessionId) {
+      return next(new Error('Session revoked'));
+    }
+
     if (!user.isVerified) {
       return next(new Error('User not verified'));
     }

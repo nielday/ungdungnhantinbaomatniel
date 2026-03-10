@@ -78,6 +78,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [isLoadingBlockedUsers, setIsLoadingBlockedUsers] = useState(false);
 
+  // Active Session State (1-Account 1-Device Policy)
+  const [activeSession, setActiveSession] = useState<any>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
+
   const currentDeviceId = typeof window !== 'undefined' ? encryption.getDeviceId() : '';
 
   // Load settings from localStorage
@@ -111,6 +115,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (activeTab === 'security' && user) {
       loadEncryptionData();
+      loadActiveSession();
     }
     if (activeTab === 'privacy' && user) {
       loadBlockedUsers();
@@ -137,6 +142,49 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       console.error('Error loading blocked users:', err);
     } finally {
       setIsLoadingBlockedUsers(false);
+    }
+  };
+
+  const loadActiveSession = async () => {
+    setIsLoadingSession(true);
+    try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const response = await fetch(`${apiUrl}/auth/active-session`, {
+        headers,
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setActiveSession(data.session);
+      }
+    } catch (err) {
+      console.error('Error loading active session:', err);
+    } finally {
+      setIsLoadingSession(false);
+    }
+  };
+
+  const handleRevokeSession = async () => {
+    if (!confirm('Bạn có chắc chắn muốn đăng xuất khỏi thiết bị này? Phiên đăng nhập sẽ bị huỷ!')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      await fetch(`${apiUrl}/auth/revoke-session`, {
+        method: 'POST',
+        headers,
+        credentials: 'include'
+      });
+      // Reload triggers 401 unauth redirect via AuthContext
+      window.location.reload();
+    } catch (err) {
+      console.error('Revoke error:', err);
     }
   };
 
@@ -1449,6 +1497,41 @@ To restore:
                                   </div>
                                 )}
                               </div>
+                            )}
+                          </div>
+
+                          {/* Active Session Management (1-Device Policy) */}
+                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex items-center space-x-3 mb-3">
+                              <Smartphone className="w-5 h-5 text-green-500" />
+                              <h4 className="font-medium dark:text-white">Quản lý phiên đăng nhập</h4>
+                            </div>
+
+                            {isLoadingSession ? (
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('common.loading')}</p>
+                            ) : activeSession ? (
+                              <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                                <div className="flex items-center space-x-3 mb-2 md:mb-0">
+                                  <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                  <div>
+                                    <p className="font-medium text-gray-800 dark:text-white text-sm">
+                                      {activeSession.deviceInfo ? activeSession.deviceInfo.split(' ')[0] : (activeSession.browser || 'Unknown Browser')} trên {activeSession.osRelease || 'Thiết bị'}
+                                      <span className="ml-2 text-xs font-semibold text-green-600 dark:text-green-400">Đang hoạt động</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                      IP: {activeSession.ipAddress || 'Unknown IP'} • Đăng nhập lần cuối: {new Date(activeSession.lastLogin).toLocaleString('vi-VN')}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={handleRevokeSession}
+                                  className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                  Đăng xuất thiết bị
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">Không tìm thấy phiên đăng nhập đang hoạt động.</p>
                             )}
                           </div>
 

@@ -23,6 +23,14 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
+    // Single Active Device Policy Check
+    if (!decoded.sessionId || !user.currentSessionToken || user.currentSessionToken !== decoded.sessionId) {
+      return res.status(401).json({
+        message: 'Phiên đăng nhập đã hết hạn hoặc bạn đã đăng nhập ở thiết bị khác.',
+        isSessionRevoked: true
+      });
+    }
+
     // Allow unverified users for verification routes
     const verificationRoutes = ['/send-verification-otp', '/verify-account'];
     const isVerificationRoute = verificationRoutes.some(route => req.path.includes(route));

@@ -308,11 +308,14 @@ router.post('/verify-otp', verifyLimiter, async (req, res) => {
     user.isVerified = true;
     user.otpCode = undefined;
     user.otpExpires = undefined;
+
+    const sessionId = crypto.randomUUID();
+    user.currentSessionToken = sessionId;
     await user.save();
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id },
+      { userId: user._id, sessionId },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -515,11 +518,14 @@ router.post('/verify-login', verifyLimiter, async (req, res) => {
     // Clear OTP sau khi xác thực thành công
     user.otpCode = undefined;
     user.otpExpires = undefined;
+
+    const sessionId = crypto.randomUUID();
+    user.currentSessionToken = sessionId;
     await user.save();
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id },
+      { userId: user._id, sessionId },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -767,13 +773,58 @@ router.delete('/trusted-devices/:deviceId', authenticateToken, async (req, res) 
 });
 
 // Logout (Clear Cookie)
-router.post('/logout', (req, res) => {
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user) {
+      user.currentSessionToken = null;
+      await user.save();
+    }
+  } catch (error) {
+    console.error('Logout manual token clear error:', error);
+  }
+
   res.clearCookie('token', {
     httpOnly: true,
     secure: true,
     sameSite: 'none',
   });
   res.json({ message: 'Đã đăng xuất' });
+});
+
+// Get Active Session Details
+router.get('/active-session', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || (!user.currentSessionToken && !user.loginHistory.length)) {
+      return res.json({ session: null });
+    }
+
+    const lastLogin = user.loginHistory && user.loginHistory.length > 0
+      ? user.loginHistory[user.loginHistory.length - 1]
+      : null;
+
+    res.json({ session: lastLogin });
+  } catch (error) {
+    console.error('Active session err:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+});
+
+// Revoke Session (Remote Logout / Force Logout)
+router.post('/revoke-session', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.currentSessionToken = null;
+    await user.save();
+
+    res.json({ message: 'Phiên đăng nhập đã bị huỷ thành công.' });
+  } catch (error) {
+    console.error('Revoke session err:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
 });
 
 // Get Current User Info
