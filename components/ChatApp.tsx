@@ -95,12 +95,20 @@ export default function ChatApp() {
       }
     };
 
+    const handleSessionRevoked = (data: any) => {
+      // Show native alert and then trigger standard logout
+      alert(data.message || 'Phiên đăng nhập của bạn đã hết hạn do có thiết bị khác đăng nhập.');
+      logout();
+    };
+
     socket.on('group-info-updated', handleGroupInfoUpdated);
+    socket.on('session-revoked', handleSessionRevoked);
 
     return () => {
       socket.off('group-info-updated', handleGroupInfoUpdated);
+      socket.off('session-revoked', handleSessionRevoked);
     };
-  }, [socket]);
+  }, [socket, logout]);
 
   // Check if mobile
   useEffect(() => {

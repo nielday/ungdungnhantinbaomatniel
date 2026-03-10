@@ -313,6 +313,15 @@ router.post('/verify-otp', verifyLimiter, async (req, res) => {
     user.currentSessionToken = sessionId;
     await user.save();
 
+    // Phát sự kiện Socket huỷ phiên cũ ngay lập tức (Real-time Multi-Device Kick)
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user-${user._id}`).emit('session-revoked', {
+        message: 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác. Vui lòng đăng nhập lại.',
+        sessionId: sessionId
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, sessionId },
@@ -522,6 +531,15 @@ router.post('/verify-login', verifyLimiter, async (req, res) => {
     const sessionId = crypto.randomUUID();
     user.currentSessionToken = sessionId;
     await user.save();
+
+    // Phát sự kiện Socket huỷ phiên cũ ngay lập tức (Real-time Multi-Device Kick)
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user-${user._id}`).emit('session-revoked', {
+        message: 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác. Vui lòng đăng nhập lại.',
+        sessionId: sessionId
+      });
+    }
 
     // Generate JWT token
     const token = jwt.sign(
