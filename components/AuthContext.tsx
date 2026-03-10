@@ -33,34 +33,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in by calling /auth/me (will automatically send HttpOnly cookie)
-    // Also attach Bearer token if it exists (for mobile browsers that block cross-site cookies)
-    const token = localStorage.getItem('token');
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    fetch(`${API_BASE_URL}/auth/me`, {
-      method: 'GET',
-      headers,
-      credentials: 'include'
-    })
-      .then(res => {
+    const initAuth = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        let res = await fetch(`${API_BASE_URL}/auth/me`, {
+          method: 'GET',
+          headers,
+          credentials: 'include'
+        });
+
+        // Retry once if unauthorized and token is present (WebKit timing workaround)
+        if (!res.ok && token) {
+          await new Promise(r => setTimeout(r, 200));
+          const freshToken = localStorage.getItem('token');
+          if (freshToken) headers['Authorization'] = `Bearer ${freshToken}`;
+          res = await fetch(`${API_BASE_URL}/auth/me`, {
+            method: 'GET',
+            headers,
+            credentials: 'include'
+          });
+        }
+
         if (!res.ok) throw new Error('Not logged in');
-        return res.json();
-      })
-      .then(data => {
+        const data = await res.json();
+
         if (data.user) {
           setUser(data.user);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.log('AuthContext - User not logged in or session expired');
         setUser(null);
-      })
-      .finally(() => {
+        // Ensure we clean up invalid tokens
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+        }
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    // Run initialization with a tiny delay to ensure WebKit localstorage is ready
+    const timer = setTimeout(() => {
+      initAuth();
+    }, 50);
+
+    // Re-verify auth when page is shown from BFCache (iOS backward/forward navigation)
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        initAuth();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pageshow', handlePageShow);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pageshow', handlePageShow);
+      }
+    };
   }, []);
 
   const login = async (phoneNumber: string) => {
