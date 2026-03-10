@@ -46,12 +46,16 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
       setSearchLoading(true);
       console.log('CreateGroupModal - Searching users with query:', searchQuery);
 
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?q=${encodeURIComponent(searchQuery)}`,
         {
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include'
         }
       );
@@ -107,13 +111,17 @@ export default function CreateGroupModal({ onClose, onGroupCreated }: CreateGrou
 
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         'https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify({
             name: groupName.trim(),

@@ -33,16 +33,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Explicitly clean up old token from localStorage to avoid confusion
-    try {
-      localStorage.removeItem('token');
-    } catch (error) {
-      console.error('Failed to remove old token from local storage', error);
-    }
-
     // Check if user is logged in by calling /auth/me (will automatically send HttpOnly cookie)
+    // Also attach Bearer token if it exists (for mobile browsers that block cross-site cookies)
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     fetch(`${API_BASE_URL}/auth/me`, {
       method: 'GET',
+      headers,
       credentials: 'include'
     })
       .then(res => {
@@ -99,6 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
     setUser(data.user);
   };
 
@@ -138,6 +141,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
     setUser(data.user);
   };
 
@@ -167,13 +173,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      const token = localStorage.getItem('token');
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
+        headers: token ? {
+          'Authorization': `Bearer ${token}`
+        } : {},
         credentials: 'include'
       });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      localStorage.removeItem('token');
       setUser(null);
     }
   };

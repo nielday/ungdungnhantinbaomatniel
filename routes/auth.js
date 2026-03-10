@@ -375,7 +375,8 @@ router.post('/verify-otp', verifyLimiter, async (req, res) => {
         age: user.age,
         avatar: user.avatar,
         isVerified: user.isVerified
-      }
+      },
+      token: token
     });
   } catch (error) {
     console.error('Verify OTP error:', error);
@@ -579,7 +580,8 @@ router.post('/verify-login', verifyLimiter, async (req, res) => {
         age: user.age,
         avatar: user.avatar,
         isVerified: user.isVerified
-      }
+      },
+      token: token
     });
   } catch (error) {
     console.error('Verify login error:', error);

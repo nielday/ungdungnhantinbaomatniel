@@ -290,9 +290,14 @@ export default function ChatList({
     const timer = setTimeout(async () => {
       setIsSearchingMessages(true);
       try {
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/messages/search/all?q=${encodeURIComponent(searchQuery.trim())}&limit=10`,
           {
+            headers,
             credentials: 'include'
           }
         );

@@ -120,8 +120,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const loadBlockedUsers = async () => {
     setIsLoadingBlockedUsers(true);
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
       const response = await fetch(`${apiUrl}/users/blocked`, {
+        headers,
         credentials: 'include'
       });
       if (response.ok) {
@@ -137,9 +142,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   const handleUnblockUser = async (userId: string) => {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
       const response = await fetch(`${apiUrl}/users/unblock/${userId}`, {
         method: 'PUT',
+        headers,
         credentials: 'include'
       });
       if (response.ok) {
@@ -154,9 +164,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     if (!user) return;
 
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
       // Load encryption keys
       const keysResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
+        headers,
         credentials: 'include'
       });
 
@@ -176,6 +191,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
       setIsLoadingDevices(true);
       const devicesResponse = await fetch(`${apiUrl}/auth/trusted-devices`, {
+        headers,
         credentials: 'include'
       });
 
@@ -208,10 +224,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     if (!confirm(t('trustedDevices.confirmRemove'))) return;
 
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
 
       const response = await fetch(`${apiUrl}/auth/trusted-devices/${deviceId}`, {
         method: 'DELETE',
+        headers,
         credentials: 'include'
       });
 
@@ -342,8 +363,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         // Special handling for DELETE: Verify password by trying to decrypt current key
         setIsDeletingKey(true);
         try {
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           // 1. Fetch current keys
           const keysResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
+            headers,
             credentials: 'include'
           });
 
@@ -399,6 +425,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           // 2. Proceed to Delete
           const delResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
             method: 'DELETE',
+            headers,
             credentials: 'include'
           });
 
@@ -425,8 +452,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       } else if (pendingAction === 'backup') {
         // Backup Flow Step 1: Decrypt Server Key (or use raw key for old format)
         try {
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           // 1. Fetch current keys
           const keysResponse = await fetch(`${apiUrl}/users/encryption-keys`, {
+            headers,
             credentials: 'include'
           });
 
@@ -500,11 +532,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       }
 
       if (Object.keys(body).length > 0) {
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const response = await fetch(`${apiUrl}/users/encryption-keys`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify(body)
         });
@@ -739,10 +775,15 @@ To restore:
 
     try {
       setAvatarLoading(true);
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/users/avatar`,
         {
           method: 'POST',
+          headers,
           credentials: 'include',
           body: formData
         }

@@ -37,13 +37,17 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
     try {
       console.log('Searching users with query:', searchQuery);
 
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/search?query=${encodeURIComponent(searchQuery)}`,
         {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include',
           cache: 'no-cache'
         }
@@ -68,13 +72,17 @@ export default function UserSearch({ onClose, onNewConversation }: UserSearchPro
 
   const createConversation = async (user: User) => {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/private`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify({
             participantId: user._id

@@ -166,14 +166,17 @@ export default function ChatApp() {
 
   const fetchConversations = async () => {
     try {
-      // No longer need token from localStorage for fetch requests
+      const token = localStorage.getItem('token');
+      const authHeaders: Record<string, string> = {};
+      if (token) authHeaders['Authorization'] = `Bearer ${token}`;
 
       // Fetch both private conversations and groups
       const [conversationsResponse, groupsResponse] = await Promise.all([
         fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations`, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...authHeaders
           },
           credentials: 'include',
           cache: 'no-cache'
@@ -181,7 +184,8 @@ export default function ChatApp() {
         fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups`, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...authHeaders
           },
           credentials: 'include',
           cache: 'no-cache'
@@ -283,8 +287,13 @@ export default function ChatApp() {
   // ----- SWIPE ACTIONS HANDLERS ----- //
   const handleDeleteConversation = async (conversationId: string) => {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/conversations/${conversationId}/delete`, {
         method: 'PUT',
+        headers,
         credentials: 'include'
       });
       if (response.ok) {
@@ -305,9 +314,15 @@ export default function ChatApp() {
 
   const handleArchiveConversation = async (conversationId: string) => {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/conversations/${conversationId}/archive`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ action: 'archive' }),
         credentials: 'include'
       });
@@ -331,8 +346,13 @@ export default function ChatApp() {
 
   const handleUnarchiveConversation = async (conversationId: string) => {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api'}/conversations/${conversationId}/unarchive`, {
         method: 'PUT',
+        headers,
         credentials: 'include'
       });
       if (response.ok) {
@@ -353,8 +373,13 @@ export default function ChatApp() {
   const handleBlockUser = async (userId: string, conversationId: string) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ungdungnhantinbaomatniel-production.up.railway.app/api';
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`${apiUrl}/users/block/${userId}`, {
         method: 'PUT',
+        headers,
         credentials: 'include'
       });
 

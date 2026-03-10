@@ -318,9 +318,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
     if (!decryptPassword) return;
     setDecryptError('');
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const myKeysResponse = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-        { credentials: 'include' }
+        { headers, credentials: 'include' }
       );
       if (!myKeysResponse.ok) {
         setDecryptError('Không thể tải khóa mã hóa từ server.');
@@ -379,9 +383,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
   const getRealPrivateKey = async (): Promise<string | null> => {
     if (unlockedPrivateKey) return unlockedPrivateKey;
 
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const myKeysResponse = await fetch(
       `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-      { credentials: 'include' }
+      { headers, credentials: 'include' }
     );
     if (!myKeysResponse.ok) return null;
     const myKeysData = await myKeysResponse.json();
@@ -503,9 +511,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   const fetchMessages = async () => {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}`,
         {
+          headers,
           credentials: 'include'
         }
       );
@@ -540,9 +553,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (newMode === 'e2ee' && conversation.type === 'private') {
         const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
         if (otherUser?._id) {
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           const keyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
 
           if (keyResponse.ok) {
@@ -560,13 +577,17 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         ? `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/encryption-mode`
         : `https://ungdungnhantinbaomatniel-production.up.railway.app/api/conversations/${conversation._id}/encryption-mode`;
 
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         apiEndpoint,
         {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify({ encryptionMode: newMode })
         }
@@ -606,11 +627,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       if (conversation.type === 'group') {
         // LUỒNG 1: SENDER KEYS PROTOCOL (GROUP CHAT)
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
         // 1. Lấy private key của chính mình
         const myKeysResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-          { credentials: 'include' }
+          { headers, credentials: 'include' }
         );
         if (!myKeysResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
 
@@ -631,7 +655,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         // 2. Kéo danh sách Sender Keys mà group này đang có
         const senderKeysRes = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`,
-          { credentials: 'include' }
+          { headers, credentials: 'include' }
         );
         if (!senderKeysRes.ok) return `🔒 Không tìm thấy Sender Key của người gửi`;
         const myReceivedKeys = await senderKeysRes.json();
@@ -645,7 +669,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         // 4. Lấy Public Key của ngườI gửi để làm ECDH (Mở khóa cái SenderKey)
         const senderKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
-          { credentials: 'include' }
+          { headers, credentials: 'include' }
         );
         if (!senderKeyResponse.ok) return `🔒 Lỗi tra cứu Public Key`;
         const senderKeyData = await senderKeyResponse.json();
@@ -677,26 +701,38 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
           if (!otherUser?._id) return `🔒 ${t('encryption.decryptFailed')}`;
 
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           const recipientKeyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
           if (!recipientKeyResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
           const recipientKeyData = await recipientKeyResponse.json();
           otherUserPublicKey = recipientKeyData.publicKey;
         } else {
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           const senderKeyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
           if (!senderKeyResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
           const senderKeyData = await senderKeyResponse.json();
           otherUserPublicKey = senderKeyData.publicKey;
         }
 
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const myKeysResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-          { credentials: 'include' }
+          { headers, credentials: 'include' }
         );
         if (!myKeysResponse.ok) return `🔒 ${t('encryption.decryptFailed')}`;
         const myKeysData = await myKeysResponse.json();
@@ -760,10 +796,15 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (conversation.type === 'group') {
         // Lấy private key của mình
         let realPrivateKeyToImport = unlockedPrivateKey;
+
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         if (!realPrivateKeyToImport) {
           const myKeysResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
           if (!myKeysResponse.ok) return null;
           const myKeysData = await myKeysResponse.json();
@@ -782,7 +823,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         // Lấy danh sách Sender Keys mà group này đang có
         const senderKeysRes = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`,
-          { credentials: 'include' }
+          { headers, credentials: 'include' }
         );
         if (!senderKeysRes.ok) return null;
         const myReceivedKeys = await senderKeysRes.json();
@@ -794,7 +835,7 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         // Lấy Public Key của ngườI gửi để làm ECDH
         const senderKeyResponse = await fetch(
           `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
-          { credentials: 'include' }
+          { headers, credentials: 'include' }
         );
         if (!senderKeyResponse.ok) return null;
         const senderKeyData = await senderKeyResponse.json();
@@ -820,16 +861,25 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         if (amISender) {
           const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
           if (!otherUser?._id) return null;
+
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           const recipientKeyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
           if (!recipientKeyResponse.ok) return null;
           otherUserPublicKey = (await recipientKeyResponse.json()).publicKey;
         } else {
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           const senderKeyResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${message.senderId._id}/public-key`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
           if (!senderKeyResponse.ok) return null;
           otherUserPublicKey = (await senderKeyResponse.json()).publicKey;
@@ -837,9 +887,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
         let realPrivateKeyToImport = unlockedPrivateKey;
         if (!realPrivateKeyToImport) {
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           const myKeysResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
           if (!myKeysResponse.ok) return null;
           const myKeysData = await myKeysResponse.json();
@@ -859,7 +913,12 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
       // ===== FETCH THE ENCRYPTED FILE =====
       const normalizedUrl = normalizeFileUrlHelper(fileUrl);
-      const fileResponse = await fetch(normalizedUrl);
+
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const fileResponse = await fetch(normalizedUrl, { headers, credentials: 'include' });
       if (!fileResponse.ok) throw new Error(`Failed to fetch encrypted file: ${fileResponse.status}`);
       const encryptedBuffer = await fileResponse.arrayBuffer();
 
@@ -902,10 +961,14 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       // If E2EE is enabled, encrypt the message
       if (encryptionMode === 'e2ee' && messageType === 'text') {
         try {
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
           // Lấy khóa cá nhân của mình
           const myKeysResponse = await fetch(
             `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`,
-            { credentials: 'include' }
+            { headers, credentials: 'include' }
           );
 
           if (!myKeysResponse.ok) {
@@ -950,9 +1013,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
               for (const member of groupMembers) {
                 if (member._id === currentUser?.id) continue; // Không tự khóa cho mình (hoặc có tùy thiết kế, Niel app bỏ qua)
 
+                const token = localStorage.getItem('token');
+                const headers: Record<string, string> = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const keyResponse = await fetch(
                   `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
-                  { credentials: 'include' }
+                  { headers, credentials: 'include' }
                 );
                 if (keyResponse.ok) {
                   const keyData = await keyResponse.json();
@@ -972,9 +1039,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
               // Gửi chìa khóa phân phối lên Server
               if (distributionPayload.length > 0) {
+                const token = localStorage.getItem('token');
+                const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers,
                   credentials: 'include',
                   body: JSON.stringify({ keys: distributionPayload })
                 });
@@ -993,9 +1064,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
             if (!otherUser?._id) return alert(t('encryption.recipientNoKeyDesc'));
 
+            const token = localStorage.getItem('token');
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const keyResponse = await fetch(
               `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-              { credentials: 'include' }
+              { headers, credentials: 'include' }
             );
 
             if (!keyResponse.ok) return alert(t('encryption.otherNoKey'));
@@ -1016,13 +1091,17 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         }
       }
 
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/${messageType}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify({
             content: messageContent,
@@ -1097,7 +1176,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (encryptionMode === 'e2ee') {
         let realKey = unlockedPrivateKey;
         if (!realKey) {
-          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { credentials: 'include' });
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { headers, credentials: 'include' });
           if (myKeysResponse.ok) {
             const myKeysData = await myKeysResponse.json();
             if (myKeysData.encryptedPrivateKey && !myKeysData.keySalt) realKey = myKeysData.encryptedPrivateKey;
@@ -1125,9 +1208,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             for (const member of groupMembers) {
               if (member._id === currentUser?.id) continue;
 
+              const token = localStorage.getItem('token');
+              const headers: Record<string, string> = {};
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+
               const keyResponse = await fetch(
                 `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
-                { credentials: 'include' }
+                { headers, credentials: 'include' }
               );
               if (keyResponse.ok) {
                 const keyData = await keyResponse.json();
@@ -1142,9 +1229,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             }
 
             if (distributionPayload.length > 0) {
+              const token = localStorage.getItem('token');
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+
               await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 credentials: 'include',
                 body: JSON.stringify({ keys: distributionPayload })
               });
@@ -1170,9 +1261,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           // PRIVATE CHAT FILE UPLOAD (ECDH)
           const otherUser = conversation.participants?.find(p => p._id !== currentUser?.id);
           if (otherUser?._id) {
+            const token = localStorage.getItem('token');
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const keyResponse = await fetch(
               `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-              { credentials: 'include' }
+              { headers, credentials: 'include' }
             );
 
             if (keyResponse.ok) {
@@ -1213,10 +1308,15 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         formData.append('encryptionData', JSON.stringify(encryptionData));
       }
 
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
           method: 'POST',
+          headers,
           credentials: 'include',
           body: formData
         }
@@ -1243,7 +1343,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (encryptionMode === 'e2ee') {
         let realKey = unlockedPrivateKey;
         if (!realKey) {
-          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { credentials: 'include' });
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { headers, credentials: 'include' });
           if (myKeysResponse.ok) {
             const myKeysData = await myKeysResponse.json();
             if (myKeysData.encryptedPrivateKey && !myKeysData.keySalt) realKey = myKeysData.encryptedPrivateKey;
@@ -1269,9 +1373,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             for (const member of groupMembers) {
               if (member._id === currentUser?.id) continue;
 
+              const token = localStorage.getItem('token');
+              const headers: Record<string, string> = {};
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+
               const keyResponse = await fetch(
                 `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
-                { credentials: 'include' }
+                { headers, credentials: 'include' }
               );
               if (keyResponse.ok) {
                 const keyData = await keyResponse.json();
@@ -1286,9 +1394,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             }
 
             if (distributionPayload.length > 0) {
+              const token = localStorage.getItem('token');
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+
               await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 credentials: 'include',
                 body: JSON.stringify({ keys: distributionPayload })
               });
@@ -1313,9 +1425,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           // PRIVATE CHAT AUDIO UPLOAD (ECDH)
           const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
           if (otherUser?._id) {
+            const token = localStorage.getItem('token');
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const keyResponse = await fetch(
               `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-              { credentials: 'include' }
+              { headers, credentials: 'include' }
             );
 
             if (keyResponse.ok) {
@@ -1351,10 +1467,15 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         formData.append('encryptionData', JSON.stringify(encryptionData));
       }
 
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
           method: 'POST',
+          headers,
           credentials: 'include',
           body: formData
         }
@@ -1382,7 +1503,11 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
       if (encryptionMode === 'e2ee') {
         let realKey = unlockedPrivateKey;
         if (!realKey) {
-          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { credentials: 'include' });
+          const token = localStorage.getItem('token');
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          const myKeysResponse = await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/encryption-keys`, { headers, credentials: 'include' });
           if (myKeysResponse.ok) {
             const myKeysData = await myKeysResponse.json();
             if (myKeysData.encryptedPrivateKey && !myKeysData.keySalt) realKey = myKeysData.encryptedPrivateKey;
@@ -1408,9 +1533,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             for (const member of groupMembers) {
               if (member._id === currentUser?.id) continue;
 
+              const token = localStorage.getItem('token');
+              const headers: Record<string, string> = {};
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+
               const keyResponse = await fetch(
                 `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${member._id}/public-key`,
-                { credentials: 'include' }
+                { headers, credentials: 'include' }
               );
               if (keyResponse.ok) {
                 const keyData = await keyResponse.json();
@@ -1425,9 +1554,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
             }
 
             if (distributionPayload.length > 0) {
+              const token = localStorage.getItem('token');
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+
               await fetch(`https://ungdungnhantinbaomatniel-production.up.railway.app/api/groups/${conversation._id}/sender-keys`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 credentials: 'include',
                 body: JSON.stringify({ keys: distributionPayload })
               });
@@ -1448,9 +1581,13 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
           // PRIVATE CHAT CAMERA UPLOAD (ECDH)
           const otherUser = conversation.participants?.find((p: any) => p._id !== currentUser?.id);
           if (otherUser?._id) {
+            const token = localStorage.getItem('token');
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const keyResponse = await fetch(
               `https://ungdungnhantinbaomatniel-production.up.railway.app/api/users/${otherUser._id}/public-key`,
-              { credentials: 'include' }
+              { headers, credentials: 'include' }
             );
 
             if (keyResponse.ok) {
@@ -1479,10 +1616,15 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
         formData.append('encryptionData', JSON.stringify(encryptionData));
       }
 
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${conversation._id}/file`,
         {
           method: 'POST',
+          headers,
           credentials: 'include',
           body: formData
         }
@@ -1505,13 +1647,17 @@ export default function ChatWindow({ conversation, currentUser, onUpdateConversa
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(
         `https://ungdungnhantinbaomatniel-production.up.railway.app/api/messages/${messageId}`,
         {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           credentials: 'include'
         }
       );
