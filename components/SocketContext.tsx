@@ -33,6 +33,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       newSocket.on('connect', () => {
         console.log('Socket connected:', newSocket.id);
         setIsConnected(true);
+        // Tự động join room cá nhân để nhận các sự kiện như session-revoked
+        if (user?.id) {
+          newSocket.emit('join-user-room', user.id);
+          console.log('Joined user room:', `user-${user.id}`);
+        }
       });
 
       newSocket.on('disconnect', () => {

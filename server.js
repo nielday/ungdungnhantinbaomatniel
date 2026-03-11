@@ -31,6 +31,9 @@ const io = socketIo(server, {
   }
 });
 
+// Gắn Socket.io instance vào Express app để routes có thể truy cập qua req.app.get('io')
+app.set('io', io);
+
 // Middleware cấu hình Trust Proxy dể Rate Limit hoạt động đúng sau lớp Nginx/Railway/Vercel
 app.set('trust proxy', 1);
 
