@@ -1,153 +1,222 @@
-# 🛡️ ỨNG DỤNG NHẮN TIN BẢO MẬT NIEL - MESSAGING APP
-> Ứng dụng chat Real-time đề cao Quyền riêng tư tích hợp thuật toán Mã hóa Đầu cuối (E2EE) và Bảo mật đám mây (Cloud Security).
+# 🛡️ NIEL CHAT — ỨNG DỤNG NHẮN TIN BẢO MẬT
+> Ứng dụng chat Real-time đề cao Quyền riêng tư, tích hợp Mã hóa Đầu cuối (E2EE), Bảo mật đám mây và Chính sách 1 Tài khoản — 1 Thiết bị.
 
 ---
 
 ## 📋 MÔ TẢ DỰ ÁN
-Ứng dụng nhắn tin trò chuyện hai chiều thời gian thực mang kiểu dáng Mobile-first. Đây là dự án được áp dụng chặt chẽ các biện pháp An ninh mạng như Mã hóa thuật toán phần cứng **AES, RSA**, phân rã File nhị phân (Blob Blob) và các Tiêu chuẩn **Content Security Policy (CSP)**.
-Toàn bộ mã nguồn hướng tới lý thuyết **Zero-Knowledge**, không một bên thứ 3 (kể cả quản trị viên hệ thống Server Database) nào có quyền xâm phạm và đọc nội dung văn bản gốc hoặc xem hình ảnh cá nhân của người dùng Niel.
+Ứng dụng nhắn tin trò chuyện thời gian thực mang phong cách Mobile-first, hỗ trợ đa ngôn ngữ (Tiếng Việt & Tiếng Anh). Hệ thống áp dụng các biện pháp An ninh mạng nghiêm ngặt bao gồm Mã hóa **ECDH / AES-256**, HttpOnly Cookie kết hợp Bearer Token, Rate Limiting, và Content Security Policy (CSP).
+
+Toàn bộ kiến trúc hướng tới lý thuyết **Zero-Knowledge** — không bên thứ 3 nào (kể cả quản trị viên hệ thống) có quyền đọc nội dung văn bản gốc khi E2EE được kích hoạt.
 
 ---
 
 ## 🏗️ KIẾN TRÚC HỆ THỐNG
-Dự án được phân tách thành 2 máy chủ độc lập Frontend và Backend:
-- **Frontend:** Next.js 14, React context, TypeScript (Host trên Vercel).
-- **Backend:** Node.js, Express.js (Host trên Railway).
-- **Real-time Engine:** Socket.io (Thiếp lập Websocket WSS bảo mật).
-- **Database:** MongoDB Atlas (Lưu trữ Non-Relational NoSQL).
-- **Cloud Storage:** Backblaze B2 Vân toán (Dành riêng cho tệp đa phương tiện đã mã hóa cứng).
+
+| Thành phần | Công nghệ | Hosting |
+|---|---|---|
+| **Frontend** | Next.js 14, React Context, TypeScript, Tailwind CSS | Vercel |
+| **Backend** | Node.js, Express.js | Railway |
+| **Real-time** | Socket.io (WebSocket WSS) | Railway |
+| **Database** | MongoDB Atlas (NoSQL) | MongoDB Cloud |
+| **Cloud Storage** | Backblaze B2 (Giao thức S3 AWS) | Backblaze |
+| **Email Service** | Brevo API (SMTP Transactional) | Brevo |
+| **i18n** | next-intl (Việt / English) | — |
 
 ---
 
-## 📁 CẤU TRÚC THƯ MỤC CHÍNH
+## 📁 CẤU TRÚC THƯ MỤC
 
-### Nền tảng Client (Frontend Next.js)
+### Frontend (Next.js App Router)
 ```text
-├── app/                    # Next.js App Router (Layout, Page, i18n locales)
-├── components/             # Các Component lõi giao diện chức năng Chat
-│   ├── AuthContext.tsx     # Quản lý phiên đăng nhập bằng HttpOnly Cookie (không dùng localStorage)
-│   ├── SocketContext.tsx   # Bảo bọc phiên Websocket Auth WSS (withCredentials)
-│   ├── ChatApp.tsx         # Giao diện Trang chủ App
-│   ├── ChatWindow.tsx      # Lõi nhắn tin (Nơi chứa logic thuật toán giải mã file/text E2EE)
-│   ├── AuthPage.tsx        # Trang đăng ký / đăng nhập
-│   └── ...
+├── app/
+│   └── [locale]/             # i18n routing (vi, en)
+│       ├── layout.tsx        # Root layout + metadata SEO
+│       └── page.tsx          # Trang chính
+├── components/
+│   ├── AuthContext.tsx        # Quản lý xác thực (HttpOnly Cookie + Bearer Token Hybrid)
+│   ├── SocketContext.tsx      # WebSocket Auth + Auto join user room
+│   ├── ChatApp.tsx            # Giao diện trang chủ + Real-time session kick listener
+│   ├── ChatWindow.tsx         # Lõi nhắn tin (E2EE encrypt/decrypt logic)
+│   ├── ChatList.tsx           # Danh sách cuộc trò chuyện (swipe actions)
+│   ├── SettingsModal.tsx      # Cài đặt (Profile, Bảo mật, E2EE, Quản lý phiên, Ngôn ngữ)
+│   ├── CreateGroupModal.tsx   # Tạo nhóm chat
+│   ├── GroupManagementModal.tsx # Quản lý nhóm
+│   ├── UserSearch.tsx         # Tìm kiếm người dùng
+│   ├── AuthPage.tsx           # Đăng ký / Đăng nhập / OTP
+│   └── LanguageSwitcher.tsx   # Chuyển đổi ngôn ngữ
 ├── lib/
-│   ├── encryption.ts       # (CORE) Vi điều khiển các thuật toán Băm và Sinh Khóa Mật Mã E2EE
-│   └── fileUtils.ts        # Helper chuẩn hóa URL file/ảnh qua Backend Proxy (Backblaze B2)
-├── next.config.js          # Chứa cấu hình bảo mật Content Security Policy (CSP) siêu cấp
-└── vercel.json             # Deploy cấu hình Vercel
+│   ├── encryption.ts          # Thuật toán E2EE (ECDH Key Exchange, AES-GCM)
+│   └── fileUtils.ts           # Chuẩn hóa URL file qua Backend Proxy
+├── messages/
+│   ├── vi.json                # Bản dịch Tiếng Việt
+│   └── en.json                # Bản dịch Tiếng Anh
+└── next.config.js             # CSP Headers + Security Config
 ```
 
-### Nền tảng Server (Backend Node.js - Tích hợp chung thư mục dự án)
+### Backend (Node.js Express)
 ```text
-├── server.js             # Express Server chính yếu, khởi động Socket.io
-├── middleware/ 
-│   ├── auth.js           # Bộ lọc xác thực JWT (đọc từ HttpOnly Cookie hoặc Header)
-│   └── rateLimiter.js    # Cảnh sát chống chặn XSS, Spam OTP Brute-force
-├── models/               # Bộ điều khiển Mongoose NoSQL 
-│   ├── User.js           # Chứa lược đồ Khóa Công khai (Public Key)
-│   └── Message.js        # Chứa cờ isServerEncrypted
-├── routes/               # Hệ thống API RESTful (Conversations, Messages, Groups, Auth)
+├── server.js                  # Express + Socket.io Server chính
+├── middleware/
+│   └── auth.js                # JWT Auth + Session ID validation (1-Device Policy)
+├── models/
+│   ├── User.js                # Schema (publicKey, currentSessionToken, loginHistory, trustedDevices)
+│   ├── Message.js             # Schema (isServerEncrypted, isE2EE, attachments)
+│   ├── Conversation.js        # Schema (private chat)
+│   └── Group.js               # Schema (group chat, admins, members)
+├── routes/
+│   ├── auth.js                # Đăng ký, đăng nhập, OTP, active-session, revoke-session
+│   ├── messages.js            # CRUD tin nhắn, E2EE, server-side encryption
+│   ├── conversations.js       # Quản lý cuộc trò chuyện 1-1
+│   ├── groups.js              # CRUD nhóm chat
+│   ├── users.js               # Profile, encryption keys, block/unblock
+│   └── files.js               # Upload/download file qua Backblaze B2
 └── config/
-    └── b2.js             # Móc nối AWS S3 đến Backblaze B2 API
+    └── b2.js                  # Kết nối AWS S3 → Backblaze B2
 ```
 
 ---
 
-## 🔐 ĐIỂM SÁNG BẢO MẬT & TÍNH NĂNG CHUYÊN SÂU
+## 🔐 TÍNH NĂNG BẢO MẬT CHUYÊN SÂU
 
-### 1. 🛡️ Cơ Chế E2EE Kép (Mã hóa Đầu - Cuối Bất đối xứng / Symmetric)
-- **Tạo Khóa (Key Generation):** Mỗi số điện thoại đăng ký được gắn 1 cặp `Public Key/Private Key` ngay trên thiết bị. `Private Key` được khóa ngầm thêm 1 vòng bằng Master Password của người dùng.
-- **Che giấu Tin nhắn (E2EE Chat):** Máy A gửi tin nhắn cho Máy B. Máy A sẽ load `Public Key` của Máy B về, tự **Khóa Giao Diện** dòng chat đó lại thành chuỗi Hex vô hồn. Chỉ có chiếc điện thoại Cầm `Private Key` mồi giải của Máy B mới đọc được dòng chat A truyền sang.
+### 1. 🛡️ Mã hóa Đầu cuối E2EE (End-to-End Encryption)
+- Mỗi tài khoản sở hữu 1 cặp **Public/Private Key** (ECDH P-256) được sinh ngay trên thiết bị.
+- **Private Key** được mã hóa thêm bằng mật khẩu đăng nhập (AES-GCM) trước khi lưu lên server.
+- Tin nhắn được khóa bằng **Public Key** người nhận — chỉ thiết bị cầm Private Key đúng mới giải mã được.
+- Hỗ trợ **Sao lưu / Khôi phục** khóa bảo mật dưới dạng file `.zip` có mật khẩu bảo vệ.
 
-### 2. 🛡️ Hybrid Server-Side Encryption (Mã hóa đa cấp độ Server)
-- **Đa dụng UX:** Cho phép người dùng linh động Ấn Nút "Tắt E2EE" giúp Load tin nhắn siêu nhanh mượt như Messenger.
-- **Bảo mật Bọc Hậu:** Dù Tắt E2EE (Tin nhắn đi vào máy chủ dưới dạng Chữ thường), API Backend vẫn lập tức đem băm chuỗi văn bản đấy bằng `Secret Key Nội bộ (AES-256)` rồi mới lưu vào Database MongoDB.
-- Mất Database, hacker hoàn toàn bất lực vì Server tự dịch giải ngay lúc API GET gọi xuống Frontend.
+### 2. 🛡️ Hybrid Server-Side Encryption
+- Khi tắt E2EE, tin nhắn vẫn được Server tự động mã hóa bằng **AES-256 nội bộ** trước khi lưu vào MongoDB.
+- Ngay cả khi Database bị rò rỉ, dữ liệu vẫn là chuỗi mã hóa vô nghĩa.
 
-### 3. 🖼️ Phân rã Phương Tiện Mã Hóa (Media Blob Encryption)
-- Thay vì đẩy thẳng 1 Tấm Hình PNG / Đoạn ghi âm M4A lên Cloud Storage như Zalo/FB.
-- Hình ảnh/File Audio sẽ bị trình duyệt chẻ vụn thành các **Blob Byte**. Tiến hành mã hóa thành 1 tệp **`.enc` rác** rồi mới đẩy lên mạng Backblaze. URL ảnh mang về cũng không một ai mở lên xem được (Kể cả cầm URL đó do rò rỉ mạng). Nó chỉ hiện hình khi Frontend của Niel kéo về và dùng Private Key cá nhân để Lắp ráp / Nhúng tĩnh trở lại bộ mã Canvas HTML.
+### 3. 🖼️ Media Blob Encryption
+- Hình ảnh, file audio, tài liệu được chẻ thành **Blob Bytes** → mã hóa thành file `.enc` → đẩy lên Backblaze B2.
+- URL ảnh trực tiếp không thể mở xem được, chỉ Frontend Niel Chat mới lắp ráp và giải mã hiển thị.
 
-### 4. 🪟 Khiên Content-Security-Policy (Kháng độc XSS) & Hash Bcrypt
-- Lệnh cấm tự động loại bỏ mọi `iframe` nhúng lạ, cấm Load mọi file ảnh hoặc đoạn Script ngoài vòng Proxy cho phép. 
-- API chặn Rate Limit, chỉ cho 1 IP đánh nhầm mật khẩu X lần / 1 tiếng. 
-- Bcrypt Hash toàn bộ OTP lẫn Master Password nội bộ DB.
+### 4. 📱 Chính sách 1 Tài khoản — 1 Thiết bị (Single-Device Session)
+- Mỗi lần đăng nhập, hệ thống cấp **Session ID** duy nhất nhúng vào JWT.
+- Toàn bộ API Request và Socket.io Connection đều kiểm tra `sessionId` khớp với `currentSessionToken` trong Database.
+- **Đăng nhập thiết bị mới → Thiết bị cũ bị văng ngay lập tức** qua sự kiện Socket.io real-time kèm thông báo popup.
+- UI **Quản lý phiên đăng nhập** trong Cài đặt → Bảo mật cho phép xem thông tin thiết bị hiện tại và đăng xuất từ xa.
 
-### 5. 🍪 Phiên Xác thực HttpOnly Cookie (Chống đánh cắp Token XSS)
-- **Loại bỏ hoàn toàn `localStorage`** để lưu trữ JWT Token xác thực. Token giờ được server gắn vào **HttpOnly Cookie** — JavaScript phía client không thể đọc được (`document.cookie` trả về rỗng cho token).
-- Cookie được cấu hình `Secure`, `SameSite=None` cho phép hoạt động an toàn trên kiến trúc Cross-Origin (Vercel ↔ Railway).
-- Backend tự động đọc token từ cookie thông qua `cookie-parser`, frontend chỉ cần gắn `credentials: 'include'` vào mọi request.
-- Khi người dùng mở ứng dụng, hệ thống tự động dọn sạch mọi token rác cũ còn sót lại trong `localStorage` từ phiên bản trước.
+### 5. 🔒 Xác thực Hybrid (HttpOnly Cookie + Bearer Token)
+- **Desktop:** JWT được lưu trong HttpOnly Cookie — JavaScript không thể đọc (`document.cookie` trả về rỗng).
+- **Mobile:** Do hạn chế cross-site cookie trên WebKit/Safari, JWT được lưu trong `localStorage` và gửi qua header `Authorization: Bearer <token>`.
+- Backend tự động chấp nhận cả hai phương thức xác thực.
+
+### 6. 🪟 Bảo vệ nhiều tầng
+- **Content-Security-Policy (CSP):** Chặn XSS, iframe injection, unauthorized script execution.
+- **Rate Limiting:** Giới hạn số lần thử OTP/đăng nhập sai trên mỗi IP (express-rate-limit).
+- **Bcrypt Hash:** Toàn bộ OTP và mật khẩu đều được băm trước khi lưu vào Database.
+- **Helmet:** HTTP Security Headers tự động.
+- **CORS:** Whitelist domain nghiêm ngặt.
 
 ---
 
-## 🚀 HƯỚNG DẪN TRIỂN KHAI NỘI BỘ (LOCAL SETUP)
+## ✨ TÍNH NĂNG CHÍNH
 
-### Yêu cầu cài đặt
+| Tính năng | Mô tả |
+|---|---|
+| 💬 **Chat 1-1** | Nhắn tin riêng tư real-time với E2EE tùy chọn |
+| 👥 **Group Chat** | Tạo nhóm, thêm/xóa thành viên, phân quyền Admin |
+| 🔒 **E2EE Toggle** | Bật/tắt mã hóa đầu cuối cho từng cuộc trò chuyện |
+| 📸 **Gửi ảnh & File** | Upload ảnh, audio, tài liệu (mã hóa Blob trên Cloud) |
+| 📷 **Camera trực tiếp** | Chụp ảnh từ Camera thiết bị và gửi ngay |
+| 🎙️ **Ghi âm** | Ghi âm giọng nói và gửi trong chat |
+| 🔍 **Tìm kiếm** | Tìm người dùng theo tên/SĐT, tìm tin nhắn trong cuộc trò chuyện |
+| 🚫 **Chặn người dùng** | Block/Unblock với danh sách quản lý trong Cài đặt |
+| 🗃️ **Lưu trữ** | Archive/Unarchive cuộc trò chuyện (swipe gesture trên mobile) |
+| 🌙 **Dark Mode** | Giao diện tối/sáng |
+| 🌐 **Đa ngôn ngữ** | Hỗ trợ Tiếng Việt và Tiếng Anh (next-intl) |
+| 📱 **1 Thiết bị** | Chính sách 1 tài khoản — 1 thiết bị đăng nhập duy nhất |
+| ⚡ **Real-time Kick** | Thông báo popup tức thì khi bị đăng nhập từ thiết bị khác |
+| 🔑 **Quản lý khóa** | Tạo, sao lưu, khôi phục, nhập, xóa khóa mã hóa |
+| 📧 **Email Alert** | Cảnh báo đăng nhập từ thiết bị/IP lạ qua email (Brevo) |
+
+---
+
+## 🚀 HƯỚNG DẪN TRIỂN KHAI (LOCAL SETUP)
+
+### Yêu cầu
 - `node >= 18.0.0`
 - MongoDB Database URI
-- Backblaze B2 Application Key (Giao thức S3 AWS)
+- Backblaze B2 Application Key
+- Brevo API Key (gửi email OTP)
 
-### 1. Cài đặt các Gói Thư Viện
+### 1. Clone & Cài đặt
 ```bash
 git clone https://github.com/nielday/ungdungnhantinbaomatniel.git
 cd ungdungnhantinbaomatniel
-
-# Cài đặt toàn bộ Packges của Frontend + Backend 
 npm install
 ```
 
-### 2. Cài đặt Biến môi trường
+### 2. Cấu hình Biến môi trường
 Tạo file `.env` ở thư mục gốc:
 ```ini
-# --- CHI CỤC BACKEND ---
+# --- BACKEND ---
 MONGODB_URI=mongodb+srv://<user>:<password>@cluster/....
 PORT=3001
-JWT_SECRET=ma_bi_mat_1_cua_ban
-SERVER_ENCRYPTION_KEY=ma_bam_hybrid_AES_mat_khau_chu_cua_server_2
+JWT_SECRET=your_jwt_secret_key
+SERVER_ENCRYPTION_KEY=your_aes256_server_encryption_key
 MAX_FILE_SIZE=10485760
 
-# --- TÍCH HỢP ĐÁM MÂY BACKBLAZE B2 ---
+# --- BACKBLAZE B2 CLOUD STORAGE ---
 B2_KEY_ID=005...
 B2_APPLICATION_KEY=K005...
-B2_BUCKET_NAME=your_storage_bucket
+B2_BUCKET_NAME=your_bucket_name
 B2_REGION=us-east-005
 B2_ENDPOINT=https://s3.us-east-005.backblazeb2.com
 
-# --- XÁC THỰC EMAIL SMTP BREVO ---
-RESEND_API_KEY=xkeysib-...
-RESEND_FROM_EMAIL=your_verify_email@domain.com
+# --- BREVO EMAIL API ---
+BREVO_API_KEY=xkeysib-...
+BREVO_FROM_EMAIL=your_sender@domain.com
 
-# --- CHI CỤC FRONTEND NEXT.JS ---
+# --- FRONTEND NEXT.JS ---
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
 ```
 
-### 3. Vận Hành Tích Hợp
-Bạn cần bật cả 2 đầu Server API và Client App chạy song song:
+### 3. Chạy ứng dụng
 ```bash
-# Terminal 1: Bật Backend Server API (Node.js) trên cổng 3001
+# Terminal 1: Backend Server (Port 3001)
 npm run start
 
-# Terminal 2: Bật Frontend Interface (Next.js) trên cổng 3000
+# Terminal 2: Frontend Next.js (Port 3000)
 npm run dev
 ```
 Mở trình duyệt: `http://localhost:3000`
 
 ---
 
-## 📈 LỘ TRÌNH TƯƠNG LAI (ROADMAP)
+## 📈 LỘ TRÌNH (ROADMAP)
 - [x] Chat 1-1 E2EE & Hybrid Server-Side Encryption
-- [x] Triển khai bảo mật file ảnh (Media File Content)
-- [x] Socket Messaging Real-time
-- [x] Cấu hình CSP + CORS Header Defense
-- [x] Áp dụng `HttpOnly Cookie` quản lý thay thế Token Storage Session nhạy cảm.
-- [x] Chuẩn hóa URL file/ảnh qua Backend Proxy (chống lộ URL Backblaze B2 trực tiếp).
-- [ ] Tích hợp bảo mật Signal Protocol Double Ratchet (Perfect Forward Secrecy).
-- [ ] E2EE Group Chat (Giải bài toán vòng chia khóa phân tán 1-Many).
-- [ ] Tích hợp Audio Call / Video Call (WebRTC Peer-to-Peer Không chạm máy chủ).
+- [x] Triển khai mã hóa file ảnh/media (Blob Encryption)
+- [x] Socket.io Real-time Messaging
+- [x] CSP + CORS Header Defense
+- [x] HttpOnly Cookie + Bearer Token Hybrid Authentication
+- [x] Chuẩn hóa URL file qua Backend Proxy
+- [x] Group Chat (Tạo nhóm, quản lý thành viên, phân quyền Admin)
+- [x] Đa ngôn ngữ i18n (Tiếng Việt / Tiếng Anh)
+- [x] Chính sách 1 Tài khoản — 1 Thiết bị (Single-Device Session)
+- [x] Real-time Session Kick với thông báo popup Socket.io
+- [x] Quản lý phiên đăng nhập trong UI Cài đặt
+- [x] Block/Unblock người dùng
+- [x] Sao lưu / Khôi phục khóa mã hóa E2EE
+- [ ] Signal Protocol Double Ratchet (Perfect Forward Secrecy)
+- [x] E2EE Group Chat (Mã hóa đầu cuối trong nhóm)
+- [ ] Audio Call / Video Call (WebRTC P2P)
 
 ---
-**Nhà Lập Trình Dự Án & Kiến Trúc Sư:** Đào Đức Phong (2025 - 2026)  
-**Phiên bản hiện tại:** 2.1.0 (HttpOnly Cookie & Proxy Security Hardening)  
-**Khóa tài liệu Mở (License):** MIT License (Xem tệp LICENSE)
+
+## 🛠️ TECH STACK
+
+**Frontend:** Next.js 14 · React 18 · TypeScript · Tailwind CSS · Framer Motion · Socket.io Client · next-intl · Lucide React · React Hot Toast · Emoji Picker
+
+**Backend:** Node.js · Express.js · Socket.io · Mongoose · JWT · Bcrypt · Helmet · CORS · Multer · UA-Parser-JS · Express Rate Limit
+
+**Services:** MongoDB Atlas · Backblaze B2 (S3) · Brevo SMTP · Vercel · Railway
+
+---
+
+**Nhà phát triển:** Đào Đức Phong (2025 — 2026)  
+**Phiên bản:** 3.0.0 (Single-Device Session + Real-time Kick + i18n)  
+**License:** MIT License

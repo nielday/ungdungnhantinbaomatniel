@@ -97,7 +97,7 @@ export default function ChatApp() {
 
     const handleSessionRevoked = (data: any) => {
       // Show native alert and then trigger standard logout
-      alert(data.message || 'Phiên đăng nhập của bạn đã hết hạn do có thiết bị khác đăng nhập.');
+      alert(data.message || t('sessionManagement.sessionRevokedAlert'));
       logout();
     };
 

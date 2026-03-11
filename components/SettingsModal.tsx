@@ -169,7 +169,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleRevokeSession = async () => {
-    if (!confirm('Bạn có chắc chắn muốn đăng xuất khỏi thiết bị này? Phiên đăng nhập sẽ bị huỷ!')) return;
+    if (!confirm(t('sessionManagement.confirmRevoke'))) return;
     try {
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = {};
@@ -1504,7 +1504,7 @@ To restore:
                           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <div className="flex items-center space-x-3 mb-3">
                               <Smartphone className="w-5 h-5 text-green-500" />
-                              <h4 className="font-medium dark:text-white">Quản lý phiên đăng nhập</h4>
+                              <h4 className="font-medium dark:text-white">{t('sessionManagement.title')}</h4>
                             </div>
 
                             {isLoadingSession ? (
@@ -1515,11 +1515,11 @@ To restore:
                                   <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
                                   <div>
                                     <p className="font-medium text-gray-800 dark:text-white text-sm">
-                                      {activeSession.deviceInfo ? activeSession.deviceInfo.split(' ')[0] : (activeSession.browser || 'Unknown Browser')} trên {activeSession.osRelease || 'Thiết bị'}
-                                      <span className="ml-2 text-xs font-semibold text-green-600 dark:text-green-400">Đang hoạt động</span>
+                                      {activeSession.deviceInfo ? activeSession.deviceInfo.split(' ')[0] : (activeSession.browser || 'Unknown Browser')} {t('sessionManagement.on')} {activeSession.osRelease || t('sessionManagement.device')}
+                                      <span className="ml-2 text-xs font-semibold text-green-600 dark:text-green-400">{t('sessionManagement.active')}</span>
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                      IP: {activeSession.ipAddress || 'Unknown IP'} • Đăng nhập lần cuối: {new Date(activeSession.lastLogin).toLocaleString('vi-VN')}
+                                      IP: {activeSession.ipAddress || 'Unknown IP'} • {t('sessionManagement.lastLogin')}: {new Date(activeSession.lastLogin).toLocaleString()}
                                     </p>
                                   </div>
                                 </div>
@@ -1527,11 +1527,11 @@ To restore:
                                   onClick={handleRevokeSession}
                                   className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors whitespace-nowrap"
                                 >
-                                  Đăng xuất thiết bị
+                                  {t('sessionManagement.logoutDevice')}
                                 </button>
                               </div>
                             ) : (
-                              <p className="text-gray-500 dark:text-gray-400 text-sm">Không tìm thấy phiên đăng nhập đang hoạt động.</p>
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('sessionManagement.noActiveSession')}</p>
                             )}
                           </div>
 

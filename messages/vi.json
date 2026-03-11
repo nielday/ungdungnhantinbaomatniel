@@ -285,5 +285,16 @@
         "deviceRemoved": "Đã xóa thiết bị",
         "newDeviceOtp": "Thiết bị mới! Vui lòng nhập mã OTP đã gửi đến email.",
         "deviceVerified": "Thiết bị đã được xác thực"
+    },
+    "sessionManagement": {
+        "title": "Quản lý phiên đăng nhập",
+        "active": "Đang hoạt động",
+        "on": "trên",
+        "device": "Thiết bị",
+        "lastLogin": "Đăng nhập lần cuối",
+        "logoutDevice": "Đăng xuất thiết bị",
+        "noActiveSession": "Không tìm thấy phiên đăng nhập đang hoạt động.",
+        "confirmRevoke": "Bạn có chắc chắn muốn đăng xuất khỏi thiết bị này? Phiên đăng nhập sẽ bị huỷ!",
+        "sessionRevokedAlert": "Tài khoản của bạn vừa đăng nhập ở một thiết bị khác. Vui lòng đăng nhập lại."
     }
 }

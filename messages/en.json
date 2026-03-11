@@ -286,5 +286,16 @@
         "deviceRemoved": "Device removed",
         "newDeviceOtp": "New device! Please enter the OTP sent to your email.",
         "deviceVerified": "Device verified"
+    },
+    "sessionManagement": {
+        "title": "Session Management",
+        "active": "Active",
+        "on": "on",
+        "device": "Device",
+        "lastLogin": "Last login",
+        "logoutDevice": "Logout device",
+        "noActiveSession": "No active session found.",
+        "confirmRevoke": "Are you sure you want to log out from this device? The session will be revoked!",
+        "sessionRevokedAlert": "Your session has expired because another device logged in. Please log in again."
     }
 }
